@@ -2,7 +2,9 @@
 
 namespace FluentInjections;
 
-public interface IMiddlewareConfigurator
+public interface IMiddlewareConfigurator<TBuilder>
 {
-    IMiddlewareConfigurator Use<TMiddleware>() where TMiddleware : class, IMiddleware;
+    IMiddlewareConfigurator<TBuilder> Use<TMiddleware>(params object?[] args) where TMiddleware : class, IMiddleware;
+    IMiddlewareConfigurator<TBuilder> Use(Type middlewareType, params object?[] args);
+    TBuilder Builder { get; }
 }

@@ -4,13 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentInjections;
 
-public class ModuleRegistry : IModuleRegistry
+public class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder>
 {
     protected readonly List<IServiceModule> _serviceModules = new();
-    protected readonly List<IMiddlewareModule> _middlewareModules = new();
-
-    public void RegisterModule(IServiceModule module) => _serviceModules.Add(module);
-    public void RegisterModule(IMiddlewareModule module) => _middlewareModules.Add(module);
+    protected readonly List<IMiddlewareModule<TBuilder>> _middlewareModules = new();
 
     public void RegisterConditionalModule<T>(Func<bool> condition) where T : IServiceModule, new()
     {
@@ -20,10 +17,9 @@ public class ModuleRegistry : IModuleRegistry
         }
     }
 
-    public void RegisterServiceModule<T>(Func<T> factory, Action<T>? configure = null) where T : class, new()
-    {
-        _serviceModules.Add(new LazyServiceModule<T>(factory, configure));
-    }
+    public void RegisterModule(IServiceModule module) => _serviceModules.Add(module);
+    public void RegisterModule(IMiddlewareModule<TBuilder> module) => _middlewareModules.Add(module);
+    public void RegisterModule<T>(Func<T> factory, Action<T>? configure = null) where T : class, new() => _serviceModules.Add(new LazyServiceModule<T>(factory, configure));
 
     public void ApplyServiceModules(IServiceConfigurator serviceConfigurator)
     {
@@ -34,7 +30,7 @@ public class ModuleRegistry : IModuleRegistry
         }
     }
 
-    public void ApplyMiddlewareModules(IMiddlewareConfigurator middlewareConfigurator)
+    public void ApplyMiddlewareModules(IMiddlewareConfigurator<TBuilder> middlewareConfigurator)
     {
         foreach (var module in _middlewareModules)
         {
@@ -43,7 +39,7 @@ public class ModuleRegistry : IModuleRegistry
         }
     }
 
-    public void InitializeAllModules()
+    public void InitializeModules()
     {
         foreach (var module in _serviceModules.OfType<ILifecycleModule>())
         {

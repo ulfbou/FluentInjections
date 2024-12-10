@@ -1,22 +1,42 @@
 ﻿using System.Net.Http;
 
+using Autofac;
+
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace FluentInjections;
 
-public class MiddlewareConfigurator : IMiddlewareConfigurator
+public class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator<TBuilder>
 {
-    private IApplicationBuilder _app;
+    public TBuilder Builder => _builder;
+    private TBuilder _builder;
 
-    public MiddlewareConfigurator(IApplicationBuilder app)
+    public MiddlewareConfigurator(TBuilder builder)
     {
-        _app = app;
+        _builder = builder;
     }
 
-    public IMiddlewareConfigurator Use<TMiddleware>() where TMiddleware : class, IMiddleware
+    public IMiddlewareConfigurator<TBuilder> Use<TMiddleware>(params object?[] args) where TMiddleware : class, IMiddleware => Use(typeof(TMiddleware), args);
+
+    public IMiddlewareConfigurator<TBuilder> Use(Type middlewareType, params object?[] args)
     {
-        _app.UseMiddleware<TMiddleware>();
+        if (Builder is IApplicationBuilder app)
+        {
+            app.UseMiddleware(middlewareType, args);
+        }
+        else if (Builder is WebApplication webApp)
+        {
+            webApp.UseMiddleware(middlewareType, args);
+        }
+        else
+        {
+            throw new NotSupportedException($"Builder type {Builder!.GetType().Name} is not supported.");
+        }
+
         return this;
     }
 }

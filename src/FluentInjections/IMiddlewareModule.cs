@@ -1,6 +1,6 @@
 ﻿namespace FluentInjections;
 
-public interface IMiddlewareModule
+public interface IMiddlewareModule<TBuilder>
 {
-    void ConfigureMiddleware(IMiddlewareConfigurator configurator);
+    void ConfigureMiddleware(IMiddlewareConfigurator<TBuilder> configurator);
 }

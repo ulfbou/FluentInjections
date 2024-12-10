@@ -7,7 +7,7 @@ namespace FluentInjections;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddFluentInjections(this IServiceCollection services, params Assembly[] assemblies)
+    public static IServiceCollection AddFluentInjections<TBuilder>(this IServiceCollection services, params Assembly[] assemblies)
     {
         // Use provided assemblies or load all assemblies in the current domain
         var targetAssemblies = assemblies.Length > 0
@@ -15,7 +15,7 @@ public static class DependencyInjection
             : AppDomain.CurrentDomain.GetAssemblies();
 
         // Create a registry to hold the modules
-        var moduleRegistry = new ModuleRegistry();
+        var moduleRegistry = new ModuleRegistry<TBuilder>();
 
         // Discover and register IServiceModules
         var serviceModules = DiscoverModules<IServiceModule>(targetAssemblies);
@@ -26,7 +26,7 @@ public static class DependencyInjection
         }
 
         // Discover and register IMiddlewareModules
-        var middlewareModules = DiscoverModules<IMiddlewareModule>(targetAssemblies);
+        var middlewareModules = DiscoverModules<IMiddlewareModule<TBuilder>>(targetAssemblies);
         foreach (var module in middlewareModules)
         {
             moduleRegistry.RegisterModule(module);
@@ -42,10 +42,39 @@ public static class DependencyInjection
         return services;
     }
 
+    public static IServiceCollection AddFluentInjections<TBuilder, TRegistry>(this IServiceCollection services, params Assembly[] assemblies)
+        where TRegistry : ModuleRegistry<TBuilder>, new()
+    {
+        var serviceProvider = services.BuildServiceProvider();
+        var targetAssemblies = assemblies.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
+        var moduleRegistry = serviceProvider.GetRequiredService<TRegistry>();
+
+        var serviceModules = DiscoverModules<IServiceModule>(targetAssemblies);
+
+        foreach (var module in serviceModules)
+        {
+            moduleRegistry.RegisterModule(module);
+        }
+
+        var middlewareModules = DiscoverModules<IMiddlewareModule<TBuilder>>(targetAssemblies);
+
+        foreach (var module in middlewareModules)
+        {
+            moduleRegistry.RegisterModule(module);
+        }
+
+        var serviceConfigurator = new ServiceConfigurator(services);
+        moduleRegistry.ApplyServiceModules(serviceConfigurator);
+
+        services.AddSingleton<ModuleRegistry<TBuilder>>(moduleRegistry);
+
+        return services;
+    }
+
     public static IApplicationBuilder UseFluentInjections(this IApplicationBuilder app)
     {
-        var moduleRegistry = app.ApplicationServices.GetRequiredService<ModuleRegistry>();
-        var middlewareConfigurator = new MiddlewareConfigurator(app);
+        var moduleRegistry = app.ApplicationServices.GetRequiredService<ModuleRegistry<IApplicationBuilder>>();
+        var middlewareConfigurator = new MiddlewareConfigurator<IApplicationBuilder>(app);
 
         moduleRegistry.ApplyMiddlewareModules(middlewareConfigurator);
 

@@ -2,18 +2,18 @@
 
 namespace FluentInjections;
 
-public class LazyMiddlewareModule<T> : IMiddlewareModule where T : class, IMiddleware
+public class LazyMiddlewareModule<TBuilder, TMiddleware> : IMiddlewareModule<TBuilder> where TMiddleware : class, IMiddleware
 {
-    public T Instance => _lazyInstance.Value;
-    private readonly Lazy<T> _lazyInstance;
+    public TMiddleware Instance => _lazyInstance.Value;
+    private readonly Lazy<TMiddleware> _lazyInstance;
 
-    public LazyMiddlewareModule(Func<T> factory)
+    public LazyMiddlewareModule(Func<TMiddleware> factory)
     {
-        _lazyInstance = new Lazy<T>(factory);
+        _lazyInstance = new Lazy<TMiddleware>(factory);
     }
 
-    public void ConfigureMiddleware(IMiddlewareConfigurator configurator)
+    public void ConfigureMiddleware(IMiddlewareConfigurator<TBuilder> configurator)
     {
-        configurator.Use<T>();
+        configurator.Use<TMiddleware>();
     }
 }
