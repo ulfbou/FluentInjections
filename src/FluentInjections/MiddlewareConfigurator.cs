@@ -24,6 +24,11 @@ public class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator<TBuilder
 
     public IMiddlewareConfigurator<TBuilder> Use(Type middlewareType, params object?[] args)
     {
+        if (!typeof(IMiddleware).IsAssignableFrom(middlewareType))
+        {
+            throw new ArgumentException($"The middleware type {middlewareType.Name} does not implement IMiddleware.");
+        }
+
         if (Builder is IApplicationBuilder app)
         {
             app.UseMiddleware(middlewareType, args);

@@ -22,4 +22,6 @@ public class ContextAwareModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
             module.ConfigureServices(serviceConfigurator);
         }
     }
+
+    public override bool CanHandle<TModule>() => typeof(IContextAwareServiceModule).IsAssignableFrom(typeof(TModule));
 }

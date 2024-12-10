@@ -14,4 +14,6 @@ public class ValidationEnabledModuleRegistry<TBuilder> : ModuleRegistry<TBuilder
             module.ConfigureServices(serviceConfigurator);
         }
     }
+
+    public override bool CanHandle<TModule>() => typeof(IValidatableServiceModule).IsAssignableFrom(typeof(TModule));
 }

@@ -14,4 +14,6 @@ public class ConditionalModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
             module.ConfigureServices(serviceConfigurator);
         }
     }
+
+    public override bool CanHandle<TModule>() => typeof(IConditionalServiceModule).IsAssignableFrom(typeof(TModule));
 }

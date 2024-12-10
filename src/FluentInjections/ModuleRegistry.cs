@@ -41,9 +41,32 @@ public class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder>
 
     public void InitializeModules()
     {
-        foreach (var module in _serviceModules.OfType<ILifecycleModule>())
+        foreach (var module in _serviceModules)
         {
-            module.Initialize();
+            if (module is IInitializable initializable)
+            {
+                initializable.Initialize();
+            }
         }
+
+        foreach (var module in _middlewareModules)
+        {
+            if (module is IInitializable initializable)
+            {
+                initializable.Initialize();
+            }
+        }
+    }
+
+    public virtual bool CanHandle<TModule>() where TModule : class, IServiceModule => CanHandle(typeof(TModule));
+    public virtual bool CanHandle(Type moduleType)
+    {
+        if (GetType() != typeof(ModuleRegistry<TBuilder>))
+        {
+            // TODO: This should be a more specific exception
+            throw new InvalidRegistrationException($"Since '{this.GetType().Name}' extends ModuleRegistry it must override the CanHandle method to notify the CompositeModuleRegistry if it can handle a given module.");
+        }
+
+        throw new InvalidRegistrationException("The ModuleRegistry has been registered to handle modules. However, it should only be used as a fallback registry, which FluentInjections already handles.");
     }
 }

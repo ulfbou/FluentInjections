@@ -16,4 +16,6 @@ public class PrioritizedModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
             module.ConfigureServices(serviceConfigurator);
         }
     }
+
+    public override bool CanHandle<TModule>() => typeof(IPrioritizedServiceModule).IsAssignableFrom(typeof(TModule));
 }
