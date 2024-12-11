@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using FluentInjections.Tests.Middleware;
+
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
@@ -16,16 +18,15 @@ public class HostBuilderUtility
             webHost.UseTestServer().Configure(app =>
             {
                 var configurator = new MiddlewareConfigurator<IApplicationBuilder>(app);
-                configurator.Use<FirstMiddleware>();
-                configurator.Use<SecondMiddleware>();
+                configurator.Use<NamedMiddleware>("First Middleware");
+                configurator.Use<NamedMiddleware>("Second Middleware");
                 app.Run(async context => { await context.Response.WriteAsync("Hello, world!"); });
             });
         })
         .ConfigureServices(services =>
         {
             services.AddFluentInjections<IHostBuilder>();
-            services.AddTransient<FirstMiddleware>();
-            services.AddTransient<SecondMiddleware>();
+            services.AddTransient<NamedMiddleware>();
         });
 }
 

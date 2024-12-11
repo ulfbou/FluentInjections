@@ -2,8 +2,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
-using System;
-
 using Xunit;
 
 namespace FluentInjections.Tests;
