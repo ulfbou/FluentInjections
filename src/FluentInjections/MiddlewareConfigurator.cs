@@ -17,7 +17,7 @@ public class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator<TBuilder
 
     public MiddlewareConfigurator(TBuilder builder)
     {
-        _builder = builder;
+        _builder = builder ?? throw new ArgumentNullException(nameof(builder));
     }
 
     public IMiddlewareConfigurator<TBuilder> Use<TMiddleware>(params object?[] args) where TMiddleware : class, IMiddleware => Use(typeof(TMiddleware), args);
