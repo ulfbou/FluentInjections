@@ -18,13 +18,23 @@ public class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator<TBuilder
     public MiddlewareConfigurator(TBuilder builder)
     {
         _builder = builder ?? throw new ArgumentNullException(nameof(builder));
+
+        if (typeof(TBuilder) != builder.GetType() && !typeof(TBuilder).IsAssignableFrom(builder.GetType()))
+        {
+            throw new ArgumentException($"Builder type {builder.GetType().Name} is not assignable to {typeof(TBuilder).Name}.");
+        }
+
+        if (!IsBuilderTypeValid(builder))
+        {
+            throw new NotSupportedException($"Builder type {builder.GetType().Name} is not supported.");
+        }
     }
 
     public IMiddlewareConfigurator<TBuilder> Use<TMiddleware>(params object?[] args) where TMiddleware : class, IMiddleware => Use(typeof(TMiddleware), args);
 
     public IMiddlewareConfigurator<TBuilder> Use(Type middlewareType, params object?[] args)
     {
-        if (!typeof(IMiddleware).IsAssignableFrom(middlewareType))
+        if (!IsMiddlewareTypeValid(middlewareType))
         {
             throw new ArgumentException($"The middleware type {middlewareType.Name} does not implement IMiddleware.");
         }
@@ -39,9 +49,15 @@ public class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator<TBuilder
         }
         else
         {
-            throw new NotSupportedException($"Builder type {Builder!.GetType().Name} is not supported.");
+            throw new InvalidOperationException($"Builder type {Builder!.GetType().Name} is not supported. We should never ever wind up here.");
+            //throw new NotSupportedException("$"Builder type {Builder!.GetType().Name} is not supported.");
         }
 
         return this;
     }
+
+    protected virtual bool IsBuilderTypeValid(TBuilder builder) => builder is IApplicationBuilder || builder is WebApplication;
+
+    protected virtual bool IsMiddlewareTypeValid(Type middlewareType) =>
+        typeof(IMiddleware).IsAssignableFrom(middlewareType) && !middlewareType.IsAbstract && !middlewareType.IsInterface;
 }
