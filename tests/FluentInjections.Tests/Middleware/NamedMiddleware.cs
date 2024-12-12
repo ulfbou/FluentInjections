@@ -1,13 +1,14 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 
 namespace FluentInjections.Tests.Middleware
 {
-    internal class NamedMiddleware : IMiddleware
+    public class NamedMiddleware : IMiddleware
     {
-        internal string Name { get; init; }
+        public string Name { get; init; }
         public List<string> IterationList { get; init; }
 
-        internal NamedMiddleware(string name, List<string> iterationList)
+        public NamedMiddleware(string name, List<string> iterationList)
         {
             Name = name;
             IterationList = iterationList;
