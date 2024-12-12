@@ -22,14 +22,14 @@ public class TestFixture
         // Add Serilog to the logging pipeline
         services.AddLogging(builder => builder.AddSerilog());
 
-        // Register ILogger<MiddlewarePipelineBuilder>
-        services.AddTransient<ILogger<MiddlewarePipelineBuilder>>(provider =>
-        {
-            var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
-            return loggerFactory.CreateLogger<MiddlewarePipelineBuilder>();
-        });
+        // Register services here (if needed)
 
-        // Build the service provider
+        // Create the logger instance
+        var loggerFactory = new LoggerFactory();
+        var logger = loggerFactory.CreateLogger<MiddlewarePipelineBuilder>();
+
+        // Build the service provider with the logger
+        services.AddTransient<MiddlewarePipelineBuilder>(provider => new MiddlewarePipelineBuilder(services, logger));
         ServiceProvider = services.BuildServiceProvider();
     }
 }

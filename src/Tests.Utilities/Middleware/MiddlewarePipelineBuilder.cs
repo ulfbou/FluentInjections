@@ -14,16 +14,16 @@ namespace FluentInjections.Tests.Utilities;
 /// </remarks>
 public class MiddlewarePipelineBuilder : IMiddlewarePipelineBuilder
 {
-    private readonly List<Func<RequestDelegate, RequestDelegate>> _middlewares = new();
+    private readonly List<Func<RequestDelegate, RequestDelegate>> _middlewares = new List<Func<RequestDelegate, RequestDelegate>>();
     private readonly IServiceCollection _services;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<MiddlewarePipelineBuilder> _logger;
 
-    public MiddlewarePipelineBuilder(IServiceCollection services)
+    public MiddlewarePipelineBuilder(IServiceCollection services, ILogger<MiddlewarePipelineBuilder> logger)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = _services.BuildServiceProvider();
-        _logger = _serviceProvider.GetRequiredService<ILogger<MiddlewarePipelineBuilder>>();
     }
 
     /// <summary>
