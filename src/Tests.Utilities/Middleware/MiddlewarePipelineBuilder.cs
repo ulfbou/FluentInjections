@@ -14,16 +14,15 @@ namespace FluentInjections.Tests.Utilities;
 /// </remarks>
 public class MiddlewarePipelineBuilder : IMiddlewarePipelineBuilder
 {
-    private readonly List<Func<RequestDelegate, RequestDelegate>> _middlewares = new List<Func<RequestDelegate, RequestDelegate>>();
+    private readonly List<Func<RequestDelegate, RequestDelegate>> _middlewares = new();
     private readonly IServiceCollection _services;
-    private readonly IServiceProvider _serviceProvider;
+    private IServiceProvider? _serviceProvider;
     private readonly ILogger<MiddlewarePipelineBuilder> _logger;
 
     public MiddlewarePipelineBuilder(IServiceCollection services, ILogger<MiddlewarePipelineBuilder> logger)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _serviceProvider = _services.BuildServiceProvider();
     }
 
     /// <summary>
@@ -42,6 +41,18 @@ public class MiddlewarePipelineBuilder : IMiddlewarePipelineBuilder
 
         _services.AddTransient<TMiddleware>(provider =>
         {
+            if (args.Length == 0)
+            {
+                try
+                {
+                    return (TMiddleware)Activator.CreateInstance(middlewareType)!;
+                }
+                catch
+                {
+                    throw new InvalidOperationException($"Could not create an instance of middleware {middlewareType.Name} with an empty list of arguments.");
+                }
+            }
+
             var constructors = middlewareType.GetConstructors().Where(ctor => ctor.GetParameters().Length == args.Length).ToList();
 
             if (constructors.Count == 0)
@@ -62,7 +73,7 @@ public class MiddlewarePipelineBuilder : IMiddlewarePipelineBuilder
 
         _middlewares.Add(next => async context =>
         {
-            var middleware = _serviceProvider.GetRequiredService<TMiddleware>();
+            var middleware = _serviceProvider!.GetRequiredService<TMiddleware>();
             await middleware.InvokeAsync(context, next);
         });
 
@@ -97,6 +108,8 @@ public class MiddlewarePipelineBuilder : IMiddlewarePipelineBuilder
     /// <returns>A <see cref="RequestDelegate"/> that represents the middleware pipeline.</returns>
     public RequestDelegate Build()
     {
+        _serviceProvider = _services.BuildServiceProvider();
+
         RequestDelegate next = context => Task.CompletedTask;
 
         foreach (var middleware in _middlewares.AsEnumerable().Reverse())

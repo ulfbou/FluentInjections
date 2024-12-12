@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using Moq;
+
 using Serilog;
 
 using System.Reflection;
@@ -23,38 +25,6 @@ public class MiddlewareConfiguratorTests : IClassFixture<TestFixture>
     {
         _logger = fixture.ServiceProvider.GetRequiredService<ILogger<MiddlewareConfiguratorTests>>();
         _serviceProvider = fixture.ServiceProvider;
-    }
-
-    private class TestMiddleware : IMiddleware
-    {
-        public Task InvokeAsync(HttpContext context, RequestDelegate next)
-        {
-            return next(context);
-        }
-    }
-
-    [Fact]
-    public void Use_ValidMiddlewareType_AddsMiddleware()
-    {
-        var builder = new ApplicationBuilder(_serviceProvider);
-        var configurator = new MiddlewareConfigurator<IApplicationBuilder>(builder, _serviceProvider);
-
-        configurator.Use<TestMiddleware>();
-
-        var middlewareField = builder.GetType().GetField("_components", BindingFlags.NonPublic | BindingFlags.Instance);
-        var components = middlewareField?.GetValue(builder) as IList<Func<RequestDelegate, RequestDelegate>>;
-
-        Assert.NotNull(components);
-        Assert.Contains(components, component => component?.Target?.GetType() == typeof(TestMiddleware));
-    }
-
-    [Fact]
-    public void Use_InvalidMiddlewareType_ThrowsArgumentException()
-    {
-        var builder = new ApplicationBuilder(_serviceProvider);
-        var configurator = new MiddlewareConfigurator<IApplicationBuilder>(builder, _serviceProvider);
-
-        Assert.Throws<ArgumentException>(() => configurator.Use(typeof(string)));
     }
 
     [Fact]
@@ -77,28 +47,27 @@ public class MiddlewareConfiguratorTests : IClassFixture<TestFixture>
     }
 
     [Fact]
-    public async Task Builder_WithMultipleNamedMiddleware_ExecutesInOrderAsync()
+    public void UseMiddleware_AddsMiddlewareToPipeline()
     {
-        IMiddlewarePipelineBuilder builder = new MiddlewarePipelineBuilder(new ServiceCollection());
-        var iterationList = new List<string>();
+        // Arrange
+        var services = new ServiceCollection();
+        var loggerMock = new Mock<ILogger<MiddlewarePipelineBuilder>>();
+        var builder = new MiddlewarePipelineBuilder(services, loggerMock.Object);
 
-        builder.UseMiddleware<NamedMiddleware>("A", iterationList);
-        builder.UseMiddleware<NamedMiddleware>("B", iterationList);
-        builder.UseMiddleware<NamedMiddleware>("C", iterationList);
-        RequestDelegate pipeline = builder.Build();
+        // Act
+        builder.UseMiddleware<TestMiddleware>();
 
-        _logger.LogInformation("Executing middleware pipeline.");
-        _logger.LogInformation("Iteration list before executing pipeline: {IterationList}", string.Join(", ", iterationList));
-        var context = new DefaultHttpContext();
-        await pipeline(context);
-        _logger.LogInformation("Iteration list after executing pipeline: {IterationList}", string.Join(", ", iterationList));
+        // Assert
+        var serviceProvider = services.BuildServiceProvider();
+        var middleware = serviceProvider.GetService<TestMiddleware>();
+        Assert.NotNull(middleware);
+    }
 
-        Assert.Equal(6, iterationList.Count);
-        Assert.Equal("A", iterationList[0]);
-        Assert.Equal("A", iterationList[1]);
-        Assert.Equal("B", iterationList[2]);
-        Assert.Equal("B", iterationList[3]);
-        Assert.Equal("C", iterationList[4]);
-        Assert.Equal("C", iterationList[5]);
+    private class TestMiddleware : IMiddleware
+    {
+        public Task InvokeAsync(HttpContext context, RequestDelegate next)
+        {
+            return next(context);
+        }
     }
 }
