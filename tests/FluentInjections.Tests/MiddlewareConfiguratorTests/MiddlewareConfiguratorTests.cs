@@ -17,10 +17,12 @@ namespace FluentInjections.Tests.MiddlewareConfiguratorTests;
 public class MiddlewareConfiguratorTests : IClassFixture<TestFixture>
 {
     private readonly ILogger<MiddlewareConfiguratorTests> _logger;
+    private readonly IServiceProvider _serviceProvider;
 
     public MiddlewareConfiguratorTests(TestFixture fixture)
     {
         _logger = fixture.ServiceProvider.GetRequiredService<ILogger<MiddlewareConfiguratorTests>>();
+        _serviceProvider = fixture.ServiceProvider;
     }
 
     private class TestMiddleware : IMiddleware
@@ -34,9 +36,8 @@ public class MiddlewareConfiguratorTests : IClassFixture<TestFixture>
     [Fact]
     public void Use_ValidMiddlewareType_AddsMiddleware()
     {
-        var builder = new ApplicationBuilder(new ServiceCollection().BuildServiceProvider());
-        IServiceProvider sp = builder.ApplicationServices.GetService<IServiceProvider>()!;
-        var configurator = new MiddlewareConfigurator<IApplicationBuilder>(builder, sp);
+        var builder = new ApplicationBuilder(_serviceProvider);
+        var configurator = new MiddlewareConfigurator<IApplicationBuilder>(builder, _serviceProvider);
 
         configurator.Use<TestMiddleware>();
 
@@ -50,9 +51,8 @@ public class MiddlewareConfiguratorTests : IClassFixture<TestFixture>
     [Fact]
     public void Use_InvalidMiddlewareType_ThrowsArgumentException()
     {
-        var builder = new ApplicationBuilder(new ServiceCollection().BuildServiceProvider());
-        var sp = builder.ApplicationServices.GetRequiredService<IServiceProvider>()!;
-        var configurator = new MiddlewareConfigurator<IApplicationBuilder>(builder, sp);
+        var builder = new ApplicationBuilder(_serviceProvider);
+        var configurator = new MiddlewareConfigurator<IApplicationBuilder>(builder, _serviceProvider);
 
         Assert.Throws<ArgumentException>(() => configurator.Use(typeof(string)));
     }
@@ -60,9 +60,8 @@ public class MiddlewareConfiguratorTests : IClassFixture<TestFixture>
     [Fact]
     public void Builder_ReturnsCorrectBuilderInstance()
     {
-        var builder = new ApplicationBuilder(new ServiceCollection().BuildServiceProvider());
-        var sp = builder.ApplicationServices.GetRequiredService<IServiceProvider>()!;
-        var configurator = new MiddlewareConfigurator<IApplicationBuilder>(builder, sp);
+        var builder = new ApplicationBuilder(_serviceProvider);
+        var configurator = new MiddlewareConfigurator<IApplicationBuilder>(builder, _serviceProvider);
 
         Assert.Equal(builder, configurator.Builder);
     }
@@ -70,9 +69,8 @@ public class MiddlewareConfiguratorTests : IClassFixture<TestFixture>
     [Fact]
     public void Builder_WithMultipleMiddleware_ReturnsCorrectBuilderInstance()
     {
-        var builder = new ApplicationBuilder(new ServiceCollection().BuildServiceProvider());
-        var sp = builder.ApplicationServices.GetRequiredService<IServiceProvider>()!;
-        var configurator = new MiddlewareConfigurator<IApplicationBuilder>(builder, sp);
+        var builder = new ApplicationBuilder(_serviceProvider);
+        var configurator = new MiddlewareConfigurator<IApplicationBuilder>(builder, _serviceProvider);
         configurator.Use<TestMiddleware>();
         configurator.Use<TestMiddleware>();
         Assert.Equal(builder, configurator.Builder);

@@ -1,3 +1,5 @@
+using FluentInjections.Tests.Utilities;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -19,6 +21,13 @@ public class TestFixture
 
         // Add Serilog to the logging pipeline
         services.AddLogging(builder => builder.AddSerilog());
+
+        // Register ILogger<MiddlewarePipelineBuilder>
+        services.AddTransient<ILogger<MiddlewarePipelineBuilder>>(provider =>
+        {
+            var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+            return loggerFactory.CreateLogger<MiddlewarePipelineBuilder>();
+        });
 
         // Build the service provider
         ServiceProvider = services.BuildServiceProvider();
