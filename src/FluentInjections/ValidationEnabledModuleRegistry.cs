@@ -1,8 +1,17 @@
 ﻿namespace FluentInjections;
 
+/// <summary>
+/// Represents a module registry that can handle validated services.
+/// </summary>
+/// <typeparam name="TBuilder">The builder type.</typeparam>
 public class ValidationEnabledModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
 {
-    public void ApplyValidatedServices(IServiceProvider serviceProvider, IServiceConfigurator serviceConfigurator)
+    /// <summary>
+    /// Applies the validated services.
+    /// </summary>
+    /// <param name="serviceProvider">The service provider.</param>
+    /// <param name="serviceConfigurator">The service configurator.</param>
+    public IModuleRegistry<TBuilder> ApplyValidatedServices(IServiceProvider serviceProvider, IServiceConfigurator serviceConfigurator)
     {
         foreach (var module in _serviceModules)
         {
@@ -13,6 +22,8 @@ public class ValidationEnabledModuleRegistry<TBuilder> : ModuleRegistry<TBuilder
 
             module.ConfigureServices(serviceConfigurator);
         }
+
+        return this;
     }
 
     public override bool CanHandle<TModule>() => typeof(IValidatableServiceModule).IsAssignableFrom(typeof(TModule));

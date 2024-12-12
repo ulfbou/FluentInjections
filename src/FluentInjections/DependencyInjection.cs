@@ -12,8 +12,8 @@ public static class DependencyInjection
         var targetAssemblies = assemblies.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
         var moduleRegistry = new ModuleRegistry<TBuilder>();
 
-        RegisterModules<IServiceModule>(targetAssemblies, moduleRegistry.RegisterModule);
-        RegisterModules<IMiddlewareModule<TBuilder>>(targetAssemblies, moduleRegistry.RegisterModule);
+        RegisterModules<TBuilder, IServiceModule>(targetAssemblies, moduleRegistry.RegisterModule);
+        RegisterModules<TBuilder, IMiddlewareModule<TBuilder>>(targetAssemblies, moduleRegistry.RegisterModule);
 
         var serviceConfigurator = new ServiceConfigurator(services);
         moduleRegistry.ApplyServiceModules(serviceConfigurator);
@@ -30,8 +30,8 @@ public static class DependencyInjection
         var targetAssemblies = assemblies.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
         var moduleRegistry = serviceProvider.GetRequiredService<TRegistry>();
 
-        RegisterModules<IServiceModule>(targetAssemblies, moduleRegistry.RegisterModule);
-        RegisterModules<IMiddlewareModule<TBuilder>>(targetAssemblies, moduleRegistry.RegisterModule);
+        RegisterModules<TBuilder, IServiceModule>(targetAssemblies, moduleRegistry.RegisterModule);
+        RegisterModules<TBuilder, IMiddlewareModule<TBuilder>>(targetAssemblies, moduleRegistry.RegisterModule);
 
         var serviceConfigurator = new ServiceConfigurator(services);
         moduleRegistry.ApplyServiceModules(serviceConfigurator);
@@ -44,22 +44,23 @@ public static class DependencyInjection
     public static IApplicationBuilder UseFluentInjections(this IApplicationBuilder app)
     {
         var moduleRegistry = app.ApplicationServices.GetRequiredService<ModuleRegistry<IApplicationBuilder>>();
-        var middlewareConfigurator = new MiddlewareConfigurator<IApplicationBuilder>(app);
+        var sp = app.ApplicationServices;
+        var middlewareConfigurator = new MiddlewareConfigurator<IApplicationBuilder>(app, sp);
 
         moduleRegistry.ApplyMiddlewareModules(middlewareConfigurator);
 
         return app;
     }
 
-    private static void RegisterModules<TModule>(Assembly[] assemblies, Action<TModule> registerAction)
+    private static void RegisterModules<TBuilder, TModule>(Assembly[] assemblies, Func<TModule, IModuleRegistry<TBuilder>> registerAction)
         where TModule : class
     {
         var modules = assemblies
             .AsParallel()
             .SelectMany(assembly => assembly.GetTypes())
-            .Where(type => typeof(TModule).IsAssignableFrom(type) && !type.IsAbstract && type.IsPublic)
-            .Select(Activator.CreateInstance)
-            .Cast<TModule>();
+            .Where(type => typeof(TModule).IsAssignableFrom(type) && !type.IsAbstract && type.IsPublic && !type.ContainsGenericParameters)
+            .Select(type => Activator.CreateInstance(type))
+            .OfType<TModule>();
 
         foreach (var module in modules)
         {

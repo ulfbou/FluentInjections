@@ -2,13 +2,14 @@
 
 public interface IModuleRegistry<TBuilder>
 {
-    void RegisterModule(IServiceModule module);
-    void RegisterModule(IMiddlewareModule<TBuilder> module);
-    void RegisterModule<T>(Func<T> factory, Action<T>? configure = null) where T : class, new();
-    void RegisterConditionalModule<T>(Func<bool> condition) where T : IServiceModule, new();
-    void ApplyServiceModules(IServiceConfigurator serviceConfigurator);
-    void ApplyMiddlewareModules(IMiddlewareConfigurator<TBuilder> middlewareConfigurator);
-    void InitializeModules();
+    IModuleRegistry<TBuilder> RegisterModule(IServiceModule module);
+    IModuleRegistry<TBuilder> RegisterModule(IMiddlewareModule<TBuilder> module);
+    IModuleRegistry<TBuilder> RegisterModule<T>(Func<T> factory, Action<T>? configure = null) where T : class, new();
+    IModuleRegistry<TBuilder> RegisterModule<T>(Func<bool> condition) where T : IServiceModule, new();
+    IModuleRegistry<TBuilder> ApplyServiceModules(IServiceConfigurator serviceConfigurator);
+    IModuleRegistry<TBuilder> ApplyMiddlewareModules(IMiddlewareConfigurator<TBuilder> middlewareConfigurator);
+    IModuleRegistry<TBuilder> InitializeModules();
+
     bool CanHandle<TModule>() where TModule : class, IServiceModule;
     bool CanHandle(Type type);
 }

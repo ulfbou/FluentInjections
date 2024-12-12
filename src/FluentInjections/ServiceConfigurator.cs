@@ -3,6 +3,9 @@ using Microsoft.Extensions.Configuration;
 
 namespace FluentInjections;
 
+/// <summary>
+/// Represents a service configurator.
+/// </summary>
 public class ServiceConfigurator : IServiceConfigurator
 {
     private readonly IServiceCollection _services;
@@ -12,6 +15,7 @@ public class ServiceConfigurator : IServiceConfigurator
         _services = services;
     }
 
+    /// <inheritdoc />
     public IServiceConfigurator AddService<TService, TImplementation>(ServiceLifetime lifetime = ServiceLifetime.Transient)
         where TService : class
         where TImplementation : class, TService
@@ -20,12 +24,32 @@ public class ServiceConfigurator : IServiceConfigurator
         return this;
     }
 
+    /// <inheritdoc />
     public IServiceConfigurator AddSingleton<TService>(TService implementationInstance) where TService : class
     {
         _services.AddSingleton(implementationInstance);
         return this;
     }
 
+    /// <inheritdoc />
+    public IServiceConfigurator AddScoped<TService, TImplementation>()
+        where TService : class
+        where TImplementation : class, TService
+    {
+        _services.AddScoped<TService, TImplementation>();
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IServiceConfigurator AddTransient<TService, TImplementation>()
+        where TService : class
+        where TImplementation : class, TService
+    {
+        _services.AddTransient<TService, TImplementation>();
+        return this;
+    }
+
+    /// <inheritdoc />
     public IServiceConfigurator ConfigureOptions<TOptions>(Action<TOptions> configure) where TOptions : class
     {
         _services.GroupJoin(_services, _ => true, _ => true, (_, services) =>
@@ -38,14 +62,6 @@ public class ServiceConfigurator : IServiceConfigurator
             return services;
         });
 
-        return this;
-    }
-
-    public IServiceConfigurator AddTransient<TService, TImplementation>()
-        where TService : class
-        where TImplementation : class, TService
-    {
-        _services.AddTransient<TService, TImplementation>();
         return this;
     }
 }

@@ -1,8 +1,15 @@
 ﻿namespace FluentInjections;
 
+/// <summary>
+/// Represents a registry of modules that can be prioritized.
+/// </summary>
+/// <typeparam name="TBuilder">The builder type.</typeparam>
 public class PrioritizedModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
 {
-    public void ApplyServicesWithPriority(IServiceConfigurator serviceConfigurator)
+    /// <summary>
+    /// Applies the services with priority.
+    /// </summary>
+    public IModuleRegistry<TBuilder> ApplyServicesWithPriority(IServiceConfigurator serviceConfigurator)
     {
         foreach (var module in _serviceModules
                      .OfType<IPrioritizedServiceModule>()
@@ -15,7 +22,13 @@ public class PrioritizedModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
         {
             module.ConfigureServices(serviceConfigurator);
         }
+
+        return this;
     }
 
+    /// <summary>
+    /// Applies the middleware with priority.
+    /// </summary>
+    /// <param name="TModule">The module type.</param>
     public override bool CanHandle<TModule>() => typeof(IPrioritizedServiceModule).IsAssignableFrom(typeof(TModule));
 }

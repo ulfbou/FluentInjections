@@ -6,6 +6,9 @@ using System.Collections.Concurrent;
 
 namespace FluentInjections;
 
+/// <summary>
+/// Represents a composite registry of modules.
+/// </summary>
 public class CompositeModuleRegistry<TBuilder> : IModuleRegistry<TBuilder>
 {
     private readonly ConcurrentBag<IModuleRegistry<TBuilder>> _registries = new();
@@ -16,64 +19,90 @@ public class CompositeModuleRegistry<TBuilder> : IModuleRegistry<TBuilder>
         _serviceProvider = serviceProvider;
     }
 
-    public void AddRegistry(IModuleRegistry<TBuilder> registry)
+    /// <inheritdoc />
+    public IModuleRegistry<TBuilder> AddRegistry(IModuleRegistry<TBuilder> registry)
     {
         _registries.Add(registry);
+
+        return this;
     }
 
-    public void RegisterModule(IServiceModule module)
+    /// <inheritdoc />
+    public IModuleRegistry<TBuilder> RegisterModule(IServiceModule module)
     {
         if (!TryRegisterModule(module.GetType(), registry => registry.RegisterModule(module)))
         {
             var moduleRegistry = _serviceProvider.GetRequiredService<ModuleRegistry<TBuilder>>();
             moduleRegistry.RegisterModule(module);
         }
+
+        return this;
     }
 
-    public void RegisterModule(IMiddlewareModule<TBuilder> module)
+    /// <inheritdoc />
+    public IModuleRegistry<TBuilder> RegisterModule(IMiddlewareModule<TBuilder> module)
     {
         if (!TryRegisterModule(module.GetType(), registry => registry.RegisterModule(module)))
         {
             var moduleRegistry = _serviceProvider.GetRequiredService<ModuleRegistry<TBuilder>>();
             moduleRegistry.RegisterModule(module);
         }
+
+        return this;
     }
 
-    public void RegisterModule<T>(Func<T> factory, Action<T>? configure = null) where T : class, new()
+    /// <inheritdoc />
+    public IModuleRegistry<TBuilder> RegisterModule<T>(Func<T> factory, Action<T>? configure = null) where T : class, new()
     {
         if (!TryRegisterModule(typeof(T), registry => registry.RegisterModule(factory, configure)))
         {
             var moduleRegistry = _serviceProvider.GetRequiredService<ModuleRegistry<TBuilder>>();
             moduleRegistry.RegisterModule(factory, configure);
         }
+
+        return this;
     }
 
-    public void RegisterConditionalModule<T>(Func<bool> condition) where T : IServiceModule, new()
+    /// <inheritdoc />
+    public IModuleRegistry<TBuilder> RegisterModule<T>(Func<bool> condition) where T : IServiceModule, new()
     {
-        if (!TryRegisterModule(typeof(T), registry => registry.RegisterConditionalModule<T>(condition)))
+        if (!TryRegisterModule(typeof(T), registry => registry.RegisterModule<T>(condition)))
         {
             throw new InvalidRegistrationException($"No registry was found that can handle the module type {typeof(T).Name}.");
         }
+
+        return this;
     }
 
-    public void ApplyServiceModules(IServiceConfigurator serviceConfigurator)
+    /// <inheritdoc />
+    public IModuleRegistry<TBuilder> ApplyServiceModules(IServiceConfigurator serviceConfigurator)
     {
         Parallel.ForEach(_registries, registry => registry.ApplyServiceModules(serviceConfigurator));
+
+        return this;
     }
 
-    public void ApplyMiddlewareModules(IMiddlewareConfigurator<TBuilder> middlewareConfigurator)
+    /// <inheritdoc />
+    public IModuleRegistry<TBuilder> ApplyMiddlewareModules(IMiddlewareConfigurator<TBuilder> middlewareConfigurator)
     {
         Parallel.ForEach(_registries, registry => registry.ApplyMiddlewareModules(middlewareConfigurator));
+
+        return this;
     }
 
-    public void InitializeModules()
+    /// <inheritdoc />
+    public IModuleRegistry<TBuilder> InitializeModules()
     {
         Parallel.ForEach(_registries, registry => registry.InitializeModules());
+
+        return this;
     }
 
+    /// <inheritdoc />
     public bool CanHandle(Type moduleType)
         => throw new InvalidRegistrationException(ErrorMessages.Composite.CallCanHandle);
 
+    /// <inheritdoc />
     public bool CanHandle<TModule>() where TModule : class, IServiceModule
         => throw new InvalidRegistrationException(ErrorMessages.Composite.CallCanHandle);
 
