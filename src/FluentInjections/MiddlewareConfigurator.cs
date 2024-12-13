@@ -59,6 +59,10 @@ public sealed class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator<T
         {
             app.Use(next => requestDelegate);
         }
+        if (Builder is IMiddlewarePipelineBuilder pipelineBuilder)
+        {
+            pipelineBuilder.UseMiddleware(middlewareType, args);
+        }
         else
         {
             throw new NotSupportedException($"Builder type {Builder!.GetType().Name} is not supported.");
@@ -77,21 +81,20 @@ public sealed class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator<T
     {
         if (!IsMiddlewareTypeValid(middlewareType))
         {
-            //throw new ArgumentException($"The middleware type {middlewareType.Name} does not implement IMiddleware.");
+            throw new ArgumentException($"The middleware type {middlewareType.Name} does not implement IMiddleware.");
         }
 
         if (Builder is IApplicationBuilder app)
         {
             app.UseMiddleware(middlewareType, args);
         }
-        else if (Builder is WebApplication webApp)
+        else if (Builder is IMiddlewarePipelineBuilder pipelineBuilder)
         {
-            webApp.UseMiddleware(middlewareType, args);
+            pipelineBuilder.UseMiddleware(middlewareType, args);
         }
         else
         {
-            throw new InvalidOperationException($"Builder type {Builder!.GetType().Name} is not supported. We should never ever wind up here.");
-            //throw new NotSupportedException("$"Builder type {Builder!.GetType().Name} is not supported.");
+            throw new NotSupportedException($"Builder type {Builder!.GetType().Name} is not supported. We should never ever wind up here.");
         }
 
         return this;

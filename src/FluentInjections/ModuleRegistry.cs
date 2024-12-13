@@ -33,6 +33,8 @@ public class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder>
     /// <param name="module">The service module.</param>
     public IModuleRegistry<TBuilder> RegisterModule(IServiceModule module)
     {
+        ArgumentNullException.ThrowIfNull(module, nameof(module));
+
         _serviceModules.Add(module);
         return this;
     }
@@ -43,6 +45,8 @@ public class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder>
     /// <param name="module">The middleware module.</param>
     public IModuleRegistry<TBuilder> RegisterModule(IMiddlewareModule<TBuilder> module)
     {
+        ArgumentNullException.ThrowIfNull(module, nameof(module));
+
         _middlewareModules.Add(module);
         return this;
     }
@@ -55,6 +59,8 @@ public class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder>
     /// <param name="configure">The optional configuration action.</param>
     public IModuleRegistry<TBuilder> RegisterModule<T>(Func<T> factory, Action<T>? configure = null) where T : class, new()
     {
+        ArgumentNullException.ThrowIfNull(factory, nameof(factory));
+
         _serviceModules.Add(new LazyServiceModule<T>(factory, configure));
         return this;
     }
@@ -65,6 +71,8 @@ public class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder>
     /// <param name="serviceConfigurator">The service configurator.</param>
     public IModuleRegistry<TBuilder> ApplyServiceModules(IServiceConfigurator serviceConfigurator)
     {
+        ArgumentNullException.ThrowIfNull(serviceConfigurator, nameof(serviceConfigurator));
+
         foreach (var module in _serviceModules)
         {
             module.ConfigureServices(serviceConfigurator);
@@ -80,6 +88,8 @@ public class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder>
     /// <param name="middlewareConfigurator">The middleware configurator.</param>
     public IModuleRegistry<TBuilder> ApplyMiddlewareModules(IMiddlewareConfigurator<TBuilder> middlewareConfigurator)
     {
+        ArgumentNullException.ThrowIfNull(middlewareConfigurator, nameof(middlewareConfigurator));
+
         foreach (var module in _middlewareModules)
         {
             module.ConfigureMiddleware(middlewareConfigurator);

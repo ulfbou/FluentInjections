@@ -1,4 +1,6 @@
-﻿namespace FluentInjections.Tests.Extensions;
+﻿using Microsoft.AspNetCore.Http;
+
+namespace FluentInjections.Tests.Extensions;
 
 public static class MiddlewarePipelineHelperExtensions
 {

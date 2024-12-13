@@ -28,6 +28,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\FluentInjections\FluentInjections.csproj" />
+		<ProjectReference Include="..\..\src\Tests.Extensions\FluentInjections.Tests.Extensions.csproj" />
 		<ProjectReference Include="..\..\src\Tests.Utilities\FluentInjections.Tests.Utilities.csproj" />
 	</ItemGroup>
 
