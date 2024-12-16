@@ -1,4 +1,4 @@
-﻿namespace FluentInjections;
+﻿namespace FluentInjections.Internal.ServiceModules;
 
 public class LazyServiceModule<T> : IServiceModule where T : class, new()
 {
@@ -18,6 +18,6 @@ public class LazyServiceModule<T> : IServiceModule where T : class, new()
 
     public void ConfigureServices(IServiceConfigurator configurator)
     {
-        configurator.AddSingleton(Instance);
+        //configurator.AddSingleton(Instance);
     }
 }

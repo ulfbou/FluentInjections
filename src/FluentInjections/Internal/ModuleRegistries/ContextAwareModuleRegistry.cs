@@ -1,6 +1,6 @@
-﻿namespace FluentInjections;
+﻿namespace FluentInjections.Internal.ModuleRegistries;
 
-public class ContextAwareModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
+internal class ContextAwareModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
 {
     private readonly string _currentContext;
 

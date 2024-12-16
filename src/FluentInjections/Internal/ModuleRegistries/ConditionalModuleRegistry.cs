@@ -1,6 +1,6 @@
-﻿namespace FluentInjections;
+﻿namespace FluentInjections.Internal.ModuleRegistries;
 
-public class ConditionalModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
+internal class ConditionalModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
 {
     public void ApplyServicesWithConditions(IServiceProvider serviceProvider, IServiceConfigurator serviceConfigurator)
     {

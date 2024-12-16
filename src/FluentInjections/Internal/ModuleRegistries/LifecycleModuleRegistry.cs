@@ -1,10 +1,10 @@
-﻿namespace FluentInjections;
+﻿namespace FluentInjections.Internal.ModuleRegistries;
 
 /// <summary>
 /// Represents a registry of modules that implement the <see cref="IModuleLifecycleHook"/> interface.
 /// </summary>
 /// <typeparam name="TBuilder">The builder type.</typeparam>
-public class LifecycleModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
+internal class LifecycleModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
 {
     /// <inheritdoc/>
     public override bool CanHandle<TModule>() => typeof(IModuleLifecycleHook).IsAssignableFrom(typeof(TModule));

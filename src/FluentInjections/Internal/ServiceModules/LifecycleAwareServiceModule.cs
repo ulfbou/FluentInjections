@@ -1,4 +1,4 @@
-﻿namespace FluentInjections;
+﻿namespace FluentInjections.Internal.ServiceModules;
 
 public abstract class LifecycleAwareServiceModule : IServiceModule, IModuleLifecycleHook
 {

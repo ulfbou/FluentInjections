@@ -1,10 +1,10 @@
-﻿namespace FluentInjections;
+﻿namespace FluentInjections.Internal.ModuleRegistries;
 
 /// <summary>
 /// Represents a registry of modules that can be prioritized.
 /// </summary>
 /// <typeparam name="TBuilder">The builder type.</typeparam>
-public class PrioritizedModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
+internal class PrioritizedModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
 {
     /// <summary>
     /// Applies the services with priority.

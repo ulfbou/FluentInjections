@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using FluentInjections.Internal.Configurators;
+using FluentInjections.Internal.ModuleRegistries;
+
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
 using System.Reflection;
@@ -24,8 +27,9 @@ public static class DependencyInjection
     }
 
     public static IServiceCollection AddFluentInjections<TBuilder, TRegistry>(this IServiceCollection services, params Assembly[] assemblies)
-        where TRegistry : ModuleRegistry<TBuilder>, new()
+        where TRegistry : IModuleRegistry<TBuilder>, new()
     {
+        // TODO: Create a scope to efficiently maintain a reflection cache for the target assemblies.
         var serviceProvider = services.BuildServiceProvider();
         var targetAssemblies = assemblies.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
         var moduleRegistry = serviceProvider.GetRequiredService<TRegistry>();
@@ -44,8 +48,8 @@ public static class DependencyInjection
     public static IApplicationBuilder UseFluentInjections(this IApplicationBuilder app)
     {
         var moduleRegistry = app.ApplicationServices.GetRequiredService<ModuleRegistry<IApplicationBuilder>>();
-        var sp = app.ApplicationServices;
-        var middlewareConfigurator = new MiddlewareConfigurator<IApplicationBuilder>(app, sp);
+        var services = new ServiceCollection();
+        var middlewareConfigurator = new MiddlewareConfigurator<IApplicationBuilder>(services, app);
 
         moduleRegistry.ApplyMiddlewareModules(middlewareConfigurator);
 

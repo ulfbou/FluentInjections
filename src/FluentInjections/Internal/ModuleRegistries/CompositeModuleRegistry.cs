@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using System.Collections.Concurrent;
 
-namespace FluentInjections;
+namespace FluentInjections.Internal.ModuleRegistries;
 
 /// <summary>
 /// Represents a composite registry of modules.

@@ -1,13 +1,15 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using FluentInjections.Internal.ServiceModules;
+
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace FluentInjections;
+namespace FluentInjections.Internal.ModuleRegistries;
 
 /// <summary>
 /// Represents a registry of modules.
 /// </summary>
-public class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder>
+internal class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder>
 {
     protected readonly List<IServiceModule> _serviceModules = new();
     protected readonly List<IMiddlewareModule<TBuilder>> _middlewareModules = new();

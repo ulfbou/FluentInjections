@@ -1,10 +1,10 @@
-﻿namespace FluentInjections;
+﻿namespace FluentInjections.Internal.ModuleRegistries;
 
 /// <summary>
 /// Represents a module registry that can handle validated services.
 /// </summary>
 /// <typeparam name="TBuilder">The builder type.</typeparam>
-public class ValidationEnabledModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
+internal class ValidationEnabledModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
 {
     /// <summary>
     /// Applies the validated services.

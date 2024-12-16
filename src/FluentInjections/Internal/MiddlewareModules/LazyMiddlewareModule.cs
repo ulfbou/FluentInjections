@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 
-namespace FluentInjections;
+namespace FluentInjections.Internal.MiddlewareModules;
 
 public class LazyMiddlewareModule<TBuilder, TMiddleware> : IMiddlewareModule<TBuilder> where TMiddleware : class, IMiddleware
 {
@@ -14,6 +14,6 @@ public class LazyMiddlewareModule<TBuilder, TMiddleware> : IMiddlewareModule<TBu
 
     public void ConfigureMiddleware(IMiddlewareConfigurator<TBuilder> configurator)
     {
-        configurator.Use<TMiddleware>();
+        //configurator.Use<TMiddleware>();
     }
 }
