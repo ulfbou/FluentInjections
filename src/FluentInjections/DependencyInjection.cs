@@ -1,5 +1,5 @@
 ﻿using FluentInjections.Internal.Configurators;
-using FluentInjections.Internal.ModuleRegistries;
+using FluentInjections.Internal.Registries;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,8 +19,8 @@ public static class DependencyInjection
         RegisterModules<TBuilder, IMiddlewareModule<TBuilder>>(targetAssemblies, moduleRegistry.RegisterModule);
 
         var serviceConfigurator = new ServiceConfigurator(services);
-        moduleRegistry.ApplyServiceModules(serviceConfigurator);
 
+        moduleRegistry.ApplyServiceModules(serviceConfigurator);
         services.AddSingleton(moduleRegistry);
 
         return services;
@@ -38,9 +38,9 @@ public static class DependencyInjection
         RegisterModules<TBuilder, IMiddlewareModule<TBuilder>>(targetAssemblies, moduleRegistry.RegisterModule);
 
         var serviceConfigurator = new ServiceConfigurator(services);
-        moduleRegistry.ApplyServiceModules(serviceConfigurator);
 
-        services.AddSingleton<ModuleRegistry<TBuilder>>(moduleRegistry);
+        moduleRegistry.ApplyServiceModules(serviceConfigurator);
+        services.AddSingleton<IModuleRegistry<TBuilder>>(moduleRegistry);
 
         return services;
     }

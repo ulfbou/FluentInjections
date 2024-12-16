@@ -1,4 +1,4 @@
-﻿namespace FluentInjections.Internal.ModuleRegistries;
+﻿namespace FluentInjections.Internal.Registries;
 
 /// <summary>
 /// Represents a registry of modules that implement the <see cref="IModuleLifecycleHook"/> interface.
@@ -6,11 +6,8 @@
 /// <typeparam name="TBuilder">The builder type.</typeparam>
 internal class LifecycleModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
 {
-    /// <inheritdoc/>
-    public override bool CanHandle<TModule>() => typeof(IModuleLifecycleHook).IsAssignableFrom(typeof(TModule));
-
     /// <summary>
-    /// Initializes the modules.
+    /// Initializes the lifecycle modules.
     /// </summary>
     /// <param name="serviceProvider">The service provider.</param>
     public void InitializeModules(IServiceProvider serviceProvider)
@@ -22,7 +19,7 @@ internal class LifecycleModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
     }
 
     /// <summary>
-    /// Terminates the modules.
+    /// Terminates the lifecycle modules.
     /// </summary>
     /// <param name="serviceProvider">The service provider.</param>
     public void TerminateModules(IServiceProvider serviceProvider)
@@ -32,4 +29,7 @@ internal class LifecycleModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
             module.OnShutdown(serviceProvider);
         }
     }
+
+    /// <inheritdoc/>
+    public override bool CanHandle<TModule>() => typeof(IModuleLifecycleHook).IsAssignableFrom(typeof(TModule));
 }

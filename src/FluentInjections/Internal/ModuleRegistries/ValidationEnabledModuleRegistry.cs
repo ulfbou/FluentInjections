@@ -1,4 +1,4 @@
-﻿namespace FluentInjections.Internal.ModuleRegistries;
+﻿namespace FluentInjections.Internal.Registries;
 
 /// <summary>
 /// Represents a module registry that can handle validated services.

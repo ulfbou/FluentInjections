@@ -1,4 +1,4 @@
-﻿namespace FluentInjections.Internal.ModuleRegistries;
+﻿namespace FluentInjections.Internal.Registries;
 
 internal class ContextAwareModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
 {
