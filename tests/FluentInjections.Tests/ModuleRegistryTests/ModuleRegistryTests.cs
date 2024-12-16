@@ -1,4 +1,8 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using FluentInjections.Internal.Registries;
+using FluentInjections.Internal.Modules;
+using FluentInjections;
+
+using Microsoft.AspNetCore.Builder;
 
 using Moq;
 
@@ -94,7 +98,7 @@ public class ModuleRegistryTests
 
         Assert.NotNull(serviceModules);
         Assert.Single(serviceModules);
-        Assert.IsType<LazyServiceModule<TestServiceModule>>(serviceModules[0]);
+        Assert.IsType<LazyServiceModule>(serviceModules[0]);
     }
 
     [Fact]

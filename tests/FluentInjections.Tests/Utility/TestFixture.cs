@@ -7,11 +7,12 @@ using Serilog;
 
 public class TestFixture
 {
+    public IServiceCollection Services { get; set; }
     public ServiceProvider ServiceProvider { get; private set; }
 
     public TestFixture()
     {
-        var services = new ServiceCollection();
+        Services = new ServiceCollection();
 
         // Configure Serilog
         Log.Logger = new LoggerConfiguration()
@@ -20,7 +21,7 @@ public class TestFixture
             .CreateLogger();
 
         // Add Serilog to the logging pipeline
-        services.AddLogging(builder => builder.AddSerilog());
+        Services.AddLogging(builder => builder.AddSerilog());
 
         // Register services here (if needed)
 
@@ -29,7 +30,7 @@ public class TestFixture
         var logger = loggerFactory.CreateLogger<MiddlewarePipelineBuilder>();
 
         // Build the service provider with the logger
-        services.AddTransient<MiddlewarePipelineBuilder>(provider => new MiddlewarePipelineBuilder(services, logger));
-        ServiceProvider = services.BuildServiceProvider();
+        Services.AddTransient<MiddlewarePipelineBuilder>(provider => new MiddlewarePipelineBuilder(Services, logger));
+        ServiceProvider = Services.BuildServiceProvider();
     }
 }

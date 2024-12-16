@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using Moq;
 using Microsoft.AspNetCore.Builder;
+using FluentInjections.Internal.Registries;
 
 namespace FluentInjections.Tests;
 
