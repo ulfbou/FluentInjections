@@ -1,7 +1,13 @@
 ﻿namespace FluentInjections.Internal.Registries;
 
-internal class ConditionalModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
+/// <summary>
+/// Represents a registry of modules that can be conditionally registered.
+/// </summary>
+internal class ConditionalModuleRegistry<TBuilder> : ModuleRegistry<TBuilder> where TBuilder : class
 {
+    /// <summary>
+    /// Applies a <see cref="IServiceConfigurator"/> if the 
+    /// </summary>
     public void ApplyServicesWithConditions(IServiceProvider serviceProvider, IServiceConfigurator serviceConfigurator)
     {
         foreach (var module in _serviceModules)
@@ -15,5 +21,6 @@ internal class ConditionalModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
         }
     }
 
+    /// <inheritdoc/>
     public override bool CanHandle<TModule>() => typeof(IConditionalServiceModule).IsAssignableFrom(typeof(TModule));
 }

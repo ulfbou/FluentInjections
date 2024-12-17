@@ -4,12 +4,12 @@
 /// Represents a registry of modules that can be prioritized.
 /// </summary>
 /// <typeparam name="TBuilder">The builder type.</typeparam>
-internal class PrioritizedModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
+internal class PrioritizedModuleRegistry<TBuilder> : ModuleRegistry<TBuilder> where TBuilder : class
 {
     /// <summary>
     /// Applies the services with priority.
     /// </summary>
-    public IModuleRegistry<TBuilder> ApplyServicesWithPriority(IServiceConfigurator serviceConfigurator)
+    internal IModuleRegistry<TBuilder> ApplyServicesWithPriority(IServiceConfigurator serviceConfigurator)
     {
         foreach (var module in _serviceModules
                      .OfType<IPrioritizedServiceModule>()

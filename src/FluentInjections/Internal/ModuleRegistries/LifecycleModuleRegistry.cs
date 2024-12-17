@@ -4,7 +4,7 @@
 /// Represents a registry of modules that implement the <see cref="IModuleLifecycleHook"/> interface.
 /// </summary>
 /// <typeparam name="TBuilder">The builder type.</typeparam>
-internal class LifecycleModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
+internal class LifecycleModuleRegistry<TBuilder> : ModuleRegistry<TBuilder> where TBuilder : class
 {
     /// <summary>
     /// Initializes the lifecycle modules.

@@ -10,13 +10,14 @@ namespace FluentInjections.Internal.Registries;
 /// <summary>
 /// Represents a registry for service and middleware modules.
 /// </summary>
-internal class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder>
+internal class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where TBuilder : class
 {
     protected readonly List<IServiceModule> _serviceModules = new();
     protected readonly List<IMiddlewareModule<TBuilder>> _middlewareModules = new();
 
     // TODO: Add logger and configuration properties
 
+    /// <inheritdoc />
     public IModuleRegistry<TBuilder> RegisterModule(IServiceModule module)
     {
         ArgumentGuard.NotNull(module, nameof(module));

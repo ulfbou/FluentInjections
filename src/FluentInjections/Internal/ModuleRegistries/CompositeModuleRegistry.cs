@@ -9,7 +9,7 @@ namespace FluentInjections.Internal.Registries;
 /// <summary>
 /// Represents a composite registry of modules.
 /// </summary>
-public class CompositeModuleRegistry<TBuilder> : IModuleRegistry<TBuilder>
+public class CompositeModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where TBuilder : class
 {
     private readonly ConcurrentBag<IModuleRegistry<TBuilder>> _registries = new();
     private readonly IServiceProvider _serviceProvider;

@@ -1,14 +1,17 @@
 ﻿namespace FluentInjections.Internal.Registries;
 
-internal class ContextAwareModuleRegistry<TBuilder> : ModuleRegistry<TBuilder>
+internal class ContextAwareModuleRegistry<TBuilder> : ModuleRegistry<TBuilder> where TBuilder : class
 {
     private readonly string _currentContext;
 
-    public ContextAwareModuleRegistry(string contextName)
+    internal ContextAwareModuleRegistry(string contextName)
     {
         _currentContext = contextName;
     }
 
+    /// <summary>
+    /// Applies a <see cref="IServiceConfigurator"/> with contextual conditioning. 
+    /// </summary>
     public void ApplyContextualServices(IServiceConfigurator serviceConfigurator)
     {
         foreach (var module in _serviceModules)

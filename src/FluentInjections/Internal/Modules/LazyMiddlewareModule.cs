@@ -2,7 +2,7 @@
 
 namespace FluentInjections.Internal.Modules;
 
-internal class LazyMiddlewareModule<TBuilder> : IMiddlewareModule<TBuilder>, IInitializable
+internal class LazyMiddlewareModule<TBuilder> : IMiddlewareModule<TBuilder>, IInitializable where TBuilder : class
 {
     private readonly Lazy<IMiddlewareModule<TBuilder>> _lazyModule;
 

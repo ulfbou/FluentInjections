@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace FluentInjections.Tests.Constants;
 
-public class ErrorMessages
+internal class ErrorMessages
 {
-    public const string OperationFailed = "Operation failed due to an error";
+    internal const string OperationFailed = "Operation failed due to an error";
 }

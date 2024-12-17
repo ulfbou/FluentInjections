@@ -1,6 +1,6 @@
 ﻿namespace FluentInjections.Internal.Modules;
 
-internal class LazyServiceModule : IServiceModule, IInitializable
+public class LazyServiceModule : IServiceModule, IInitializable
 {
     private readonly Lazy<IServiceModule> _lazyModule;
 

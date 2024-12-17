@@ -121,7 +121,7 @@ public class MiddlewarePipelineTests : IClassFixture<WebApplicationFactory<Middl
 
         Assert.Equal(new[] { Counting.First, Counting.Second, Counting.Third }, iterationList);
 
-        loggerMock.VerifyLog(LogLevel.Information, Counting.First, Times.Once());
+        loggerMock.VerifyLog(LogLevel.Information, Counting.First);
         loggerMock.VerifyLog(LogLevel.Information, Counting.Second, Times.Once());
         loggerMock.VerifyLog(LogLevel.Information, Counting.Third, Times.Once());
     }

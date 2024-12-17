@@ -1,6 +1,6 @@
 ﻿namespace FluentInjections;
 
-public interface IModuleRegistry<TBuilder>
+public interface IModuleRegistry<TBuilder> where TBuilder : class
 {
     /// <summary>
     /// Registers a service module with a condition.

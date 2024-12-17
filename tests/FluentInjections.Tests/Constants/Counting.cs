@@ -1,11 +1,11 @@
 ﻿namespace FluentInjections.Tests.Constants;
 
-public class Counting
+internal class Counting
 {
-    public const string First = nameof(First);
-    public const string Second = nameof(Second);
-    public const string Third = nameof(Third);
-    public const string Fourth = nameof(Fourth);
-    public const string Fifth = nameof(Fifth);
+    internal const string First = nameof(First);
+    internal const string Second = nameof(Second);
+    internal const string Third = nameof(Third);
+    internal const string Fourth = nameof(Fourth);
+    internal const string Fifth = nameof(Fifth);
 
 }

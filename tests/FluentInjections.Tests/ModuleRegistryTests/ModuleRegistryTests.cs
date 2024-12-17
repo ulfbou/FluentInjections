@@ -21,7 +21,7 @@ public class ModuleRegistryTests
         Assert.Throws<ArgumentNullException>(() => _moduleRegistry.RegisterModule((IServiceModule)null!));
     }
 
-    public class TestServiceModule : IServiceModule
+    internal class TestServiceModule : IServiceModule
     {
         public void ConfigureServices(IServiceConfigurator configurator)
         {
@@ -29,7 +29,7 @@ public class ModuleRegistryTests
         }
     }
 
-    public class TestMiddlewareModule : IMiddlewareModule<IApplicationBuilder>
+    internal class TestMiddlewareModule : IMiddlewareModule<IApplicationBuilder>
     {
         public void ConfigureMiddleware(IMiddlewareConfigurator<IApplicationBuilder> configurator)
         {

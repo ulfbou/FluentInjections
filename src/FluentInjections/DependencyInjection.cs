@@ -10,16 +10,14 @@ namespace FluentInjections;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddFluentInjections<TBuilder>(this IServiceCollection services, params Assembly[] assemblies)
+    public static IServiceCollection AddFluentInjections<TBuilder>(this IServiceCollection services, params Assembly[] assemblies) where TBuilder : class
     {
         var targetAssemblies = assemblies.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
         var moduleRegistry = new ModuleRegistry<TBuilder>();
-
         RegisterModules<TBuilder, IServiceModule>(targetAssemblies, moduleRegistry.RegisterModule);
         RegisterModules<TBuilder, IMiddlewareModule<TBuilder>>(targetAssemblies, moduleRegistry.RegisterModule);
 
         var serviceConfigurator = new ServiceConfigurator(services);
-
         moduleRegistry.ApplyServiceModules(serviceConfigurator);
         services.AddSingleton(moduleRegistry);
 
@@ -27,6 +25,7 @@ public static class DependencyInjection
     }
 
     public static IServiceCollection AddFluentInjections<TBuilder, TRegistry>(this IServiceCollection services, params Assembly[] assemblies)
+        where TBuilder : class
         where TRegistry : IModuleRegistry<TBuilder>, new()
     {
         // TODO: Create a scope to efficiently maintain a reflection cache for the target assemblies.
@@ -45,18 +44,35 @@ public static class DependencyInjection
         return services;
     }
 
-    public static IApplicationBuilder UseFluentInjections(this IApplicationBuilder app)
+    public static IApplicationBuilder UseFluentInjections(this IApplicationBuilder app, params Assembly[] assemblies)
     {
-        var moduleRegistry = app.ApplicationServices.GetRequiredService<ModuleRegistry<IApplicationBuilder>>();
-        var services = new ServiceCollection();
-        var middlewareConfigurator = new MiddlewareConfigurator<IApplicationBuilder>(services, app);
+        var moduleRegistry = app.ApplicationServices.GetRequiredService<IModuleRegistry<IApplicationBuilder>>();
+        var targetAssemblies = assemblies.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
+        RegisterModules<IApplicationBuilder, IMiddlewareModule<IApplicationBuilder>>(targetAssemblies, moduleRegistry.RegisterModule);
 
+        var services = app.ApplicationServices.GetRequiredService<IServiceCollection>();
+        var middlewareConfigurator = new MiddlewareConfigurator<IApplicationBuilder>(services, app);
+        moduleRegistry.ApplyMiddlewareModules(middlewareConfigurator);
+
+        return app;
+    }
+
+    public static IApplicationBuilder UseFluentInjections<TRegistry>(this IApplicationBuilder app, params Assembly[] assemblies)
+        where TRegistry : IModuleRegistry<IApplicationBuilder>
+    {
+        var moduleRegistry = app.ApplicationServices.GetRequiredService<TRegistry>();
+        var targetAssemblies = assemblies.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
+        RegisterModules<IApplicationBuilder, IMiddlewareModule<IApplicationBuilder>>(targetAssemblies, moduleRegistry.RegisterModule);
+
+        var services = app.ApplicationServices.GetRequiredService<IServiceCollection>();
+        var middlewareConfigurator = new MiddlewareConfigurator<IApplicationBuilder>(services, app);
         moduleRegistry.ApplyMiddlewareModules(middlewareConfigurator);
 
         return app;
     }
 
     private static void RegisterModules<TBuilder, TModule>(Assembly[] assemblies, Func<TModule, IModuleRegistry<TBuilder>> registerAction)
+        where TBuilder : class
         where TModule : class
     {
         var modules = assemblies
