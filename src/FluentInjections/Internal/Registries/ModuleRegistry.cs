@@ -21,8 +21,18 @@ internal class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where TBuild
     public IModuleRegistry<TBuilder> RegisterModule(IServiceModule module)
     {
         ArgumentGuard.NotNull(module, nameof(module));
-        _serviceModules.Add(module);
 
+        _serviceModules.Add(module);
+        return this;
+    }
+
+
+    /// <inheritdoc />
+    public virtual IModuleRegistry<TBuilder> UnregisterModule(IServiceModule module)
+    {
+        ArgumentGuard.NotNull(module, nameof(module));
+
+        _serviceModules.Remove(module);
         return this;
     }
 
@@ -30,8 +40,17 @@ internal class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where TBuild
     public IModuleRegistry<TBuilder> RegisterModule(IMiddlewareModule<TBuilder> module)
     {
         ArgumentGuard.NotNull(module, nameof(module));
-        _middlewareModules.Add(module);
 
+        _middlewareModules.Add(module);
+        return this;
+    }
+
+    /// <inheritdoc/>
+    public IModuleRegistry<TBuilder> UnregisterModule(IMiddlewareModule<TBuilder> module)
+    {
+        ArgumentGuard.NotNull(module, nameof(module));
+
+        _middlewareModules.Remove(module);
         return this;
     }
 

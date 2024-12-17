@@ -7,6 +7,10 @@ using Microsoft.AspNetCore.Builder;
 using Moq;
 
 using Xunit;
+using Autofac.Core;
+using FluentInjections.Internal.Configurators;
+using Microsoft.Extensions.DependencyInjection;
+using static FluentInjections.Tests.ModuleRegistryTests.ComplementaryModuleRegistryTests;
 
 namespace FluentInjections.Tests.ModuleRegistryTests;
 
@@ -155,7 +159,7 @@ public class ModuleRegistryTests
     }
 
     [Fact]
-    public void CanHandle_MissingModuleTypes_ReturnsFalse()
+    public void CanHandle_WithNoModuleType_ReturnsFalse()
     {
         // Arrange
         var registry = new ModuleRegistry<IApplicationBuilder>();
@@ -173,5 +177,54 @@ public class ModuleRegistryTests
 
         // Act & Assert
         Assert.True(registry.CanHandle<TestServiceModule>());
+    }
+
+    [Fact]
+    public void UnregisterModule_WithRegisteredModule_RemovesModule()
+    {
+        var registry = new ModuleRegistry<IServiceCollection>();
+        var module = new TestModule();
+
+        registry.RegisterModule(module);
+        registry.UnregisterModule(module);
+
+        Assert.False(registry.CanHandle(module.GetType()));
+    }
+
+    [Fact]
+    public void ApplyServiceModules_HandlesEmptyRegistryGracefully()
+    {
+        var registry = new ModuleRegistry<IServiceCollection>();
+
+        // No service modules registered
+        var serviceConfiguratorMock = new Mock<IServiceConfigurator>();
+
+        var exception = Record.Exception(() => registry.ApplyServiceModules(serviceConfiguratorMock.Object));
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void ApplyMiddlewareModules_HandlesEmptyRegistryGracefully()
+    {
+        var registry = new ModuleRegistry<IServiceCollection>();
+
+        // No middleware modules registered
+        var middlewareConfiguratorMock = new Mock<IMiddlewareConfigurator<IServiceCollection>>();
+
+        var exception = Record.Exception(() => registry.ApplyMiddlewareModules(middlewareConfiguratorMock.Object));
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void InitializeModules_NoInitializableModules_DoesNothing()
+    {
+        var registry = new ModuleRegistry<IServiceCollection>();
+
+        // No modules registered
+        var exception = Record.Exception(() => registry.InitializeModules());
+
+        Assert.Null(exception);
     }
 }
