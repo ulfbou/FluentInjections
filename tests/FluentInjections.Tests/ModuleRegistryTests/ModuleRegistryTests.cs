@@ -1,4 +1,4 @@
-﻿using FluentInjections.Internal.Registries;
+using FluentInjections.Internal.Registries;
 using FluentInjections.Internal.Modules;
 using FluentInjections;
 
@@ -161,4 +161,106 @@ public class ModuleRegistryTests
 
         Assert.Throws<InvalidRegistrationException>(() => registry.CanHandle(typeof(string)));
     }
+
+    [Fact]
+    public void UnregisterModule_WithRegisteredModule_RemovesModule()
+    {
+        var registry = new ModuleRegistry();
+        var module = new TestModule();
+
+        registry.RegisterModule(module);
+        registry.UnregisterModule(module);
+
+        Assert.False(registry.CanHandle(module.GetType()));
+    }
+
+    [Fact]
+    public void UnregisterModule_WithUnregisteredModule_ThrowsException()
+    {
+        var registry = new ModuleRegistry();
+        var module = new TestModule();
+
+        Assert.Throws<InvalidOperationException>(() => registry.UnregisterModule(module));
+    }
+
+    [Fact]
+    public void ApplyServiceModules_HandlesEmptyRegistryGracefully()
+    {
+        var registry = new ModuleRegistry();
+
+        // No service modules registered
+        var serviceConfiguratorMock = new Mock<IServiceConfigurator>();
+
+        var exception = Record.Exception(() => registry.ApplyServiceModules(serviceConfiguratorMock.Object));
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void ApplyMiddlewareModules_HandlesEmptyRegistryGracefully()
+    {
+        var registry = new ModuleRegistry();
+
+        // No middleware modules registered
+        var middlewareConfiguratorMock = new Mock<IMiddlewareConfigurator>();
+
+        var exception = Record.Exception(() => registry.ApplyMiddlewareModules(middlewareConfiguratorMock.Object));
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void InitializeModules_NoInitializableModules_DoesNothing()
+    {
+        var registry = new ModuleRegistry();
+
+        // No modules registered
+        var exception = Record.Exception(() => registry.InitializeModules());
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void InitializeModules_HandlesInitializationExceptions()
+    {
+        var registry = new ModuleRegistry();
+        var faultyModule = new FaultyModule();
+
+        registry.RegisterModule(faultyModule);
+
+        var exception = Record.Exception(() => registry.InitializeModules());
+
+        Assert.NotNull(exception);
+        Assert.IsType<AggregateException>(exception);
+    }
+
+    [Fact]
+    public void CanHandle_HandlesNullInput_ThrowsArgumentNullException()
+    {
+        var registry = new ModuleRegistry();
+
+        Assert.Throws<ArgumentNullException>(() => registry.CanHandle(null));
+    }
+
+    [Fact]
+    public void RegisterModule_DuplicateModule_ThrowsInvalidOperationException()
+    {
+        var registry = new ModuleRegistry();
+        var module = new TestModule();
+
+        registry.RegisterModule(module);
+
+        Assert.Throws<InvalidOperationException>(() => registry.RegisterModule(module));
+    }
+}
+
+// Supporting Test Classes
+public class TestModule : IModule { }
+
+public class FaultyModule : IModule, IInitializable
+{
+    public void Initialize()
+    {
+        throw new InvalidOperationException("Initialization failed");
+    }}  
 }
