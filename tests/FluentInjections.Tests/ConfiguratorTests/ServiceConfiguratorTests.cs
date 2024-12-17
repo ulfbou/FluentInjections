@@ -18,6 +18,26 @@ public class ServiceConfiguratorTests
     }
 
     [Fact]
+    public void Bind_ServiceWithParameters_ShouldInstantiateServiceWithParameters()
+    {
+        // Arrange
+        Dictionary<string, object> parameters = new() { { "param1", "value1" }, { "param2", 42 } };
+        var binding = _serviceConfigurator.Bind<ITestService>()
+            .To<TestService>()
+            .WithParameters(parameters.AsReadOnly());
+
+        // Act
+        binding.Register();
+
+        // Assert
+        var serviceProvider = _services.BuildServiceProvider();
+        var service = serviceProvider.GetRequiredService<ITestService>() as TestService;
+        Assert.NotNull(service);
+        Assert.Equal("value1", service.Param1);
+        Assert.Equal(42, service.Param2);
+    }
+
+    [Fact]
     public void Bind_ServiceToImplementation_ShouldRegisterService()
     {
         // Arrange
@@ -49,7 +69,7 @@ public class ServiceConfiguratorTests
     public void Bind_ServiceWithParameters_ShouldRegisterServiceWithParameters()
     {
         // Arrange
-        Dictionary<string, object> parameters = new() { { "Param1", "value1" }, { "Param2", 42 } };
+        Dictionary<string, object> parameters = new() { { "param1", "value1" }, { "param2", 42 } };
         var binding = _serviceConfigurator.Bind<ITestService>().To<TestService>().WithParameters(parameters.AsReadOnly());
 
         // Act
@@ -58,25 +78,6 @@ public class ServiceConfiguratorTests
         // Assert
         var serviceDescriptor = Assert.Single(_services);
         Assert.Equal(typeof(ITestService), serviceDescriptor.ServiceType);
-    }
-
-    // Verify that a service registered with parameters are instantiated correctly by the DI container. 
-    [Fact]
-    public void Bind_ServiceWithParameters_ShouldInstantiateServiceWithParameters()
-    {
-        // Arrange
-        Dictionary<string, object> parameters = new() { { "Param1", "value1" }, { "Param2", 42 } };
-        var binding = _serviceConfigurator.Bind<ITestService>().To<TestService>().WithParameters(parameters.AsReadOnly());
-
-        // Act
-        binding.Register();
-
-        // Assert
-        var serviceProvider = _services.BuildServiceProvider();
-        var service = serviceProvider.GetRequiredService<ITestService>() as TestService;
-        Assert.NotNull(service);
-        Assert.Equal("value1", service.Param1);
-        Assert.Equal(42, service.Param2);
     }
 
     [Fact]
@@ -160,6 +161,109 @@ public class ServiceConfiguratorTests
 
         // Assert
         Assert.Equal("value", options.Option1);
+    }
+
+    [Fact]
+    public void Unbind_Service_RemovesRegistration()
+    {
+        var services = new ServiceCollection();
+        var configurator = new ServiceConfigurator(services);
+
+        configurator.Bind<IExampleService>()
+            .To<ExampleService>()
+            .Register();
+        configurator.Unbind<IExampleService>();
+
+        var serviceProvider = services.BuildServiceProvider();
+        var service = serviceProvider.GetService<IExampleService>();
+
+        Assert.Null(service);
+    }
+
+    [Fact]
+    public void Unbind_UnregisteredService_ThrowsInvalidOperationException()
+    {
+        var services = new ServiceCollection();
+        var configurator = new ServiceConfigurator(services);
+
+        Assert.Throws<InvalidOperationException>(() => configurator.Unbind<IExampleService>());
+    }
+
+    [Fact]
+    public void Bind_ServiceWithMultipleParameters_RegistersCorrectly()
+    {
+        var services = new ServiceCollection();
+        var configurator = new ServiceConfigurator(services);
+
+        configurator.Bind<ComplexService>()
+            .To<ComplexService>()
+            .WithParameters(new { param1 = "Value1", param2 = 42 })
+            .Register();
+
+        var serviceProvider = services.BuildServiceProvider();
+        var service = serviceProvider.GetRequiredService<ComplexService>();
+
+        Assert.Equal("Value1", service.Param1);
+        Assert.Equal(42, service.Param2);
+    }
+
+    [Fact]
+    public void Bind_ServiceWithInvalidParameters_ThrowsArgumentException()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configurator = new ServiceConfigurator(services);
+
+        // Act
+        configurator.Bind<ComplexService>()
+            .To<ComplexService>()
+            .WithParameters(new { param1 = "Value1" })
+            .Register();
+
+        // Assert
+        Assert.Throws<ArgumentException>(() =>
+        {
+            var sp = services.BuildServiceProvider();
+            sp.GetRequiredService<ComplexService>();
+        });
+    }
+
+    [Fact]
+    public void Bind_ExistingService_ReplacesPreviousRegistration()
+    {
+        var services = new ServiceCollection();
+        var configurator = new ServiceConfigurator(services);
+
+        configurator.Bind<IExampleService>()
+            .To<ExampleService>()
+            .Register();
+        configurator.Bind<IExampleService>()
+            .To<AnotherExampleService>()
+            .Register();
+
+        var serviceProvider = services.BuildServiceProvider();
+        var service = serviceProvider.GetRequiredService<IExampleService>();
+
+        Assert.IsType<AnotherExampleService>(service);
+    }
+
+    // Supporting Classes for Tests
+    public interface IExampleService { }
+
+    public class ExampleService : IExampleService { }
+
+    public class AnotherExampleService : IExampleService { }
+
+    public class ComplexService
+    {
+        public string Param1 { get; }
+        public int Param2 { get; }
+
+        public ComplexService(string param1, int param2)
+        {
+            Param1 = param1;
+            Param2 = param2;
+        }
     }
 
     public interface ITestService

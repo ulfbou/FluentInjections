@@ -22,6 +22,11 @@ internal class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where TBuild
     {
         ArgumentGuard.NotNull(module, nameof(module));
 
+        if (_serviceModules.Contains(module))
+        {
+            throw new InvalidOperationException($"The module {module.GetType().Name} is already registered.");
+        }
+
         _serviceModules.Add(module);
         return this;
     }
@@ -31,6 +36,11 @@ internal class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where TBuild
     public virtual IModuleRegistry<TBuilder> UnregisterModule(IServiceModule module)
     {
         ArgumentGuard.NotNull(module, nameof(module));
+
+        if (!_serviceModules.Contains(module))
+        {
+            throw new InvalidOperationException($"The module {module.GetType().Name} is not registered.");
+        }
 
         _serviceModules.Remove(module);
         return this;
@@ -119,7 +129,14 @@ internal class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where TBuild
         {
             if (module is IInitializable initializable)
             {
-                initializable.Initialize();
+                try
+                {
+                    initializable.Initialize();
+                }
+                catch
+                {
+                    throw new AggregateException($"Failed to initialize module {module.GetType().Name}.");
+                }
             }
         }
 
@@ -127,7 +144,14 @@ internal class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where TBuild
         {
             if (module is IInitializable initializable)
             {
-                initializable.Initialize();
+                try
+                {
+                    initializable.Initialize();
+                }
+                catch
+                {
+                    throw new AggregateException($"Failed to initialize module {module.GetType().Name}.");
+                }
             }
         }
 
@@ -138,5 +162,10 @@ internal class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where TBuild
     public virtual bool CanHandle<TModule>() where TModule : class, IServiceModule => _serviceModules.OfType<TModule>().Any();
 
     /// <inheritdoc />
-    public virtual bool CanHandle(Type type) => _serviceModules.Any(m => m.GetType() == type);
+    public virtual bool CanHandle(Type type)
+    {
+        ArgumentGuard.NotNull(type, nameof(type));
+
+        return _serviceModules.Any(m => m.GetType() == type);
+    }
 }

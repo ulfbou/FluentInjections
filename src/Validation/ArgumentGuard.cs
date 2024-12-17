@@ -6,7 +6,7 @@ public static class ArgumentGuard
     {
         if (value is null)
         {
-            throw new ArgumentNullException(name);
+            throw new ArgumentNullException(name, "Value cannot be null.");
         }
     }
 

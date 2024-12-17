@@ -13,6 +13,7 @@ namespace FluentInjections
         /// <typeparam name="TService">The service type.</typeparam>
         /// <returns>The service binding.</returns>
         IServiceBinding<TService> Bind<TService>() where TService : class;
+        void Unbind<T>();
 
         ///// <summary>
         ///// Adds a service to the service collection.

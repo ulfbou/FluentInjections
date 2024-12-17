@@ -6,9 +6,15 @@ public interface IModuleRegistry<TBuilder> where TBuilder : class
     /// Registers a service module with a condition.
     /// </summary>
     /// <typeparam name="T">The module type.</typeparam>
-    /// <param name="condition">The condition to determine if the module should be registered.</param>
     /// <returns>The module registry.</returns>
     IModuleRegistry<TBuilder> RegisterModule(IServiceModule module);
+
+    /// <summary>
+    /// Unregisters a service module with a condition.
+    /// </summary>
+    /// <typeparam name="T">The module type.</typeparam>
+    /// <returns>The module registry.</returns>
+    IModuleRegistry<TBuilder> UnregisterModule(IServiceModule module);
 
     /// <summary>
     /// Registers a middleware module.
@@ -16,6 +22,13 @@ public interface IModuleRegistry<TBuilder> where TBuilder : class
     /// <param name="module">The middleware module.</param>
     /// <returns>The module registry.</returns>
     IModuleRegistry<TBuilder> RegisterModule(IMiddlewareModule<TBuilder> module);
+
+    /// <summary>
+    /// Unregisters a middleware module.
+    /// </summary>
+    /// <param name="module">The middleware module.</param>
+    /// <returns>The module registry.</returns>
+    IModuleRegistry<TBuilder> UnregisterModule(IMiddlewareModule<TBuilder> module);
 
     /// <summary>
     /// Registers a module with a condition.

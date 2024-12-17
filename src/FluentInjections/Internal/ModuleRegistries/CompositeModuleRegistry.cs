@@ -1,4 +1,5 @@
 ﻿using FluentInjections.Constants;
+using FluentInjections.Validation;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,24 +17,40 @@ public class CompositeModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where
 
     public CompositeModuleRegistry(IServiceProvider serviceProvider)
     {
-        _serviceProvider = serviceProvider;
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
     }
 
     /// <inheritdoc />
     public IModuleRegistry<TBuilder> AddRegistry(IModuleRegistry<TBuilder> registry)
     {
-        _registries.Add(registry);
+        ArgumentGuard.NotNull(registry, nameof(registry));
 
+        _registries.Add(registry);
         return this;
     }
 
     /// <inheritdoc />
     public IModuleRegistry<TBuilder> RegisterModule(IServiceModule module)
     {
+        ArgumentGuard.NotNull(module, nameof(module));
+
         if (!TryRegisterModule(module.GetType(), registry => registry.RegisterModule(module)))
         {
             var moduleRegistry = _serviceProvider.GetRequiredService<ModuleRegistry<TBuilder>>();
             moduleRegistry.RegisterModule(module);
+        }
+
+        return this;
+    }
+
+    /// <inheritdoc/>
+    public IModuleRegistry<TBuilder> UnregisterModule(IServiceModule module)
+    {
+        ArgumentGuard.NotNull(module, nameof(module));
+
+        if (!TryRegisterModule(module.GetType(), registry => registry.UnregisterModule(module)))
+        {
+            throw new InvalidRegistrationException($"No registry was found that can handle the module type {module.GetType().Name}.");
         }
 
         return this;
@@ -42,6 +59,8 @@ public class CompositeModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where
     /// <inheritdoc />
     public IModuleRegistry<TBuilder> RegisterModule(IMiddlewareModule<TBuilder> module)
     {
+        ArgumentGuard.NotNull(module, nameof(module));
+
         if (!TryRegisterModule(module.GetType(), registry => registry.RegisterModule(module)))
         {
             var moduleRegistry = _serviceProvider.GetRequiredService<ModuleRegistry<TBuilder>>();
@@ -52,8 +71,23 @@ public class CompositeModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where
     }
 
     /// <inheritdoc />
+    public IModuleRegistry<TBuilder> UnregisterModule(IMiddlewareModule<TBuilder> module)
+    {
+        ArgumentGuard.NotNull(module, nameof(module));
+
+        if (!TryRegisterModule(module.GetType(), registry => registry.UnregisterModule(module)))
+        {
+            throw new InvalidRegistrationException($"No registry was found that can handle the module type {module.GetType().Name}.");
+        }
+
+        return this;
+    }
+
+    /// <inheritdoc />
     public IModuleRegistry<TBuilder> RegisterModule<T>(Func<T> factory, Action<T>? configure = null) where T : class, new()
     {
+        ArgumentGuard.NotNull(factory, nameof(factory));
+
         if (!TryRegisterModule(typeof(T), registry => registry.RegisterModule(factory, configure)))
         {
             var moduleRegistry = _serviceProvider.GetRequiredService<ModuleRegistry<TBuilder>>();
@@ -66,6 +100,8 @@ public class CompositeModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where
     /// <inheritdoc />
     public IModuleRegistry<TBuilder> RegisterModule<T>(Func<bool> condition) where T : IServiceModule, new()
     {
+        ArgumentGuard.NotNull(condition, nameof(condition));
+
         if (!TryRegisterModule(typeof(T), registry => registry.RegisterModule<T>(condition)))
         {
             throw new InvalidRegistrationException($"No registry was found that can handle the module type {typeof(T).Name}.");
@@ -77,24 +113,27 @@ public class CompositeModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where
     /// <inheritdoc />
     public IModuleRegistry<TBuilder> ApplyServiceModules(IServiceConfigurator serviceConfigurator)
     {
-        Parallel.ForEach(_registries, registry => registry.ApplyServiceModules(serviceConfigurator));
+        ArgumentGuard.NotNull(serviceConfigurator, nameof(serviceConfigurator));
 
+        Parallel.ForEach(_registries, registry => registry.ApplyServiceModules(serviceConfigurator));
         return this;
     }
 
     /// <inheritdoc />
     public IModuleRegistry<TBuilder> ApplyMiddlewareModules(IMiddlewareConfigurator<TBuilder> middlewareConfigurator)
     {
-        Parallel.ForEach(_registries, registry => registry.ApplyMiddlewareModules(middlewareConfigurator));
+        ArgumentGuard.NotNull(middlewareConfigurator, nameof(middlewareConfigurator));
 
+        Parallel.ForEach(_registries, registry => registry.ApplyMiddlewareModules(middlewareConfigurator));
         return this;
     }
 
     /// <inheritdoc />
     public IModuleRegistry<TBuilder> InitializeModules()
     {
-        Parallel.ForEach(_registries, registry => registry.InitializeModules());
+        ArgumentGuard.NotNull(_registries, nameof(_registries));
 
+        Parallel.ForEach(_registries, registry => registry.InitializeModules());
         return this;
     }
 

@@ -10,7 +10,6 @@ using Xunit;
 using Autofac.Core;
 using FluentInjections.Internal.Configurators;
 using Microsoft.Extensions.DependencyInjection;
-using static FluentInjections.Tests.ModuleRegistryTests.ComplementaryModuleRegistryTests;
 
 namespace FluentInjections.Tests.ModuleRegistryTests;
 
@@ -226,5 +225,62 @@ public class ModuleRegistryTests
         var exception = Record.Exception(() => registry.InitializeModules());
 
         Assert.Null(exception);
+    }
+
+    [Fact]
+    public void UnregisterModule_WithUnregisteredModule_ThrowsException()
+    {
+        var registry = new ModuleRegistry<IServiceCollection>();
+        var module = new TestModule();
+
+        Assert.Throws<InvalidOperationException>(() => registry.UnregisterModule(module));
+    }
+
+    [Fact]
+    public void InitializeModules_HandlesInitializationExceptions()
+    {
+        var registry = new ModuleRegistry<IServiceCollection>();
+        var faultyModule = new FaultyModule();
+
+        registry.RegisterModule(faultyModule);
+
+        var exception = Record.Exception(() => registry.InitializeModules());
+
+        Assert.NotNull(exception);
+        Assert.IsType<AggregateException>(exception);
+    }
+
+    [Fact]
+    public void CanHandle_HandlesNullInput_ThrowsArgumentNullException()
+    {
+        var registry = new ModuleRegistry<IServiceCollection>();
+
+        Assert.Throws<ArgumentNullException>(() => registry.CanHandle(null));
+    }
+
+    [Fact]
+    public void RegisterModule_DuplicateModule_ThrowsInvalidOperationException()
+    {
+        var registry = new ModuleRegistry<IServiceCollection>();
+        var module = new TestModule();
+
+        registry.RegisterModule(module);
+
+        Assert.Throws<InvalidOperationException>(() => registry.RegisterModule(module));
+    }
+
+    public class TestModule : IServiceModule
+    {
+        public void ConfigureServices(IServiceConfigurator configurator) => throw new NotImplementedException();
+    }
+
+    public class FaultyModule : IServiceModule, IInitializable
+    {
+        public void ConfigureServices(IServiceConfigurator configurator) => throw new NotImplementedException();
+
+        public void Initialize()
+        {
+            throw new InvalidOperationException("Initialization failed");
+        }
     }
 }
