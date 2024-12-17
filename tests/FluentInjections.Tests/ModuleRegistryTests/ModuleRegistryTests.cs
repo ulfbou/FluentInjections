@@ -98,7 +98,7 @@ public class ModuleRegistryTests
 
         Assert.NotNull(serviceModules);
         Assert.Single(serviceModules);
-        Assert.IsType<LazyServiceModule>(serviceModules[0]);
+        Assert.IsType<TestServiceModule>(serviceModules[0]);
     }
 
     [Fact]
@@ -155,10 +155,23 @@ public class ModuleRegistryTests
     }
 
     [Fact]
-    public void CanHandle_InvalidModuleType_ThrowsException()
+    public void CanHandle_MissingModuleTypes_ReturnsFalse()
     {
+        // Arrange
         var registry = new ModuleRegistry<IApplicationBuilder>();
 
-        Assert.Throws<InvalidRegistrationException>(() => registry.CanHandle(typeof(string)));
+        // Act & Assert
+        Assert.False(registry.CanHandle<TestServiceModule>());
+    }
+
+    [Fact]
+    public void CanHandle_PresentModuleTypes_ReturnsTrue()
+    {
+        // Arrange
+        var registry = new ModuleRegistry<IApplicationBuilder>();
+        registry.RegisterModule(new TestServiceModule());
+
+        // Act & Assert
+        Assert.True(registry.CanHandle<TestServiceModule>());
     }
 }

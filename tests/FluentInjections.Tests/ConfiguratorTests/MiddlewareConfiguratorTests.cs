@@ -3,6 +3,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Win32;
 
 using Moq;
 
@@ -27,12 +28,21 @@ public class MiddlewareConfiguratorTests
         _appBuilderMock.Setup(a => a.Use(It.IsAny<Func<RequestDelegate, RequestDelegate>>()))
             .Callback<Func<RequestDelegate, RequestDelegate>>(middleware =>
             {
-                // Extract middleware type from captured delegate
-                var middlewareType = middleware.Target?.GetType().DeclaringType ?? typeof(Func<RequestDelegate, RequestDelegate>);
-                _registeredMiddleware.Add(middlewareType);
+                // Check the target object of the delegate for the middleware type
+                var middlewareInstance = middleware.Target;
+                var middlewareType = middlewareInstance?.GetType().DeclaringType;
 
-                // Debug log for added middleware
-                Debug.WriteLine($"Middleware added to pipeline: {middlewareType}");
+                if (middlewareType != null)
+                {
+                    _registeredMiddleware.Add(middlewareType);
+                }
+                else
+                {
+                    _registeredMiddleware.Add(typeof(Func<RequestDelegate, RequestDelegate>));
+                }
+
+                // Debug log
+                Debug.WriteLine($"Middleware added to pipeline: {middlewareType?.Name ?? "Unknown"}");
             });
 
         _middlewareConfigurator = new MiddlewareConfigurator<IApplicationBuilder>(_services, _appBuilderMock.Object);
@@ -52,10 +62,20 @@ public class MiddlewareConfiguratorTests
         // Act
         _middlewareConfigurator.Register();
 
+        // Get registered middleware types from configurator
+        var registeredMiddlewareTypes = _middlewareConfigurator.GetRegisteredMiddlewareTypes();
+
+        // Debug: Log registered middleware types
+        Debug.WriteLine("Registered middleware types:");
+        foreach (var type in registeredMiddlewareTypes)
+        {
+            Debug.WriteLine(type.Name);
+        }
+
         // Assert
-        Assert.Collection(_registeredMiddleware,
-                middleware => Assert.Equal(typeof(MiddlewareB), middleware),
-                middleware => Assert.Equal(typeof(MiddlewareA), middleware));
+        Assert.Equal(2, registeredMiddlewareTypes.Count);
+        Assert.Equal(typeof(MiddlewareB), registeredMiddlewareTypes[0]); // Priority 1
+        Assert.Equal(typeof(MiddlewareA), registeredMiddlewareTypes[1]); // Priority 2
     }
 
     [Fact]
@@ -66,15 +86,25 @@ public class MiddlewareConfiguratorTests
         _middlewareConfigurator.UseMiddleware<MiddlewareB>().When(() => true);  // Will be registered
 
         // Debug: Log middleware descriptors before registering
-        Debug.WriteLine("Before Register (Conditional):");
+        Debug.WriteLine("Before Register:");
         LogMiddlewareDescriptors();
 
         // Act
         _middlewareConfigurator.Register();
 
+        // Get registered middleware types from configurator
+        var registeredMiddlewareTypes = _middlewareConfigurator.GetRegisteredMiddlewareTypes();
+
+        // Debug: Log registered middleware types
+        Debug.WriteLine("Registered middleware types:");
+        foreach (var type in registeredMiddlewareTypes)
+        {
+            Debug.WriteLine(type.Name);
+        }
+
         // Assert
-        Assert.Collection(_registeredMiddleware,
-            middleware => Assert.Equal(typeof(MiddlewareB), middleware));
+        Assert.Equal(1, registeredMiddlewareTypes.Count);
+        Assert.Equal(typeof(MiddlewareB), registeredMiddlewareTypes[0]);
     }
 
     [Fact]
@@ -94,11 +124,12 @@ public class MiddlewareConfiguratorTests
 
         // Act
         _middlewareConfigurator.Register();
+        var registeredMiddlewareTypes = _middlewareConfigurator.GetRegisteredMiddlewareTypes();
 
         // Assert
-        Assert.Collection(_registeredMiddleware,
-            middleware => Assert.Equal(typeof(MiddlewareB), middleware), // Dependency first
-            middleware => Assert.Equal(typeof(MiddlewareA), middleware)); // Then dependent
+        Assert.Equal(2, registeredMiddlewareTypes.Count);
+        Assert.Equal(typeof(MiddlewareB), registeredMiddlewareTypes[0]);
+        Assert.Equal(typeof(MiddlewareA), registeredMiddlewareTypes[1]);
     }
 
     [Fact]

@@ -21,6 +21,7 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
 
     private readonly TApplication _application;
     private readonly List<MiddlewareDescriptor> _middlewares = new();
+    private readonly List<Type> _registeredMiddlewareTypes = new();
 
     public TApplication Application => _application;
 
@@ -89,14 +90,6 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
 
     public void Register()
     {
-        Debug.WriteLine("Middlewares in configurator:");
-        foreach (var descriptor in _middlewares)
-        {
-            Debug.WriteLine($"Middleware: {descriptor.MiddlewareType}, " +
-                              $"Priority: {descriptor.Priority}, " +
-                              $"Group: {descriptor.Group}");
-        }
-
         var application = _application as IApplicationBuilder;
         var sp = application!.ApplicationServices;
 
@@ -109,6 +102,7 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
             if (descriptor.IsEnabled == false || (descriptor.Condition != null && !descriptor.Condition.Invoke()))
                 continue;
 
+            _registeredMiddlewareTypes.Add(descriptor.MiddlewareType); // Track the middleware type
             application.Use(async (HttpContext context, Func<Task> next) =>
             {
                 var middlewareInstance = application.ApplicationServices.GetRequiredService(descriptor.MiddlewareType!);
@@ -118,6 +112,8 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
             Debug.WriteLine($"Registered middleware: {descriptor.MiddlewareType.FullName}, Priority: {descriptor.Priority}");
         }
     }
+
+    internal IReadOnlyList<Type> GetRegisteredMiddlewareTypes() => _registeredMiddlewareTypes;
 
     private static async Task InvokeMiddleware(object middleware, HttpContext context, Func<Task> next)
     {
