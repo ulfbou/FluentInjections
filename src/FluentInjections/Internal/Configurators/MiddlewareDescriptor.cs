@@ -1,75 +1,69 @@
 ﻿using FluentInjections.Constants;
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace FluentInjections.Internal.Configurators;
 
 internal class MiddlewareDescriptor
 {
-    internal Type MiddlewareType { get; set; }
+    public Type MiddlewareType { get; set; }
 
-    internal int Priority
+    public int Priority
     {
         get => _priority ?? DefaultValues.Priority;
         set => _priority = value;
     }
     private int? _priority;
 
-    internal string Group
+    public string Group
     {
         get => _group ?? DefaultValues.Group;
         set => _group = value ?? throw new ArgumentNullException(nameof(value));
     }
     private string? _group;
 
-    internal string RequiredEnvironment
+    public string RequiredEnvironment
     {
         get => _requiredEnvironment ?? DefaultValues.Environment;
         set => _requiredEnvironment = value ?? throw new ArgumentNullException(nameof(value));
     }
     private string? _requiredEnvironment;
 
-    internal object? ExecutionPolicy { get; set; }
-    internal Func<object, Task>? Fallback { get; set; }
-    internal object? Options { get; set; }
-    internal object? Metadata { get; set; }
-    internal string? Tag { get; set; }
-    internal Func<bool>? Condition { get; set; }
+    public object? ExecutionPolicy { get; set; }
+    public Func<object, Task>? Fallback { get; set; }
+    public object? Options { get; set; }
+    public object? Metadata { get; set; }
+    public string? Tag { get; set; }
+    public Func<bool>? Condition { get; set; }
 
-    internal bool IsEnabled
+    public bool IsEnabled
     {
         get => _isEnabled ?? true;
         set => _isEnabled = value;
     }
     private bool? _isEnabled;
 
-    internal List<Type> Dependencies
+    public List<Type> Dependencies
     {
         get => _dependencies;
         set => _dependencies = value ?? throw new ArgumentNullException(nameof(value));
     }
     private List<Type> _dependencies = new();
 
-    internal List<Type>? PrecedingMiddleware
+    public List<Type>? PrecedingMiddleware
     {
         get => _precedingMiddleware;
         set => _precedingMiddleware = value;
     }
     private List<Type>? _precedingMiddleware = new();
 
-    internal List<Type>? FollowingMiddleware
+    public List<Type>? FollowingMiddleware
     {
         get => _followingMiddleware;
         set => _followingMiddleware = value;
     }
     private List<Type>? _followingMiddleware = new();
 
-    internal TimeSpan? Timeout { get; set; }
-    internal Func<Exception, Task>? ErrorHandler { get; set; }
+    public TimeSpan? Timeout { get; set; }
+    public Func<Exception, Task>? ErrorHandler { get; set; }
 
     internal MiddlewareDescriptor(Type middlewareType)
     {

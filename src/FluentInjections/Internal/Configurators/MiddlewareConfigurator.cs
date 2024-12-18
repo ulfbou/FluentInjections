@@ -21,11 +21,8 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
 
     private readonly TApplication _application;
     private readonly List<MiddlewareDescriptor> _middlewares = new();
-    private readonly List<Type> _registeredMiddlewareTypes = new();
 
     public TApplication Application => _application;
-
-    public MiddlewareDescriptor? CurrentDescriptor { get; private set; }
 
     public MiddlewareConfigurator(IServiceCollection services, TApplication application)
     {
@@ -36,7 +33,6 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
     public IMiddlewareBinding<TMiddleware, TApplication> UseMiddleware<TMiddleware>() where TMiddleware : class
     {
         var descriptor = new MiddlewareDescriptor(typeof(TMiddleware));
-        CurrentDescriptor = descriptor;
 
         _middlewares.Add(descriptor);
         return new MiddlewareBinding<TMiddleware, TApplication>(_services, _application, descriptor);
@@ -90,34 +86,38 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
 
     public void Register()
     {
-        var application = _application as IApplicationBuilder;
-        var sp = application!.ApplicationServices;
+        IApplicationBuilder application = (_application as IApplicationBuilder)!;
 
         // Order middleware descriptors
-        var orderedMiddlewares = OrderMiddlewareDescriptors();
+        var orderedMiddlewares = OrderMiddlewareDescriptors(_middlewares);
 
         // Add middleware to the pipeline in the correct order
         foreach (var descriptor in orderedMiddlewares)
         {
-            if (descriptor.IsEnabled == false || (descriptor.Condition != null && !descriptor.Condition.Invoke()))
-                continue;
-
-            _registeredMiddlewareTypes.Add(descriptor.MiddlewareType); // Track the middleware type
-            application.Use(async (HttpContext context, Func<Task> next) =>
-            {
-                var middlewareInstance = application.ApplicationServices.GetRequiredService(descriptor.MiddlewareType!);
-                await InvokeMiddleware(middlewareInstance, context, next);
-            });
-
-            Debug.WriteLine($"Registered middleware: {descriptor.MiddlewareType.FullName}, Priority: {descriptor.Priority}");
+            RegisterMiddleware(descriptor, application);
         }
     }
 
-    internal IReadOnlyList<Type> GetRegisteredMiddlewareTypes() => _registeredMiddlewareTypes;
-
-    private static async Task InvokeMiddleware(object middleware, HttpContext context, Func<Task> next)
+    private void RegisterMiddleware(MiddlewareDescriptor descriptor, IApplicationBuilder application)
     {
-        // Locate the "Invoke" method dynamically, assuming it's conventionally named
+        application.Use(async (HttpContext context, RequestDelegate next) =>
+        {
+            if (descriptor.IsEnabled == true && (descriptor.Condition is null || descriptor.Condition.Invoke()))
+            {
+                var middlewareInstance = application.ApplicationServices.GetRequiredService(descriptor.MiddlewareType!);
+                await InvokeMiddleware(middlewareInstance, context, next);
+            }
+            else
+            {
+                await next(context);
+            }
+        });
+        Debug.WriteLine($"Registered middleware: {descriptor.MiddlewareType.FullName}, Priority: {descriptor.Priority}");
+    }
+
+    private static async Task InvokeMiddleware(object middleware, HttpContext context, RequestDelegate next)
+    {
+        // TODO: Cache the method info for performance
         var method = middleware.GetType().GetMethod("InvokeAsync") ?? middleware.GetType().GetMethod("Invoke");
 
         if (method == null)
@@ -125,7 +125,6 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
             throw new InvalidOperationException($"Middleware {middleware.GetType().FullName} does not have an Invoke or InvokeAsync method.");
         }
 
-        // Dynamically invoke the middleware's method
         var parameters = method.GetParameters();
         var args = parameters.Length == 2
             ? new object[] { context, next }
@@ -135,68 +134,93 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
     }
 
     #region Middleware Ordering
-    private List<MiddlewareDescriptor> OrderMiddlewareDescriptors()
+    private List<MiddlewareDescriptor> OrderMiddlewareDescriptors(List<MiddlewareDescriptor> descriptors)
+    {
+        // Step 1: Group middleware by Group property
+        var groups = descriptors.GroupBy(m => m.Group)
+                                .ToDictionary(g => g.Key, g => g.ToList());
+
+        // Step 2: Sort middleware within each group
+        var sortedGroups = new List<List<MiddlewareDescriptor>>();
+
+        foreach (var group in groups.Values)
+        {
+            var groupGraph = BuildGraph(group);
+            var sortedGroup = TopologicalSort(groupGraph);
+            sortedGroups.Add(sortedGroup.OrderByDescending(m => m.Priority).ToList());
+        }
+
+        // Step 3: Determine group order
+        var groupOrder = SortGroups(groups);
+
+        // Step 4: Combine sorted groups in the correct order
+        var sortedDescriptors = new List<MiddlewareDescriptor>();
+        foreach (var groupName in groupOrder)
+        {
+            sortedDescriptors.AddRange(sortedGroups.First(g => g.First().Group == groupName));
+        }
+
+        return sortedDescriptors;
+    }
+
+    private Dictionary<MiddlewareDescriptor, List<MiddlewareDescriptor>> BuildGraph(List<MiddlewareDescriptor> group)
     {
         var graph = new Dictionary<MiddlewareDescriptor, List<MiddlewareDescriptor>>();
 
-        // Initialize graph with all descriptors
-        foreach (var descriptor in _middlewares)
+        foreach (var descriptor in group)
         {
-            graph[descriptor] = new List<MiddlewareDescriptor>();
+            if (!graph.ContainsKey(descriptor))
+            {
+                graph[descriptor] = new List<MiddlewareDescriptor>();
+            }
+
+            // Add dependencies
+            foreach (var dependency in descriptor.Dependencies ?? Enumerable.Empty<Type>())
+            {
+                var dependencyDescriptor = group.FirstOrDefault(d => d.MiddlewareType == dependency);
+
+                if (dependencyDescriptor != null)
+                {
+                    graph[descriptor].Add(dependencyDescriptor);
+                }
+            }
+
+            // Add preceding middleware
+            foreach (var preceding in descriptor.PrecedingMiddleware ?? Enumerable.Empty<Type>())
+            {
+                var precedingDescriptor = group.FirstOrDefault(d => d.MiddlewareType == preceding);
+
+                if (precedingDescriptor != null)
+                {
+                    graph[descriptor].Add(precedingDescriptor);
+                }
+            }
+
+            // Add following middleware
+            foreach (var following in descriptor.FollowingMiddleware ?? Enumerable.Empty<Type>())
+            {
+                var followingDescriptor = group.FirstOrDefault(d => d.MiddlewareType == following);
+
+                if (followingDescriptor != null)
+                {
+                    if (!graph.ContainsKey(followingDescriptor))
+                    {
+                        graph[followingDescriptor] = new List<MiddlewareDescriptor>();
+                    }
+
+                    graph[followingDescriptor].Add(descriptor);
+                }
+            }
         }
 
-        // Build the graph based on dependencies, preceding, and following relationships
-        foreach (var descriptor in _middlewares)
-        {
-            if (descriptor.Dependencies != null)
-            {
-                foreach (var dependencyType in descriptor.Dependencies)
-                {
-                    var dependency = FindMiddlewareDescriptor(dependencyType);
-                    if (dependency != null)
-                    {
-                        graph[dependency].Add(descriptor); // Dependency must run before this middleware
-                    }
-                }
-            }
-
-            if (descriptor.PrecedingMiddleware != null)
-            {
-                foreach (var precedingType in descriptor.PrecedingMiddleware)
-                {
-                    var precedingMiddleware = FindMiddlewareDescriptor(precedingType);
-                    if (precedingMiddleware != null)
-                    {
-                        graph[precedingMiddleware].Add(descriptor); // Preceding middleware must run before this middleware
-                    }
-                }
-            }
-
-            if (descriptor.FollowingMiddleware != null)
-            {
-                foreach (var followingType in descriptor.FollowingMiddleware)
-                {
-                    var followingMiddleware = FindMiddlewareDescriptor(followingType);
-                    if (followingMiddleware != null)
-                    {
-                        graph[descriptor].Add(followingMiddleware); // This middleware must run before following middleware
-                    }
-                }
-            }
-        }
-
-        // Perform topological sorting
-        var sortedDescriptors = TopologicalSort(graph);
-
-        // Apply secondary sorting by priority
-        return sortedDescriptors
-            .OrderBy(d => d.Priority)
-            .ToList();
+        return graph;
     }
 
-    private MiddlewareDescriptor? FindMiddlewareDescriptor(Type middlewareType)
+    private List<string> SortGroups(Dictionary<string, List<MiddlewareDescriptor>> groups)
     {
-        return _middlewares.FirstOrDefault(d => d.MiddlewareType == middlewareType);
+        // Simple example assumes no dependencies between groups
+        // Customize if group dependencies are introduced
+        return groups.Keys.OrderBy(g => g).ToList();
     }
 
     private List<MiddlewareDescriptor> TopologicalSort(Dictionary<MiddlewareDescriptor, List<MiddlewareDescriptor>> graph)
@@ -241,7 +265,6 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
     }
 
     internal IEnumerable<MiddlewareDescriptor> GetMiddlewareDescriptors() => _middlewares.AsEnumerable();
-
     #endregion
 
     #region Middleware Binding
