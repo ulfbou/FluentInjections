@@ -20,13 +20,7 @@ internal class MiddlewareDescriptor
     }
     private string? _group;
 
-    public string RequiredEnvironment
-    {
-        get => _requiredEnvironment ?? DefaultValues.Environment;
-        set => _requiredEnvironment = value ?? throw new ArgumentNullException(nameof(value));
-    }
-    private string? _requiredEnvironment;
-
+    public string? RequiredEnvironment { get; set; }
     public object? ExecutionPolicy { get; set; }
     public Func<object, Task>? Fallback { get; set; }
     public object? Options { get; set; }

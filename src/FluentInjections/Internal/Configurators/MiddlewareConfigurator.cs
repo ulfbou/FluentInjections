@@ -21,6 +21,7 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
 
     private readonly TApplication _application;
     private readonly List<MiddlewareDescriptor> _middlewares = new();
+    private readonly CancellationTokenSource _cts = new();
 
     public TApplication Application => _application;
 
@@ -98,29 +99,117 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
         }
     }
 
-    private void RegisterMiddleware(MiddlewareDescriptor descriptor, IApplicationBuilder application)
+    // Register with callback to allow for custom testing setup. 
+    internal void Register(Action<MiddlewareDescriptor, HttpContext, IApplicationBuilder> registerMiddlewareCallback)
+    {
+        IApplicationBuilder application = (_application as IApplicationBuilder)!;
+
+        // Order middleware descriptors
+        var orderedMiddlewares = OrderMiddlewareDescriptors(_middlewares);
+
+        // Add middleware to the pipeline in the correct order
+        foreach (var descriptor in orderedMiddlewares)
+        {
+            RegisterMiddleware(descriptor, application, registerMiddlewareCallback);
+        }
+    }
+
+    private void RegisterMiddleware(MiddlewareDescriptor descriptor, IApplicationBuilder application, Action<MiddlewareDescriptor, HttpContext, IApplicationBuilder>? callback = null)
     {
         application.Use(async (HttpContext context, RequestDelegate next) =>
         {
-            if (descriptor.IsEnabled == true && (descriptor.Condition is null || descriptor.Condition.Invoke()))
+            if (CheckActivationConditions(descriptor, application, context, next))
             {
-                var middlewareInstance = application.ApplicationServices.GetRequiredService(descriptor.MiddlewareType!);
-                await InvokeMiddleware(middlewareInstance, context, next);
+                if (descriptor.Timeout is not null)
+                {
+                    context.RequestAborted.Register(() => _cts.CancelAfter(descriptor.Timeout.Value));
+                    context.RequestAborted = _cts.Token;
+                }
+
+                if (!TryResolveService(descriptor, out var middlewareInstance))
+                {
+                    throw new InvalidOperationException($"Middleware {descriptor.MiddlewareType.FullName} could not be resolved.");
+                }
+
+                await InvokeMiddleware(middlewareInstance, descriptor, context, next);
             }
-            else
-            {
-                await next(context);
-            }
+
+            await next(context);
         });
+
         Debug.WriteLine($"Registered middleware: {descriptor.MiddlewareType.FullName}, Priority: {descriptor.Priority}");
     }
 
-    private static async Task InvokeMiddleware(object middleware, HttpContext context, RequestDelegate next)
+    private bool CheckActivationConditions(MiddlewareDescriptor descriptor, IApplicationBuilder application, HttpContext context, RequestDelegate next)
+    {
+        if (!descriptor.IsEnabled || descriptor.Condition?.Invoke() == true)
+        {
+            return false;
+        }
+
+        if (descriptor.RequiredEnvironment != null)
+        {
+            var env = application.ApplicationServices.GetRequiredService<IHostEnvironment>();
+
+            if (env.EnvironmentName != descriptor.RequiredEnvironment)
+            {
+                return false;
+            }
+        }
+
+        if (descriptor.ExecutionPolicy is not null)
+        {
+            var policy = descriptor.ExecutionPolicy;
+
+            if (policy is IExecutionPolicy executionPolicy)
+            {
+                if (executionPolicy.CanExecute(context, next))
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                throw new InvalidOperationException($"Execution policy for middleware {descriptor.MiddlewareType.FullName} does not implement IExecutionPolicy.");
+            }
+        }
+        else
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryResolveService(MiddlewareDescriptor descriptor, out object middlewareInstance)
+    {
+        var serviceProvider = _services.BuildServiceProvider();
+
+        using (var scope = serviceProvider.CreateScope())
+        {
+            var container = scope.ServiceProvider.GetRequiredService<ILifetimeScope>();
+
+            try
+            {
+                middlewareInstance = container.Resolve(descriptor.MiddlewareType);
+                Debug.WriteLine($"Resolved middleware: {descriptor.MiddlewareType.FullName}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error resolving middleware {descriptor.MiddlewareType.FullName}: {ex.Message}");
+                middlewareInstance = null!;
+                return false;
+            }
+        }
+    }
+
+    private static async Task InvokeMiddleware(object middleware, MiddlewareDescriptor descriptor, HttpContext context, RequestDelegate next)
     {
         // TODO: Cache the method info for performance
         var method = middleware.GetType().GetMethod("InvokeAsync") ?? middleware.GetType().GetMethod("Invoke");
 
-        if (method == null)
+        if (method is null)
         {
             throw new InvalidOperationException($"Middleware {middleware.GetType().FullName} does not have an Invoke or InvokeAsync method.");
         }
@@ -130,9 +219,60 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
             ? new object[] { context, next }
             : new object[] { context };
 
-        await (Task)method.Invoke(middleware, args)!;
+        if (descriptor.Timeout != null)
+        {
+            var timeout = descriptor.Timeout;
+            var cts = new CancellationTokenSource(timeout.Value);
+            context.RequestAborted.Register(() => cts.CancelAfter(timeout.Value));
+            context.RequestAborted = cts.Token;
+        }
+
+        try
+        {
+            if (method.ReturnType == typeof(void))
+            {
+                method.Invoke(middleware, args);
+            }
+            else
+            {
+                await (Task)method.Invoke(middleware, args)!;
+            }
+        }
+        catch (Exception ex)
+        {
+            if (descriptor.Fallback is not null)
+            {
+                await HandleFallbackAsync(descriptor.Fallback, middleware, descriptor.ErrorHandler);
+            }
+            else if (descriptor.ErrorHandler is not null)
+            {
+                await descriptor.ErrorHandler(ex);
+            }
+            else
+            {
+                throw;
+            }
+        }
     }
 
+    private static async Task HandleFallbackAsync(Func<object, Task> fallback, object middleware, Func<Exception, Task>? errorHandler)
+    {
+        try
+        {
+            await fallback(middleware);
+        }
+        catch (Exception ex2)
+        {
+            if (errorHandler is not null)
+            {
+                await errorHandler(ex2);
+            }
+            else
+            {
+                throw;
+            }
+        }
+    }
     #region Middleware Ordering
     private List<MiddlewareDescriptor> OrderMiddlewareDescriptors(List<MiddlewareDescriptor> descriptors)
     {

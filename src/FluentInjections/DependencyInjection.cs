@@ -1,4 +1,7 @@
-﻿using FluentInjections.Internal.Configurators;
+﻿using Autofac;
+using Autofac.Extensions.DependencyInjection;
+
+using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Registries;
 
 using Microsoft.AspNetCore.Builder;
@@ -10,36 +13,34 @@ namespace FluentInjections;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddFluentInjections<TBuilder>(this IServiceCollection services, params Assembly[] assemblies) where TBuilder : class
-    {
-        var targetAssemblies = assemblies.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
-        var moduleRegistry = new ModuleRegistry<TBuilder>();
-        RegisterModules<TBuilder, IServiceModule>(targetAssemblies, moduleRegistry.RegisterModule);
-        RegisterModules<TBuilder, IMiddlewareModule<TBuilder>>(targetAssemblies, moduleRegistry.RegisterModule);
-
-        var serviceConfigurator = new ServiceConfigurator(services);
-        moduleRegistry.ApplyServiceModules(serviceConfigurator);
-        services.AddSingleton(moduleRegistry);
-
-        return services;
-    }
-
     public static IServiceCollection AddFluentInjections<TBuilder, TRegistry>(this IServiceCollection services, params Assembly[] assemblies)
         where TBuilder : class
         where TRegistry : IModuleRegistry<TBuilder>, new()
     {
-        // TODO: Create a scope to efficiently maintain a reflection cache for the target assemblies.
-        var serviceProvider = services.BuildServiceProvider();
+        // Create a scope to efficiently maintain a reflection cache for the target assemblies.
         var targetAssemblies = assemblies.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
-        var moduleRegistry = serviceProvider.GetRequiredService<TRegistry>();
 
+        // Create an Autofac container builder
+        var containerBuilder = new ContainerBuilder();
+        containerBuilder.Populate(services);
+
+        // Build the intermediate service provider
+        var serviceProvider = new AutofacServiceProvider(containerBuilder.Build());
+        var moduleRegistry = new ModuleRegistry<TBuilder>();
         RegisterModules<TBuilder, IServiceModule>(targetAssemblies, moduleRegistry.RegisterModule);
         RegisterModules<TBuilder, IMiddlewareModule<TBuilder>>(targetAssemblies, moduleRegistry.RegisterModule);
 
+        // Apply service modules
         var serviceConfigurator = new ServiceConfigurator(services);
-
         moduleRegistry.ApplyServiceModules(serviceConfigurator);
+
+        // Build the final service provider
+        containerBuilder = new ContainerBuilder();
+        containerBuilder.Populate(services);
+        var finalContainer = containerBuilder.Build();
+
         services.AddSingleton<IModuleRegistry<TBuilder>>(moduleRegistry);
+        services.AddSingleton<IServiceProvider>(new AutofacServiceProvider(finalContainer));
 
         return services;
     }
