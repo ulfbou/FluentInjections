@@ -3,50 +3,21 @@
 namespace FluentInjections
 {
     /// <summary>
-    /// Represents a service configurator.
+    /// Represents a service configurator that provides methods to bind and manage services in the service collection.
     /// </summary>
     public interface IServiceConfigurator
     {
         /// <summary>
         /// Binds a service to the service collection.
         /// </summary>
-        /// <typeparam name="TService">The service type.</typeparam>
-        /// <returns>The service binding.</returns>
+        /// <typeparam name="TService">The type of the service to bind.</typeparam>
+        /// <returns>An interface for further configuring the service binding.</returns>
         IServiceBinding<TService> Bind<TService>() where TService : class;
-        void Unbind<T>();
 
-        ///// <summary>
-        ///// Adds a service to the service collection.
-        ///// </summary>
-        ///// <typeparam name="TService">The service type.</typeparam>
-        ///// <typeparam name="TImplementation">The implementation type.</typeparam>
-        ///// <param name="lifetime">The service lifetime.</param>
-        //IServiceConfigurator AddService<TService, TImplementation>(ServiceLifetime lifetime = ServiceLifetime.Transient)
-        //    where TService : class
-        //    where TImplementation : class, TService;
-
-        ///// <summary>
-        ///// Adds a singleton service to the service collection.
-        ///// </summary>
-        ///// <typeparam name="TService">The service type.</typeparam>
-        //IServiceConfigurator AddSingleton<TService>(TService implementationInstance) where TService : class;
-
-        ///// <summary>
-        ///// Adds a scoped service to the service collection.
-        ///// </summary>
-        ///// <typeparam name="TService">The service type.</typeparam>
-        ///// <typeparam name="TImplementation">The implementation type.</typeparam>
-        //IServiceConfigurator AddScoped<TService, TImplementation>() where TService : class where TImplementation : class, TService;
-
-        ///// <summary>
-        ///// Adds a transient service to the service collection.
-        ///// </summary>
-        //IServiceConfigurator AddTransient<TService, TImplementation>() where TService : class where TImplementation : class, TService;
-
-        ///// <summary>
-        ///// Configures options.
-        ///// </summary>
-        ///// <typeparam name="TOptions">The options type.</typeparam>
-        //IServiceConfigurator ConfigureOptions<TOptions>(Action<TOptions> configure) where TOptions : class;
-    }
+        /// <summary>
+        /// Unbinds a service of the specified type from the service collection.
+        /// </summary>
+        /// <typeparam name="T">The type of the service to unbind.</typeparam>
+        void Unbind<T>(); 
+   } 
 }
