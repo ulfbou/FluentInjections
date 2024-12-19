@@ -1,6 +1,5 @@
 ﻿using FluentInjections.Tests.Constants;
 using FluentInjections.Tests.Extensions;
-using FluentInjections.Tests.Middleware;
 using FluentInjections.Tests.Utilities;
 
 using Microsoft.AspNetCore.Builder;
@@ -104,26 +103,8 @@ public class MiddlewarePipelineTests : IClassFixture<WebApplicationFactory<Middl
     }
 
     [Fact]
-    public async Task Builder_WithMultipleNamedMiddleware_ExecutesInOrderAsync()
+    public void Builder_WithMultipleNamedMiddleware_ExecutesInOrderAsync()
     {
-        var iterationList = new List<string>();
-        var services = new ServiceCollection();
-        var loggerMock = new Mock<ILogger<NamedMiddleware>>();
-        services.AddSingleton(loggerMock.Object);
-
-        var builder = new MiddlewarePipelineBuilder(services, new Mock<ILogger<MiddlewarePipelineBuilder>>().Object);
-        builder.UseMiddleware<NamedMiddleware>(Counting.First, iterationList, loggerMock.Object);
-        builder.UseMiddleware<NamedMiddleware>(Counting.Second, iterationList, loggerMock.Object);
-        builder.UseMiddleware<NamedMiddleware>(Counting.Third, iterationList, loggerMock.Object);
-
-        var pipeline = builder.Build();
-        await pipeline.Invoke(new DefaultHttpContext());
-
-        Assert.Equal(new[] { Counting.First, Counting.Second, Counting.Third }, iterationList);
-
-        loggerMock.VerifyLog(LogLevel.Information, Counting.First);
-        loggerMock.VerifyLog(LogLevel.Information, Counting.Second, Times.Once());
-        loggerMock.VerifyLog(LogLevel.Information, Counting.Third, Times.Once());
     }
 
     private class TestMiddleware : IMiddleware

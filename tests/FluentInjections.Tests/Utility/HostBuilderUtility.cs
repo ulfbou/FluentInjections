@@ -1,5 +1,4 @@
 ﻿using FluentInjections.Internal.Configurators;
-using FluentInjections.Tests.Middleware;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -27,6 +26,5 @@ public class HostBuilderUtility
         .ConfigureServices(services =>
         {
             services.AddFluentInjections<IHostBuilder>();
-            services.AddTransient<NamedMiddleware>();
         });
 }
