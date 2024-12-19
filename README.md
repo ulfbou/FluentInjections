@@ -166,14 +166,19 @@ public class MyMiddleware
 The `ServiceConfigurator` provides various methods to bind services with different configurations:
 
 - `Bind<TService>().To<TImplementation>()`: Binds a service to an implementation.
+- `Bind<TService>().To(Type implementationType)`: Binds a service to an implementation type.
+- `Bind<TService>().AsSelf()`: Binds a service as itself. 
 - `AsSingleton()`, `AsScoped()`, `AsTransient()`: Sets the service lifetime.
 - `WithLifetime(ServiceLifetime)`: Sets a custom service lifetime.
-- `WithInstance(TService)`: Binds a service to a specific instance.
+- `WithInstance(TService)`: Binds a service to a specific singleton instance.
 - `WithFactory(Func<IServiceProvider, TService>)`: Binds a service using a factory.
-- `WithParameters(object)`: Binds a service with parameters.
+- `WithParameters(object)`: Binds a service with specific parameters.
+- `WithParameters(IReadOnlyDictionary<string, object> parameters)`: Binds a service with specific, named parameters.
 - `WithName(string)`: Binds a service with a name.
 - `Configure(Action<TService>)`: Configures the service after creation.
 - `ConfigureOptions<TOptions>(Action<TOptions>)`: Configures options for the service.
+- `ConfigureOptions<TOptions>(Action<TService, TOptions> configure)`: Configures the service with options after creation. 
+- `Register()`: Registers the service to the container. 
 
 #### MiddlewareConfigurator
 
