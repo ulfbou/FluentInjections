@@ -1,7 +1,3 @@
-using Microsoft.AspNetCore.Http;
-using System;
-using System.Threading.Tasks;
-
 namespace FluentInjections;
 
 /// <summary>
@@ -28,18 +24,18 @@ public interface IMiddlewareBinding<TMiddleware, TApplication> where TMiddleware
     /// <summary>
     /// Sets the priority of the middleware using a function that takes a context parameter.
     /// </summary>
-    /// <typeparam name="T">The type of the context parameter.</typeparam>
+    /// <typeparam name="TContext">The type of the context parameter.</typeparam>
     /// <param name="priority">The function to determine the priority.</param>
     /// <returns>The middleware binding instance.</returns>
-    IMiddlewareBinding<TMiddleware, TApplication> WithPriority<T>(Func<T, int> priority);
+    IMiddlewareBinding<TMiddleware, TApplication> WithPriority<TContext>(Func<TContext, int> priority);
 
     /// <summary>
     /// Sets the execution policy for the middleware.
     /// </summary>
-    /// <typeparam name="T">The type of the policy.</typeparam>
+    /// <typeparam name="TPolicy">The type of the policy.</typeparam>
     /// <param name="value">The action to configure the policy.</param>
     /// <returns>The middleware binding instance.</returns>
-    IMiddlewareBinding<TMiddleware, TApplication> WithExecutionPolicy<T>(Action<T> value) where T : class;
+    IMiddlewareBinding<TMiddleware, TApplication> WithExecutionPolicy<TPolicy>(Action<TPolicy> value) where TPolicy : class;
 
     /// <summary>
     /// Attaches metadata to the middleware.
