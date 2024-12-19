@@ -137,7 +137,7 @@ public class MyMiddlewareModule : IMiddlewareModule<IApplicationBuilder>
             .WithExecutionPolicy(policy => policy.RetryCount = 3)
             .WithMetadata(new { Description = "Sample Middleware" })
             .InGroup("Group1")
-            .Enable()
+            .When(() => DateTime.Now.DayOfWeek == DayOfWeek.Monday)
             .Register();
     }
 }
@@ -157,28 +157,6 @@ public class MyMiddleware
         await _next(context);
     }
 }
-```
-
-### Advanced Scenarios
-
-#### Conditional Module Registration
-
-FluentInjections supports conditional module registration based on runtime conditions:
-
-```csharp
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddFluentInjections<IApplicationBuilder>()
-    .RegisterModule<MyServiceModule>(() => DateTime.Now.DayOfWeek == DayOfWeek.Monday);
-```
-
-#### Factory-Based Module Registration
-
-You can also register modules using a factory method:
-
-```csharp
-builder.Services.AddFluentInjections<IApplicationBuilder>()
-    .RegisterModule(() => new MyServiceModule(), module => module.ConfigureSomeSettings());
 ```
 
 ### Full Range of Configurators and Binding Interfaces
