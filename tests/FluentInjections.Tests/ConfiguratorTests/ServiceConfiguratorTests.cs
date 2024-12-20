@@ -152,12 +152,12 @@ public class ServiceConfiguratorTests
     public void Bind_ServiceWithConfigureOptions_ShouldConfigureOptions()
     {
         // Arrange
-        var binding = _serviceConfigurator.Bind<TestService>().AsSelf().ConfigureOptions<TestOptions>(opts => opts.Option1 = "value");
+        var binding = _serviceConfigurator.Bind<TestService>().AsSelf().ConfigureOptions<TestServiceOptions>(opts => opts.Option1 = "value");
 
         // Act
         binding.Register();
         var serviceProvider = _services.BuildServiceProvider();
-        var options = serviceProvider.GetRequiredService<IOptions<TestOptions>>().Value;
+        var options = serviceProvider.GetRequiredService<IOptions<TestServiceOptions>>().Value;
 
         // Assert
         Assert.Equal("value", options.Option1);
@@ -288,7 +288,7 @@ public class ServiceConfiguratorTests
         }
     }
 
-    public sealed class TestOptions
+    public sealed class TestServiceOptions
     {
         public string Option1 { get; set; }
     }

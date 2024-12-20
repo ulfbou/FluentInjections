@@ -17,6 +17,7 @@ internal class ServiceConfigurator : IServiceConfigurator
 
     public IServiceBinding<TService> Bind<TService>() where TService : class
     {
+        Debug.WriteLine($"Binding service {typeof(TService).Name}.");
         return new ServiceBinding<TService>(_services);
     }
 
@@ -30,6 +31,7 @@ internal class ServiceConfigurator : IServiceConfigurator
         }
 
         _services.Remove(descriptor);
+        Debug.WriteLine($"Unregistered service {typeof(T).Name}.");
     }
 
     private class ServiceBinding<TService> : IServiceBinding<TService> where TService : class
@@ -273,10 +275,13 @@ internal class ServiceConfigurator : IServiceConfigurator
 
         public void Register()
         {
-            if (_implementationType is null && _instance is null && _factory is null)
+            if (!string.IsNullOrEmpty(_name))
             {
-                throw new InvalidOperationException("No implementation, instance, or factory provided for the service.");
+                RegisterNamed();
+                return;
             }
+
+            ServiceDescriptor? descriptor = null;
 
             if (_instance is not null)
             {
@@ -285,21 +290,140 @@ internal class ServiceConfigurator : IServiceConfigurator
                     _configure(_instance);
                 }
 
-                _services.Add(new ServiceDescriptor(_serviceType, _instance));
+                descriptor = new ServiceDescriptor(_serviceType, _instance, _lifetime);
+                Debug.WriteLine($"Registered {_serviceType.Name} instance.");
             }
-            else if (_factory is not null)
+            else
             {
-                _services.Add(new ServiceDescriptor(
-                    _serviceType,
-                    provider => _factory(provider),
-                    _lifetime));
+                Func<IServiceProvider, object>? factory = null;
+
+                if (_factory is not null)
+                {
+                    if (_configure is not null)
+                    {
+                        factory = provider =>
+                        {
+                            var service = _factory(provider);
+                            _configure((TService)service);
+                            return service;
+                        };
+                    }
+                    else
+                    {
+                        factory = _factory;
+                    }
+
+                    descriptor = new ServiceDescriptor(_serviceType, factory, _lifetime);
+                    Debug.WriteLine($"Registered {_serviceType.Name} factory.");
+                }
+                else if (_implementationType is not null)
+                {
+                    if (_configure is not null)
+                    {
+                        factory = provider =>
+                        {
+                            var service = CreateInstance(provider);
+                            _configure(service);
+                            return service;
+                        };
+                    }
+                    else
+                    {
+                        factory = CreateInstance;
+                    }
+
+                    descriptor = new ServiceDescriptor(_serviceType, factory, _lifetime);
+                    Debug.WriteLine($"Registered {_serviceType.Name} implementation.");
+                }
+                else
+                {
+                    throw new InvalidOperationException("No implementation, instance, or factory provided for the service.");
+                }
             }
-            else if (_implementationType is not null)
+
+            // TODO: Implement PrioritizedServiceDescriptor to handle prioritizing already registered services.
+
+            // For now, remove previously registered services with the same type and name.
+            var existingDescriptors = _services.Where(d => d.ServiceType == _serviceType);
+
+            foreach (var existingDescriptor in existingDescriptors)
             {
-                _services.Add(new ServiceDescriptor(
-                    _serviceType,
-                    provider => CreateInstance(provider),
-                    _lifetime));
+                _services.Remove(existingDescriptor);
+                Debug.WriteLine($"Replaced existing {_serviceType.Name} service.");
+            }
+
+            _services.TryAdd(descriptor);
+        }
+
+        private void RegisterNamed()
+        {
+            NamedServiceDescriptor? descriptor = null;
+
+            if (_instance is not null)
+            {
+                if (_configure is not null)
+                {
+                    _configure(_instance);
+                }
+
+                descriptor = new NamedServiceDescriptor(_serviceType, _instance, _lifetime, _name!);
+                Debug.WriteLine($"Registered {_serviceType.Name} instance with name {_name}.");
+            }
+            else
+            {
+                Func<IServiceProvider, object>? factory = null;
+                if (_factory is not null)
+                {
+                    if (_configure is not null)
+                    {
+                        factory = provider =>
+                        {
+                            var service = _factory(provider);
+                            _configure((TService)service);
+                            return service;
+                        };
+                    }
+                    else
+                    {
+                        factory = _factory;
+                    }
+
+                    descriptor = new NamedServiceDescriptor(_serviceType, factory, _lifetime, _name);
+                    Debug.WriteLine($"Registered {_serviceType.Name} factory with name {_name}.");
+                }
+                else if (_implementationType is not null)
+                {
+                    if (_configure is not null)
+                    {
+                        factory = provider =>
+                        {
+                            var service = CreateInstance(provider);
+                            _configure(service);
+                            return service;
+                        };
+                    }
+                    else
+                    {
+                        factory = CreateInstance;
+                    }
+
+                    descriptor = new NamedServiceDescriptor(_serviceType, factory, _lifetime, _name);
+                    Debug.WriteLine($"Registered {_serviceType.Name} implementation with name {_name}.");
+                }
+                else
+                {
+                    throw new InvalidOperationException("No implementation, instance, or factory provided for the service.");
+                }
+
+                var existingDescriptors = _services.Where(d => d.ServiceType == _serviceType && d is NamedServiceDescriptor namedDescriptor && namedDescriptor.Name == _name);
+
+                foreach (var existingDescriptor in existingDescriptors)
+                {
+                    _services.Remove(existingDescriptor);
+                    Debug.WriteLine($"Replaced existing {_serviceType.Name} service with name {_name}.");
+                }
+
+                _services.TryAdd(descriptor);
             }
         }
 
@@ -310,9 +434,14 @@ internal class ServiceConfigurator : IServiceConfigurator
                 return _factory(provider);
             }
 
+            TService? service;
+
             if (_parameters is null)
             {
-                return (TService)ActivatorUtilities.CreateInstance(provider, _implementationType!);
+                service = (TService)ActivatorUtilities.CreateInstance(provider, _implementationType!);
+
+                Debug.WriteLine($"Created {_serviceType.Name} instance.");
+                return service;
             }
 
             var parameterDictionary = _parameters as IDictionary<string, object>;
@@ -324,10 +453,13 @@ internal class ServiceConfigurator : IServiceConfigurator
 
             // TODO: Handle the case where WithParameters provide partial parameters, and the rest are resolved from the container.
 
-            return (TService)ActivatorUtilities.CreateInstance(
+            service = (TService)ActivatorUtilities.CreateInstance(
                 provider,
                 _implementationType!,
                 ResolveParameters(provider, parameterDictionary));
+
+            Debug.WriteLine($"Created {_serviceType.Name} instance with parameters.");
+            return service;
         }
 
         private object[] ResolveParameters(IServiceProvider provider, IDictionary<string, object> parameters)
@@ -353,8 +485,7 @@ internal class ServiceConfigurator : IServiceConfigurator
                     // If the parameter is required and can't be resolved, throw an exception
                     if (service == null && !param.IsOptional)
                     {
-                        throw new ArgumentException(
-                            $"The parameter '{param.Name}' of type '{param.ParameterType.Name}' could not be resolved.");
+                        throw new ArgumentException($"The parameter '{param.Name}' of type '{param.ParameterType.Name}' could not be resolved.");
                     }
 
                     // Use default value for optional parameters
@@ -362,6 +493,7 @@ internal class ServiceConfigurator : IServiceConfigurator
                 })
                 .ToArray();
 
+            Debug.WriteLine($"Resolved parameters for {_serviceType.Name}: {resolvedParameters.Select(p => p?.GetType().Name).Aggregate((a, b) => $"{a}, {b}")}.");
             return resolvedParameters!;
         }
     }

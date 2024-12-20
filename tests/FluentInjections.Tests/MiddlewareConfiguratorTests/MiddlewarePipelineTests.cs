@@ -1,4 +1,4 @@
-﻿using FluentInjections.Tests.Constants;
+﻿using FluentInjections.Tests.Internal.Constants;
 using FluentInjections.Tests.Extensions;
 using FluentInjections.Tests.Utilities;
 

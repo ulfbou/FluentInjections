@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
+using System.Diagnostics;
+
 namespace FluentInjections.Internal.Registries;
 
 /// <summary>
@@ -28,6 +30,8 @@ internal class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where TBuild
         }
 
         _serviceModules.Add(module);
+        Debug.WriteLine($"Registered service module {module.GetType().Name}.");
+
         return this;
     }
 
@@ -43,6 +47,8 @@ internal class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where TBuild
         }
 
         _serviceModules.Remove(module);
+        Debug.WriteLine($"Unregistered service module {module.GetType().Name}.");
+
         return this;
     }
 
@@ -52,6 +58,8 @@ internal class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where TBuild
         ArgumentGuard.NotNull(module, nameof(module));
 
         _middlewareModules.Add(module);
+        Debug.WriteLine($"Registered middleware module {module.GetType().Name}.");
+
         return this;
     }
 
@@ -61,6 +69,8 @@ internal class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where TBuild
         ArgumentGuard.NotNull(module, nameof(module));
 
         _middlewareModules.Remove(module);
+        Debug.WriteLine($"Unregistered middleware module {module.GetType().Name}.");
+
         return this;
     }
 
@@ -101,6 +111,7 @@ internal class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where TBuild
     public IModuleRegistry<TBuilder> ApplyServiceModules(IServiceConfigurator serviceConfigurator)
     {
         ArgumentGuard.NotNull(serviceConfigurator, nameof(serviceConfigurator));
+        Debug.WriteLine("Applying service modules...");
 
         foreach (var module in _serviceModules)
         {
@@ -114,6 +125,7 @@ internal class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where TBuild
     public IModuleRegistry<TBuilder> ApplyMiddlewareModules(IMiddlewareConfigurator<TBuilder> middlewareConfigurator)
     {
         ArgumentGuard.NotNull(middlewareConfigurator, nameof(middlewareConfigurator));
+        Debug.WriteLine("Applying middleware modules...");
 
         foreach (var module in _middlewareModules)
         {
@@ -125,6 +137,8 @@ internal class ModuleRegistry<TBuilder> : IModuleRegistry<TBuilder> where TBuild
     /// <inheritdoc />
     public IModuleRegistry<TBuilder> InitializeModules()
     {
+        Debug.WriteLine("Initializing modules...");
+
         foreach (var module in _serviceModules)
         {
             if (module is IInitializable initializable)

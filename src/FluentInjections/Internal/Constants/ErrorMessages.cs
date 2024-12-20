@@ -1,4 +1,4 @@
-﻿namespace FluentInjections.Constants;
+﻿namespace FluentInjections.Internal.Constants;
 
 internal static class ErrorMessages
 {

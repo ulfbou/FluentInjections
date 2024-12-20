@@ -1,4 +1,4 @@
-﻿using FluentInjections.Constants;
+﻿using FluentInjections.Internal.Constants;
 using FluentInjections.Validation;
 
 using Microsoft.Extensions.DependencyInjection;

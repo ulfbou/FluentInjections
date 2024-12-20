@@ -1,4 +1,4 @@
-﻿namespace FluentInjections.Constants;
+﻿namespace FluentInjections.Internal.Constants;
 
 public class DefaultValues
 {

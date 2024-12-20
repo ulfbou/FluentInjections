@@ -1,10 +1,17 @@
-﻿using FluentInjections.Constants;
-
+﻿using FluentInjections.Internal.Constants;
+using FluentInjections.Tests.Internal.Constants;
 namespace FluentInjections.Internal.Configurators;
 
 internal class MiddlewareDescriptor
 {
     public Type MiddlewareType { get; set; }
+
+    public object Instance
+    {
+        get => _instance ?? throw new InvalidOperationException(ExceptionMessages.InstanceNotSet);
+        set => _instance = value ?? throw new ArgumentNullException(nameof(value));
+    }
+    private object? _instance;
 
     public int Priority
     {
@@ -58,6 +65,7 @@ internal class MiddlewareDescriptor
 
     public TimeSpan? Timeout { get; set; }
     public Func<Exception, Task>? ErrorHandler { get; set; }
+    internal Action<MiddlewareDescriptor>? Callback { get; set; }
 
     internal MiddlewareDescriptor(Type middlewareType)
     {
