@@ -20,14 +20,24 @@ public class MiddlewareConfiguratorTests
     private readonly IWebHostBuilder _builder;
     private MiddlewareConfigurator<IApplicationBuilder> _configurator;
     private readonly List<Type> _pipelineOrder = new();
+    private readonly Mock<IApplicationBuilder> _mockApplicationBuilder;
+    private readonly Mock<IServiceProvider> _mockServiceProvider;
+    private readonly List<Type> _pipelineOrder;
 
     public MiddlewareConfiguratorTests()
     {
+        _mockApplicationBuilder = new Mock<IApplicationBuilder>();
         _services = new ServiceCollection();
-        _services.AddSingleton(Mock.Of<IApplicationBuilder>());
-        _application = _services.BuildServiceProvider().GetRequiredService<IApplicationBuilder>();
-        _configurator = new MiddlewareConfigurator<IApplicationBuilder>(_services, _application!);
-        _builder = new WebHostBuilder();
+        _mockServiceProvider = new Mock<IServiceProvider>();
+        _pipelineOrder = new List<Type>();
+
+        // Setup mock service provider
+        _mockServiceProvider.Setup(sp => sp.GetService(typeof(IApplicationBuilder)))
+                .Returns(_mockApplicationBuilder.Object);
+            _services.AddSingleton(_mockServiceProvider.Object);
+
+        _configurator = new MiddlewareConfigurator<IApplicationBuilder>(_services, _mockApplicationBuilder.Object);
+         _builder = new WebHostBuilder();
         _builder.UseEnvironment("Development")
                 .ConfigureServices(services =>
                 {
@@ -37,7 +47,72 @@ public class MiddlewareConfiguratorTests
                     services.AddTransient<MiddlewareD>(sp => new MiddlewareD(_pipelineOrder));
                     services.AddTransient<MiddlewareE>(sp => new MiddlewareE(_pipelineOrder));
                     services.AddTransient<MiddlewareF>(sp => new MiddlewareF(_pipelineOrder));
+                }); 
+    }
+
+    [Fact]
+    public async Task Middleware_Should_Respect_PriorityAsync()
+    {
+        // Arrange
+        var builder = new WebHostBuilder()
+            .ConfigureServices(services =>
+            {
+                services.AddTransient<MiddlewareA>(sp => new MiddlewareA(_pipelineOrder));
+                services.AddTransient<MiddlewareB>(sp => new MiddlewareB(_pipelineOrder));
+            })
+            .Configure(app =>
+            {
+                _configurator = new MiddlewareConfigurator<IApplicationBuilder>(_services, app);
+                    _configurator.UseMiddleware<MiddlewareA>().WithPriority(2);
+                    _configurator.UseMiddleware<MiddlewareB>().WithPriority(1);
+                _configurator.Register();
+
+                app.Run(async context =>
+                {
+                    await context.Response.WriteAsync("Endpoint");
                 });
+            });
+
+            using var server = new TestServer(builder);
+            using var client = server.CreateClient();
+
+            // Act
+            var response = await client.GetAsync("/");
+
+            // Assert
+            response.EnsureSuccessStatusCode();
+            Assert.Equal(2, _pipelineOrder.Count);
+            Assert.Equal(typeof(MiddlewareB), _pipelineOrder[0]);
+            Assert.Equal(typeof(MiddlewareA), _pipelineOrder[1]);
+        }
+
+        // Mock Middleware classes
+        private class TestMiddlewareBase : IMiddleware
+        {
+            private readonly List<Type> _pipelineOrder;
+
+            public TestMiddlewareBase(List<Type> pipelineOrder)
+            {
+                _pipelineOrder = pipelineOrder;
+            }
+
+            public async Task InvokeAsync(HttpContext context, RequestDelegate next)
+            {
+                Debug.WriteLine($"Invoking {this.GetType().Name}");
+                _pipelineOrder.Add(this.GetType());
+                await next(context);
+            }
+        }
+
+        private class MiddlewareA : TestMiddlewareBase
+        {
+            public MiddlewareA(List<Type> pipelineOrder) : base(pipelineOrder) { }
+        }
+
+        private class MiddlewareB : TestMiddlewareBase
+        {
+            public MiddlewareB(List<Type> pipelineOrder) : base(pipelineOrder) { }
+        }
     }
 
     [Fact]
