@@ -22,7 +22,6 @@ public class MiddlewareConfiguratorTests
     private readonly List<Type> _pipelineOrder = new();
     private readonly Mock<IApplicationBuilder> _mockApplicationBuilder;
     private readonly Mock<IServiceProvider> _mockServiceProvider;
-    private readonly List<Type> _pipelineOrder;
 
     public MiddlewareConfiguratorTests()
     {
@@ -85,35 +84,6 @@ public class MiddlewareConfiguratorTests
             Assert.Equal(typeof(MiddlewareB), _pipelineOrder[0]);
             Assert.Equal(typeof(MiddlewareA), _pipelineOrder[1]);
         }
-
-        // Mock Middleware classes
-        private class TestMiddlewareBase : IMiddleware
-        {
-            private readonly List<Type> _pipelineOrder;
-
-            public TestMiddlewareBase(List<Type> pipelineOrder)
-            {
-                _pipelineOrder = pipelineOrder;
-            }
-
-            public async Task InvokeAsync(HttpContext context, RequestDelegate next)
-            {
-                Debug.WriteLine($"Invoking {this.GetType().Name}");
-                _pipelineOrder.Add(this.GetType());
-                await next(context);
-            }
-        }
-
-        private class MiddlewareA : TestMiddlewareBase
-        {
-            public MiddlewareA(List<Type> pipelineOrder) : base(pipelineOrder) { }
-        }
-
-        private class MiddlewareB : TestMiddlewareBase
-        {
-            public MiddlewareB(List<Type> pipelineOrder) : base(pipelineOrder) { }
-        }
-    }
 
     [Fact]
     public async Task Middleware_Should_Respect_PriorityAsync()
