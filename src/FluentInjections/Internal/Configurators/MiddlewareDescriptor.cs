@@ -31,6 +31,8 @@ internal class MiddlewareDescriptor
     public object? ExecutionPolicy { get; set; }
     public Func<object, Task>? Fallback { get; set; }
     public object? Options { get; set; }
+    public Type? OptionsType { get; set; }
+
     public object? Metadata { get; set; }
     public string? Tag { get; set; }
     public Func<bool>? Condition { get; set; }
@@ -66,7 +68,6 @@ internal class MiddlewareDescriptor
     public TimeSpan? Timeout { get; set; }
     public Func<Exception, Task>? ErrorHandler { get; set; }
     internal Action<MiddlewareDescriptor>? Callback { get; set; }
-
     internal MiddlewareDescriptor(Type middlewareType)
     {
         MiddlewareType = middlewareType;

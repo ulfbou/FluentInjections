@@ -38,4 +38,8 @@
 		<ProjectReference Include="..\..\src\Tests.Utilities\FluentInjections.Tests.Utilities.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="NewFolder\" />
+	</ItemGroup>
+
 </Project>

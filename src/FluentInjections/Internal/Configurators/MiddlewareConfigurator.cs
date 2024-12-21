@@ -2,6 +2,7 @@
 using System.Net.Http;
 
 using Autofac;
+using Autofac.Core;
 
 using FluentInjections.Validation;
 
@@ -10,6 +11,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 using static System.Net.Mime.MediaTypeNames;
 
@@ -22,6 +24,8 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
     private readonly TApplication _application;
     private readonly List<MiddlewareDescriptor> _middlewares = new();
     private readonly CancellationTokenSource _cts = new();
+    private readonly ContainerBuilder _containerBuilder;
+    private IServiceScope? _scope;
 
     public TApplication Application => _application;
 
@@ -29,6 +33,7 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
     {
         _services = services;
         _application = application;
+        _containerBuilder = new ContainerBuilder();
     }
 
     public IMiddlewareBinding UseMiddleware<TMiddleware>() where TMiddleware : class => UseMiddleware(typeof(TMiddleware));
@@ -110,42 +115,62 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
 
     public void Register()
     {
-        IApplicationBuilder application = (_application as IApplicationBuilder)!;
+        var serviceProvider = _services.BuildServiceProvider();
 
-        // Order middleware descriptors
-        var orderedMiddlewares = OrderMiddlewareDescriptors(_middlewares);
-
-        // Add middleware to the pipeline in the correct order
-        foreach (var descriptor in orderedMiddlewares)
+        using (_scope = serviceProvider.CreateScope())
         {
-            RegisterMiddleware(descriptor, application);
-        }
+            IApplicationBuilder application = (_application as IApplicationBuilder)!;
 
-        Debug.WriteLine("Registered all middleware.");
+            // Order middleware descriptors
+            var orderedMiddlewares = OrderMiddlewareDescriptors(_middlewares);
+
+            // Add middleware to the pipeline in the correct order
+            foreach (var descriptor in orderedMiddlewares)
+            {
+                RegisterMiddleware(descriptor, application);
+            }
+
+            Debug.WriteLine("Registered all middleware.");
+        }
     }
 
     #region Register helpers
     // Register with callback to allow for custom testing setup. 
     internal void Register(Action<MiddlewareDescriptor, HttpContext, IApplicationBuilder> registerMiddlewareCallback)
     {
-        IApplicationBuilder application = (_application as IApplicationBuilder)!;
+        var serviceProvider = _services.BuildServiceProvider();
 
-        // Order middleware descriptors
-        var orderedMiddlewares = OrderMiddlewareDescriptors(_middlewares);
-
-        // Add middleware to the pipeline in the correct order
-        foreach (var descriptor in orderedMiddlewares)
+        using (_scope = serviceProvider.CreateScope())
         {
-            RegisterMiddleware(descriptor, application, registerMiddlewareCallback);
-        }
+            IApplicationBuilder application = (_application as IApplicationBuilder)!;
 
-        Debug.WriteLine($"Registered all middleware ({orderedMiddlewares.Count()}) with test method callbacks.");
+            // Order middleware descriptors
+            var orderedMiddlewares = OrderMiddlewareDescriptors(_middlewares);
+
+            // Add middleware to the pipeline in the correct order
+            foreach (var descriptor in orderedMiddlewares)
+            {
+                RegisterMiddleware(descriptor, application, registerMiddlewareCallback);
+            }
+
+            Debug.WriteLine($"Registered all middleware ({orderedMiddlewares.Count()}) with test method callbacks.");
+        }
     }
 
     private void RegisterMiddleware(
         MiddlewareDescriptor descriptor, IApplicationBuilder application,
         Action<MiddlewareDescriptor, HttpContext, IApplicationBuilder>? callback = null)
     {
+        if (descriptor.Options is not null)
+        {
+            if (descriptor.OptionsType is null)
+            {
+                throw new InvalidOperationException($"Options type for middleware {descriptor.MiddlewareType.FullName} is not set.");
+            }
+
+            RegisterOptions(descriptor);
+        }
+
         application.Use(async (HttpContext context, RequestDelegate next) =>
         {
             if (CheckActivationConditions(descriptor, application, context, next))
@@ -169,6 +194,23 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
         });
 
         Debug.WriteLine($"Registered middleware: {descriptor.MiddlewareType.FullName}, Priority: {descriptor.Priority}, Group: {descriptor.Group}");
+    }
+
+    private void RegisterOptions(MiddlewareDescriptor descriptor)
+    {
+        var optionsType = descriptor.OptionsType;
+        var options = descriptor.Options;
+
+        if (optionsType is null || options is null)
+        {
+            throw new InvalidOperationException($"Options type for middleware {descriptor.MiddlewareType.FullName} is not set.");
+        }
+
+        var optionsMonitorType = typeof(IOptionsMonitor<>).MakeGenericType(optionsType);
+        var optionsMonitor = Activator.CreateInstance(optionsMonitorType, options) as IOptionsMonitor<object> ??
+            throw new InvalidOperationException("Could not create options monitor.");
+        _services.AddSingleton(optionsMonitor);
+        Debug.WriteLine($"Registered options for middleware: {descriptor.MiddlewareType.FullName}");
     }
 
     private bool CheckActivationConditions(MiddlewareDescriptor descriptor, IApplicationBuilder application, HttpContext context, RequestDelegate next)
@@ -214,31 +256,29 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
 
     private bool TryResolveService(MiddlewareDescriptor descriptor, out object middlewareInstance)
     {
-        var serviceProvider = _services.BuildServiceProvider();
+        var container = _scope?.ServiceProvider.GetRequiredService<ILifetimeScope>();
 
-        using (var scope = serviceProvider.CreateScope())
+        try
         {
-            var container = scope.ServiceProvider.GetRequiredService<ILifetimeScope>();
+            if (descriptor.Options is not null)
+            {
+                var options = descriptor.Options;
+                var optionsType = options.GetType();
+                middlewareInstance = container?.Resolve(descriptor.MiddlewareType, new TypedParameter(descriptor.Options.GetType(), descriptor.Options))!;
+            }
+            else
+            {
+                middlewareInstance = container?.Resolve(descriptor.MiddlewareType)!;
+            }
 
-            try
-            {
-                if (descriptor.Options is not null)
-                {
-                    middlewareInstance = container.Resolve(descriptor.MiddlewareType, new TypedParameter(descriptor.Options.GetType(), descriptor.Options));
-                }
-                else
-                {
-                    middlewareInstance = container.Resolve(descriptor.MiddlewareType);
-                }
-                Debug.WriteLine($"Resolved middleware: {descriptor.MiddlewareType.FullName}");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error resolving middleware {descriptor.MiddlewareType.FullName}: {ex.Message}");
-                middlewareInstance = null!;
-                return false;
-            }
+            Debug.WriteLine($"Resolved middleware: {descriptor.MiddlewareType.FullName}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error resolving middleware {descriptor.MiddlewareType.FullName}: {ex.Message}");
+            middlewareInstance = null!;
+            return false;
         }
     }
 
@@ -542,6 +582,7 @@ internal class MiddlewareConfigurator<TApplication> : IMiddlewareConfigurator<TA
         public IMiddlewareBinding WithOptions<TOptions>(TOptions options) where TOptions : class
         {
             _descriptor.Options = options ?? throw new ArgumentNullException(nameof(options));
+            _descriptor.OptionsType = typeof(TOptions);
             return this;
         }
 

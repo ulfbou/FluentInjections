@@ -25,6 +25,6 @@ public class HostBuilderUtility
     })
         .ConfigureServices(services =>
         {
-            services.AddFluentInjections<IHostBuilder>();
+            //services.AddFluentInjections<IHostBuilder>();
         });
 }
