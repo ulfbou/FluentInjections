@@ -4,15 +4,22 @@ using Microsoft.AspNetCore.Http;
 namespace FluentInjections;
 
 /// <summary>
-/// Provides functionality to configure middleware for the application.
+/// Represents a middleware configurator that provides methods to configure middleware components within the application.
 /// </summary>
-/// <typeparam name="TBuilder">The type of the application.</typeparam>
-public interface IMiddlewareConfigurator<TBuilder> where TBuilder : class
+/// <remarks>
+/// This interface should be implemented by classes that define middleware configurations.
+/// </remarks>
+public interface IMiddlewareConfigurator : IConfigurator<IMiddlewareBinding>
 {
     /// <summary>
     /// Gets the application instance.
     /// </summary>
-    TBuilder Builder { get; }
+    object Middleware { get; }
+
+    /// <summary>
+    /// Gets the type of the application builder.
+    /// </summary>
+    Type MiddlewareType { get; }
 
     /// <summary>
     /// Registers a middleware of the specified type.

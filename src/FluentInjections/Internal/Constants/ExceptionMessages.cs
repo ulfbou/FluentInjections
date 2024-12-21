@@ -1,4 +1,4 @@
-﻿namespace FluentInjections.Tests.Internal.Constants;
+﻿namespace FluentInjections.Internal.Constants;
 
 internal class ExceptionMessages
 {

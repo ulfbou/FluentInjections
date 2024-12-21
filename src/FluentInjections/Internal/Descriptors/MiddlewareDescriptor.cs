@@ -1,5 +1,4 @@
 ﻿using FluentInjections.Internal.Constants;
-using FluentInjections.Tests.Internal.Constants;
 
 namespace FluentInjections.Internal.Descriptors;
 

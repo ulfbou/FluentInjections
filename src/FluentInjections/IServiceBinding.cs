@@ -1,16 +1,21 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+
 using System;
 using System.Collections.Generic;
 
 namespace FluentInjections;
 
 /// <summary>
-/// Represents a service binding that allows for configuring and registering services.
+/// Represents a service binding that provides methods to bind and configure services within the application.
 /// </summary>
-/// <typeparam name="TService">The type of the service to bind.</typeparam>
-public interface IServiceBinding<TService> where TService : class
+/// <remarks>
+/// This interface should be implemented by classes that define service bindings.
+/// </remarks>
+public interface IServiceBinding<TService> : IBinding
 {
+    TService Service { get; }
+
     /// <summary>
     /// Binds the service to a specific implementation type.
     /// </summary>
