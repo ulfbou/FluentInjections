@@ -1,4 +1,5 @@
 ﻿using FluentInjections.Internal.Configurators;
+using FluentInjections.Tests.Middlewares;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -15,29 +16,30 @@ namespace FluentInjections.Tests.ConfiguratorTests;
 
 public class MiddlewareConfiguratorTests
 {
-    private IApplicationBuilder _application;
+    private readonly Mock<IApplicationBuilder> _mockAppBuilder;
+    private readonly Mock<IServiceProvider> _mockProvider;
+    private IApplicationBuilder _appBuilder;
     private IServiceCollection _services;
-    private readonly IWebHostBuilder _builder;
+    private readonly IWebHostBuilder _webBuilder;
     private MiddlewareConfigurator<IApplicationBuilder> _configurator;
     private readonly List<Type> _pipelineOrder = new();
-    private readonly Mock<IApplicationBuilder> _mockApplicationBuilder;
-    private readonly Mock<IServiceProvider> _mockServiceProvider;
 
     public MiddlewareConfiguratorTests()
     {
-        _mockApplicationBuilder = new Mock<IApplicationBuilder>();
+        _mockAppBuilder = new Mock<IApplicationBuilder>();
+        _appBuilder = _mockAppBuilder.Object;
         _services = new ServiceCollection();
-        _mockServiceProvider = new Mock<IServiceProvider>();
+        _mockProvider = new Mock<IServiceProvider>();
         _pipelineOrder = new List<Type>();
 
         // Setup mock service provider
-        _mockServiceProvider.Setup(sp => sp.GetService(typeof(IApplicationBuilder)))
-                .Returns(_mockApplicationBuilder.Object);
-            _services.AddSingleton(_mockServiceProvider.Object);
+        _mockProvider.Setup(sp => sp.GetService(typeof(IApplicationBuilder)))
+                .Returns(_mockAppBuilder.Object);
+        _services.AddSingleton(_mockProvider.Object);
 
-        _configurator = new MiddlewareConfigurator<IApplicationBuilder>(_services, _mockApplicationBuilder.Object);
-         _builder = new WebHostBuilder();
-        _builder.UseEnvironment("Development")
+        _configurator = new MiddlewareConfigurator<IApplicationBuilder>(_services, _mockAppBuilder.Object);
+        _webBuilder = new WebHostBuilder();
+        _webBuilder.UseEnvironment("Development")
                 .ConfigureServices(services =>
                 {
                     services.AddTransient<MiddlewareA>(sp => new MiddlewareA(_pipelineOrder));
@@ -46,7 +48,7 @@ public class MiddlewareConfiguratorTests
                     services.AddTransient<MiddlewareD>(sp => new MiddlewareD(_pipelineOrder));
                     services.AddTransient<MiddlewareE>(sp => new MiddlewareE(_pipelineOrder));
                     services.AddTransient<MiddlewareF>(sp => new MiddlewareF(_pipelineOrder));
-                }); 
+                });
     }
 
     [Fact]
@@ -62,8 +64,8 @@ public class MiddlewareConfiguratorTests
             .Configure(app =>
             {
                 _configurator = new MiddlewareConfigurator<IApplicationBuilder>(_services, app);
-                    _configurator.UseMiddleware<MiddlewareA>().WithPriority(2);
-                    _configurator.UseMiddleware<MiddlewareB>().WithPriority(1);
+                _configurator.UseMiddleware<MiddlewareA>().WithPriority(2);
+                _configurator.UseMiddleware<MiddlewareB>().WithPriority(1);
                 _configurator.Register();
 
                 app.Run(async context =>
@@ -72,24 +74,24 @@ public class MiddlewareConfiguratorTests
                 });
             });
 
-            using var server = new TestServer(builder);
-            using var client = server.CreateClient();
+        using var server = new TestServer(builder);
+        using var client = server.CreateClient();
 
-            // Act
-            var response = await client.GetAsync("/");
+        // Act
+        var response = await client.GetAsync("/");
 
-            // Assert
-            response.EnsureSuccessStatusCode();
-            Assert.Equal(2, _pipelineOrder.Count);
-            Assert.Equal(typeof(MiddlewareB), _pipelineOrder[0]);
-            Assert.Equal(typeof(MiddlewareA), _pipelineOrder[1]);
-        }
+        // Assert
+        response.EnsureSuccessStatusCode();
+        Assert.Equal(2, _pipelineOrder.Count);
+        Assert.Equal(typeof(MiddlewareB), _pipelineOrder[0]);
+        Assert.Equal(typeof(MiddlewareA), _pipelineOrder[1]);
+    }
 
     [Fact]
-    public async Task Middleware_Should_Respect_PriorityAsync()
+    public async Task Middleware_Should_Respect_PriorityAsync2()
     {
         // Arrange
-        _builder.Configure(app =>
+        _webBuilder.Configure(app =>
         {
             _configurator = new MiddlewareConfigurator<IApplicationBuilder>(_services, app);
             _configurator.UseMiddleware<MiddlewareA>().WithPriority(2);
@@ -101,7 +103,7 @@ public class MiddlewareConfiguratorTests
                 await context.Response.WriteAsync("Endpoint");
             });
         });
-        using var server = new TestServer(_builder);
+        using var server = new TestServer(_webBuilder);
         using var client = server.CreateClient();
 
         // Act
@@ -118,7 +120,7 @@ public class MiddlewareConfiguratorTests
     [Fact]
     public async Task Middleware_With_Condition_Should_Be_ConditionalAsync()
     {
-        _builder.Configure(app =>
+        _webBuilder.Configure(app =>
         {
             _configurator = new MiddlewareConfigurator<IApplicationBuilder>(_services, app);
             _configurator.UseMiddleware<MiddlewareA>().When(() => false);
@@ -131,7 +133,7 @@ public class MiddlewareConfiguratorTests
             });
         });
 
-        using var server = new TestServer(_builder);
+        using var server = new TestServer(_webBuilder);
         using var client = server.CreateClient();
 
         var response = await client.GetAsync("/");
@@ -144,7 +146,7 @@ public class MiddlewareConfiguratorTests
     [Fact]
     public async Task Middleware_With_Group_Should_Respect_GroupingAsync()
     {
-        _builder.Configure(app =>
+        _webBuilder.Configure(app =>
             {
                 _configurator = new MiddlewareConfigurator<IApplicationBuilder>(_services, app);
                 _configurator.UseMiddleware<MiddlewareA>().InGroup("Group1");
@@ -158,7 +160,7 @@ public class MiddlewareConfiguratorTests
                 });
             });
 
-        using var server = new TestServer(_builder);
+        using var server = new TestServer(_webBuilder);
         using var client = server.CreateClient();
 
         // Act
@@ -176,7 +178,7 @@ public class MiddlewareConfiguratorTests
     public async Task Middleware_With_Dependencies_Should_Be_Ordered_CorrectlyAsync()
     {
         // Arrange
-        _builder.Configure(app =>
+        _webBuilder.Configure(app =>
         {
             _configurator = new MiddlewareConfigurator<IApplicationBuilder>(_services, app);
             _configurator.UseMiddleware<MiddlewareA>().DependsOn<MiddlewareC>();
@@ -190,7 +192,7 @@ public class MiddlewareConfiguratorTests
             });
         });
 
-        using var server = new TestServer(_builder);
+        using var server = new TestServer(_webBuilder);
         using var client = server.CreateClient();
 
         // Act
@@ -209,7 +211,7 @@ public class MiddlewareConfiguratorTests
     {
         // Arrange
         var registered = new List<Type>();
-        _builder.Configure(app =>
+        _webBuilder.Configure(app =>
         {
             _configurator = new MiddlewareConfigurator<IApplicationBuilder>(_services, app);
 
@@ -237,7 +239,7 @@ public class MiddlewareConfiguratorTests
             });
         });
 
-        using var server = new TestServer(_builder);
+        using var server = new TestServer(_webBuilder);
         using var client = server.CreateClient();
 
         // Act & Assert
@@ -256,7 +258,7 @@ public class MiddlewareConfiguratorTests
     [Fact]
     public async Task Middleware_With_Circular_Dependency_Should_Throw_ExceptionAsync()
     {
-        _builder.Configure(app =>
+        _webBuilder.Configure(app =>
         {
             _configurator = new MiddlewareConfigurator<IApplicationBuilder>(_services, app);
 
@@ -273,7 +275,7 @@ public class MiddlewareConfiguratorTests
         });
 
 
-        using var server = new TestServer(_builder);
+        using var server = new TestServer(_webBuilder);
         using var client = server.CreateClient();
 
         // Act & Assert
@@ -283,7 +285,7 @@ public class MiddlewareConfiguratorTests
     [Fact]
     public async Task Middleware_With_Precedence_and_Following_Should_Be_Ordered_CorrectlyAsync()
     {
-        _builder.Configure(app =>
+        _webBuilder.Configure(app =>
         {
             _configurator = new MiddlewareConfigurator<IApplicationBuilder>(_services, app);
 
@@ -298,7 +300,7 @@ public class MiddlewareConfiguratorTests
             });
         });
 
-        using var server = new TestServer(_builder);
+        using var server = new TestServer(_webBuilder);
         using var client = server.CreateClient();
 
         var response = await client.GetAsync("/");
@@ -313,7 +315,7 @@ public class MiddlewareConfiguratorTests
     [Fact]
     public async Task Middleware_With_Precedence_and_Following_Circular_Dependency_Should_Throw_ExceptionAsync()
     {
-        _builder.Configure(app =>
+        _webBuilder.Configure(app =>
         {
             _configurator = new MiddlewareConfigurator<IApplicationBuilder>(_services, app);
 
@@ -328,35 +330,10 @@ public class MiddlewareConfiguratorTests
             });
         });
 
-        using var server = new TestServer(_builder);
+        using var server = new TestServer(_webBuilder);
         using var client = server.CreateClient();
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(async () => await client.GetAsync("/"));
     }
-
-    // Middleware stubs
-    private class TestMiddlewareBase : IMiddleware
-    {
-        private readonly List<Type> _pipelineOrder;
-
-        public TestMiddlewareBase(List<Type> pipelineOrder)
-        {
-            _pipelineOrder = pipelineOrder;
-        }
-
-        public async Task InvokeAsync(HttpContext context, RequestDelegate next)
-        {
-            Debug.WriteLine($"Invoking {this.GetType().Name}");
-            _pipelineOrder.Add(this.GetType());
-            await next(context);
-        }
-    }
-
-    private class MiddlewareA(List<Type> pipelineOrder) : TestMiddlewareBase(pipelineOrder) { }
-    private class MiddlewareB(List<Type> pipelineOrder) : TestMiddlewareBase(pipelineOrder) { }
-    private class MiddlewareC(List<Type> pipelineOrder) : TestMiddlewareBase(pipelineOrder) { }
-    private class MiddlewareD(List<Type> pipelineOrder) : TestMiddlewareBase(pipelineOrder) { }
-    private class MiddlewareE(List<Type> pipelineOrder) : TestMiddlewareBase(pipelineOrder) { }
-    private class MiddlewareF(List<Type> pipelineOrder) : TestMiddlewareBase(pipelineOrder) { }
 }

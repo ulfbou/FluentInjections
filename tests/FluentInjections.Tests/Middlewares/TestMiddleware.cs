@@ -1,6 +1,25 @@
 ﻿using Microsoft.AspNetCore.Http;
 
+using System.Diagnostics;
+
 namespace FluentInjections.Tests.Middlewares;
+
+internal class TestMiddlewareBase
+{
+    protected readonly List<Type> _pipelineOrder;
+
+    public TestMiddlewareBase(List<Type> pipelineOrder)
+    {
+        _pipelineOrder = pipelineOrder;
+    }
+
+    public async Task InvokeAsync(HttpContext context, RequestDelegate next)
+    {
+        Debug.WriteLine($"Invoking {this.GetType().Name}");
+        _pipelineOrder.Add(this.GetType());
+        await next(context);
+    }
+}
 
 internal class TestMiddleware
 {
@@ -17,15 +36,20 @@ internal class TestMiddleware
         return Task.CompletedTask;
     }
 }
-internal class MiddlewareA : TestMiddleware, IMiddleware { }
-internal class MiddlewareB : TestMiddleware, IMiddleware { }
-internal class MiddlewareC : TestMiddleware, IMiddleware { }
+
+internal class MiddlewareA(List<Type> pipelineOrder) : TestMiddlewareBase(pipelineOrder) { }
+internal class MiddlewareB(List<Type> pipelineOrder) : TestMiddlewareBase(pipelineOrder) { }
+internal class MiddlewareC(List<Type> pipelineOrder) : TestMiddlewareBase(pipelineOrder) { }
+internal class MiddlewareD(List<Type> pipelineOrder) : TestMiddlewareBase(pipelineOrder) { }
+internal class MiddlewareE(List<Type> pipelineOrder) : TestMiddlewareBase(pipelineOrder) { }
+internal class MiddlewareF(List<Type> pipelineOrder) : TestMiddlewareBase(pipelineOrder) { }
 
 internal class TestMiddleware<TOptions> : TestMiddleware where TOptions : class
 {
     public static TOptions LastOptions = default!;
     private readonly TOptions _options;
     private readonly RequestDelegate _next;
+
     public TestMiddleware(RequestDelegate next, TOptions options) : base()
     {
         _next = next;

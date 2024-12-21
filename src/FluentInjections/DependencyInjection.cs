@@ -1,11 +1,14 @@
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
+
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Modules;
 using FluentInjections.Internal.Registries;
 using FluentInjections.Validation;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+
 using System.Reflection;
 
 namespace FluentInjections
