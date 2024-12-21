@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
-namespace FluentInjections.Internal.Configurators;
+namespace FluentInjections.Internal.Descriptors;
 
 internal class NamedServiceDescriptor : ServiceDescriptor
 {

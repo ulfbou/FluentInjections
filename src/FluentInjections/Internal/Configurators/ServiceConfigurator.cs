@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using FluentInjections.Validation;
 using System.Diagnostics;
+using FluentInjections.Internal.Descriptors;
 
 namespace FluentInjections.Internal.Configurators;
 
@@ -388,7 +389,7 @@ internal class ServiceConfigurator : IServiceConfigurator
                         factory = _factory;
                     }
 
-                    descriptor = new NamedServiceDescriptor(_serviceType, factory, _lifetime, _name);
+                    descriptor = new NamedServiceDescriptor(_serviceType, factory, _lifetime, _name!);
                     Debug.WriteLine($"Registered {_serviceType.Name} factory with name {_name}.");
                 }
                 else if (_implementationType is not null)
@@ -407,7 +408,7 @@ internal class ServiceConfigurator : IServiceConfigurator
                         factory = CreateInstance;
                     }
 
-                    descriptor = new NamedServiceDescriptor(_serviceType, factory, _lifetime, _name);
+                    descriptor = new NamedServiceDescriptor(_serviceType, factory, _lifetime, _name!);
                     Debug.WriteLine($"Registered {_serviceType.Name} implementation with name {_name}.");
                 }
                 else

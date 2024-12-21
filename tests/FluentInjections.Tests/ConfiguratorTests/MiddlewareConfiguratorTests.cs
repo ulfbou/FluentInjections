@@ -3,6 +3,7 @@ using Autofac.Core;
 using Autofac.Extensions.DependencyInjection;
 
 using FluentInjections.Internal.Configurators;
+using FluentInjections.Internal.Descriptors;
 using FluentInjections.Internal.Registries;
 using FluentInjections.Tests.Internal;
 using FluentInjections.Tests.Internal.Extensions;
@@ -38,7 +39,7 @@ public class MiddlewareConfiguratorTests
         _services.AddTransient<IApplicationBuilder>(sp => new ApplicationBuilder(sp));
         _services.AddTransient<TestMiddleware>(sp => new TestMiddleware());
         _services.Configure<TestOptions>(options => options.Value = "Test");
-        _services.AddFluentInjections<IApplicationBuilder, ModuleRegistry<IApplicationBuilder>>(typeof(TestMiddleware).Assembly);
+        _services.AddFluentInjections<IApplicationBuilder>(typeof(TestMiddleware).Assembly);
 
         // Create an Autofac container builder
         var containerBuilder = new ContainerBuilder();
@@ -90,4 +91,3 @@ public class MiddlewareConfiguratorTests
 
     internal void Callback(IMiddlewareBinding binding, Action<MiddlewareDescriptor> action) => binding.Callback(action);
 }
-

@@ -95,6 +95,6 @@ public class MiddlewareRegistrationTests
 
     private class TestMiddlewareOptions
     {
-        public string Option1 { get; set; }
+        public required string Option1 { get; set; }
     }
 }

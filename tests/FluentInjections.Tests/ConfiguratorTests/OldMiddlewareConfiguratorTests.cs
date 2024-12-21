@@ -1,4 +1,5 @@
 ﻿using FluentInjections.Internal.Configurators;
+using FluentInjections.Internal.Descriptors;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;

@@ -6,13 +6,13 @@ namespace FluentInjections;
 /// <summary>
 /// Provides functionality to configure middleware for the application.
 /// </summary>
-/// <typeparam name="TApplication">The type of the application.</typeparam>
-public interface IMiddlewareConfigurator<TApplication> where TApplication : class
+/// <typeparam name="TBuilder">The type of the application.</typeparam>
+public interface IMiddlewareConfigurator<TBuilder> where TBuilder : class
 {
     /// <summary>
     /// Gets the application instance.
     /// </summary>
-    TApplication Application { get; }
+    TBuilder Builder { get; }
 
     /// <summary>
     /// Registers a middleware of the specified type.

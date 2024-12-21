@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
-namespace FluentInjections.Internal.Configurators;
+namespace FluentInjections.Internal.Descriptors;
 
 // TODO: Implement PrioritizedServiceDescriptor to handle prioritizing already registered services.
 internal class PrioritizedServiceDescriptor : ServiceDescriptor

@@ -1,4 +1,6 @@
 ﻿using FluentInjections.Internal.Configurators;
+using FluentInjections.Internal.Descriptors;
+using FluentInjections.Tests.Internal.Extensions;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -23,4 +25,3 @@ public static class PipelineHelper
         return app.Build();
     }
 }
-

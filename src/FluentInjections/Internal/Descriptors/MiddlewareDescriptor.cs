@@ -1,6 +1,7 @@
 ﻿using FluentInjections.Internal.Constants;
 using FluentInjections.Tests.Internal.Constants;
-namespace FluentInjections.Internal.Configurators;
+
+namespace FluentInjections.Internal.Descriptors;
 
 internal class MiddlewareDescriptor
 {

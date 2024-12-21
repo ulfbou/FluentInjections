@@ -271,10 +271,10 @@ public class ServiceConfiguratorTests
         void DoSomething();
     }
 
-    public sealed class TestService : ITestService
+    internal sealed class TestService : ITestService
     {
-        public string? Param1 { get; set; }
-        public int Param2 { get; set; }
+        internal string? Param1 { get; set; }
+        internal int Param2 { get; set; }
 
         public TestService(string? param1 = null, int? param2 = null)
         {
@@ -288,9 +288,9 @@ public class ServiceConfiguratorTests
         }
     }
 
-    public sealed class TestServiceOptions
+    internal sealed class TestServiceOptions
     {
-        public string Option1 { get; set; }
+        public required string Option1 { get; set; }
     }
 
 }

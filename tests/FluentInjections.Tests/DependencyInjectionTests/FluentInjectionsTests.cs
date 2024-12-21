@@ -2,6 +2,7 @@
 
 using FluentInjections;
 using FluentInjections.Internal.Registries;
+using FluentInjections.Tests.Internal.Extensions;
 using FluentInjections.Tests.Modules;
 using FluentInjections.Tests.Services;
 
@@ -29,7 +30,7 @@ public partial class FluentInjectionsTests : IDisposable
     public FluentInjectionsTests()
     {
         _builder = WebApplication.CreateBuilder();
-        _builder.Services.AddFluentInjections<WebApplicationBuilder, ModuleRegistry<WebApplicationBuilder>>(typeof(InjectionTestServiceModule).Assembly);
+        _builder.Services.AddFluentInjections<WebApplicationBuilder>(typeof(InjectionTestServiceModule).Assembly);
         _services = _builder.Services;
         _app = _builder.Build();
         _scope = _app.Services.CreateAsyncScope();
