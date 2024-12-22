@@ -6,6 +6,4 @@
 /// <remarks>
 /// This interface should be implemented by classes that define component bindings.
 /// </remarks>
-public interface IBinding
-{
-}
+public interface IBinding { }

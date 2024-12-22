@@ -24,7 +24,7 @@ public sealed class InjectionTestServiceModule : IServiceModule
                     .To<TestServiceWithOptions>()
                     .WithName("Test44")
                     .AsSingleton()
-                    .ConfigureOptions<TestServiceWithOptions.TestServiceOptions>(options =>
+                    .Configure<TestServiceWithOptions.TestServiceOptions>(options =>
                     {
                         options.Param1 = "value1";
                         options.Param2 = 44;

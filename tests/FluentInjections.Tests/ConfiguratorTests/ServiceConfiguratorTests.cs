@@ -152,7 +152,7 @@ public class ServiceConfiguratorTests
     public void Bind_ServiceWithConfigureOptions_ShouldConfigureOptions()
     {
         // Arrange
-        var binding = _serviceConfigurator.Bind<TestService>().AsSelf().ConfigureOptions<TestServiceOptions>(opts => opts.Option1 = "value");
+        var binding = _serviceConfigurator.Bind<TestService>().AsSelf().Configure<TestServiceOptions>(opts => opts.Option1 = "value");
 
         // Act
         binding.Register();

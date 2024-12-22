@@ -1,3 +1,7 @@
+using Autofac.Core;
+
+using FluentInjections.Internal.Descriptors;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -12,10 +16,21 @@ namespace FluentInjections;
 /// <remarks>
 /// This interface should be implemented by classes that define service bindings.
 /// </remarks>
-public interface IServiceBinding<TService> : IBinding
+public interface IServiceBinding : IBinding
 {
-    TService Service { get; }
+    ServiceBindingDescriptor Descriptor { get; }
+    void Register();
+}
 
+/// <summary>
+/// Represents a service binding that provides methods to bind and configure services within the application.
+/// </summary>
+/// <typeparam name="TService">The type of the service.</typeparam>
+/// <remarks>
+/// This interface should be implemented by classes that define service bindings.
+/// </remarks>
+public interface IServiceBinding<TService> : IServiceBinding where TService : class
+{
     /// <summary>
     /// Binds the service to a specific implementation type.
     /// </summary>
@@ -109,26 +124,5 @@ public interface IServiceBinding<TService> : IBinding
     /// <typeparam name="TOptions">The type of the options.</typeparam>
     /// <param name="configure">The options configuration action.</param>
     /// <returns>The service binding instance.</returns>
-    IServiceBinding<TService> ConfigureOptions<TOptions>(Action<TOptions> configure) where TOptions : class;
-
-    /// <summary>
-    /// Configures options for the service using the service instance.
-    /// </summary>
-    /// <typeparam name="TOptions">The type of the options.</typeparam>
-    /// <param name="configure">The options configuration action.</param>
-    /// <returns>The service binding instance.</returns>
-    IServiceBinding<TService> ConfigureOptions<TOptions>(Action<TService, TOptions> configure) where TOptions : class;
-
-    /// <summary>
-    /// Configures options for the service using the service instance and configurator.
-    /// </summary>
-    /// <typeparam name="TOptions">The type of the options.</typeparam>
-    /// <param name="configure">The options configuration action.</param>
-    /// <returns>The service binding instance.</returns>
-    IServiceBinding<TService> ConfigureOptions<TOptions>(Action<TService, TOptions, IServiceConfigurator> configure) where TOptions : class;
-
-    /// <summary>
-    /// Registers the service with the specified configurations.
-    /// </summary>
-    void Register();
+    IServiceBinding<TService> Configure<TOptions>(Action<TOptions> configure) where TOptions : class;
 }

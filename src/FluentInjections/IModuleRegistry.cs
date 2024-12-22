@@ -3,80 +3,51 @@
 /// <summary>
 /// Represents a registry for managing service and middleware modules.
 /// </summary>
-/// <typeparam name="TBuilder">The type of the application builder.</typeparam>
-public interface IModuleRegistry<TBuilder> where TBuilder : class
+public interface IModuleRegistry
 {
     /// <summary>
-    /// Registers a service module.
+    /// Registers a component module.
     /// </summary>
-    /// <param name="module">The service module to register.</param>
+    /// <typeparam name="TConfigurator">The type of the configurator used to configure the module.</typeparam>
+    /// <param name="module">The component module to register.</param>
     /// <returns>The module registry instance.</returns>
-    IModuleRegistry<TBuilder> RegisterModule(IServiceModule module);
+    IModuleRegistry Register<TConfigurator>(IModule<TConfigurator> module) where TConfigurator : IConfigurator;
 
     /// <summary>
     /// Unregisters a service module.
     /// </summary>
     /// <param name="module">The service module to unregister.</param>
     /// <returns>The module registry instance.</returns>
-    IModuleRegistry<TBuilder> UnregisterModule(IServiceModule module);
-
-    /// <summary>
-    /// Registers a middleware module.
-    /// </summary>
-    /// <param name="module">The middleware module to register.</param>
-    /// <returns>The module registry instance.</returns>
-    IModuleRegistry<TBuilder> RegisterModule(IMiddlewareModule<TBuilder> module);
-
-    /// <summary>
-    /// Unregisters a middleware module.
-    /// </summary>
-    /// <param name="module">The middleware module to unregister.</param>
-    /// <returns>The module registry instance.</returns>
-    IModuleRegistry<TBuilder> UnregisterModule(IMiddlewareModule<TBuilder> module);
+    IModuleRegistry Unregister<TConfigurator>(IModule<TConfigurator> module) where TConfigurator : IConfigurator;
 
     /// <summary>
     /// Registers a module using a factory method and an optional configuration action.
     /// </summary>
-    /// <typeparam name="T">The type of the module.</typeparam>
+    /// <typeparam name="TConfigurator">The type of the module.</typeparam>
     /// <param name="factory">The factory method to create the module.</param>
     /// <param name="configure">An optional configuration action for the module.</param>
     /// <returns>The module registry instance.</returns>
-    IModuleRegistry<TBuilder> RegisterModule<T>(Func<T> factory, Action<T>? configure = null) where T : class, new();
+    IModuleRegistry Register<TConfigurator>(Func<TConfigurator> factory, Action<TConfigurator>? configure = null) where TConfigurator : IConfigurator;
 
     /// <summary>
-    /// Registers a module based on a condition.
-    /// </summary>
-    /// <typeparam name="T">The type of the module.</typeparam>
-    /// <param name="condition">The condition to determine if the module should be registered.</param>
-    /// <returns>The module registry instance.</returns>
-    IModuleRegistry<TBuilder> RegisterModule<T>(Func<bool> condition) where T : IServiceModule, new();
-
-    /// <summary>
-    /// Applies all registered service modules.
+    /// Applies all registered component modules.
     /// </summary>
     /// <param name="serviceConfigurator">The service configurator.</param>
     /// <returns>The module registry instance.</returns>
-    IModuleRegistry<TBuilder> ApplyServiceModules(IServiceConfigurator serviceConfigurator);
-
-    /// <summary>
-    /// Applies all registered middleware modules.
-    /// </summary>
-    /// <param name="middlewareConfigurator">The middleware configurator.</param>
-    /// <returns>The module registry instance.</returns>
-    IModuleRegistry<TBuilder> ApplyMiddlewareModules(IMiddlewareConfigurator<TBuilder> middlewareConfigurator);
+    IModuleRegistry Apply<TConfigurator>(TConfigurator configurator) where TConfigurator : IConfigurator;
 
     /// <summary>
     /// Initializes all registered modules.
     /// </summary>
     /// <returns>The module registry instance.</returns>
-    IModuleRegistry<TBuilder> InitializeModules();
+    IModuleRegistry Initialize();
 
     /// <summary>
     /// Determines if the module registry can handle a specific type of module.
     /// </summary>
-    /// <typeparam name="TModule">The type of the module.</typeparam>
+    /// <typeparam name="TConfigurator">The configurator of the module.</typeparam>
     /// <returns>True if the module registry can handle the specified module, otherwise false.</returns>
-    bool CanHandle<TModule>() where TModule : class, IServiceModule;
+    bool CanHandle<TConfigurator>() where TConfigurator : IConfigurator;
 
     /// <summary>
     /// Determines if the module registry can handle a specific type of module.
