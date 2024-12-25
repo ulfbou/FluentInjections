@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentInjections.Tests.Exte
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentInjections.Validation", "src\Validation\FluentInjections.Validation.csproj", "{6D3931CC-5BF4-42E8-9552-7860CE75AA70}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentInjections.Extensions", "src\Extensions\FluentInjections.Extensions.csproj", "{85064B4B-B626-4746-9377-850B73355B0C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,10 @@ Global
 		{6D3931CC-5BF4-42E8-9552-7860CE75AA70}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6D3931CC-5BF4-42E8-9552-7860CE75AA70}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6D3931CC-5BF4-42E8-9552-7860CE75AA70}.Release|Any CPU.Build.0 = Release|Any CPU
+		{85064B4B-B626-4746-9377-850B73355B0C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{85064B4B-B626-4746-9377-850B73355B0C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{85064B4B-B626-4746-9377-850B73355B0C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{85064B4B-B626-4746-9377-850B73355B0C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -50,5 +56,6 @@ Global
 		{D1AAABA5-3C76-4B73-BFAD-135B7C375B37} = {4DCA8BF5-66CB-4FA9-AC4E-3A3733A0F5A7}
 		{5F997638-9E1A-4B25-BCC0-5B4A37F150AC} = {4DCA8BF5-66CB-4FA9-AC4E-3A3733A0F5A7}
 		{6D3931CC-5BF4-42E8-9552-7860CE75AA70} = {4DCA8BF5-66CB-4FA9-AC4E-3A3733A0F5A7}
+		{85064B4B-B626-4746-9377-850B73355B0C} = {4DCA8BF5-66CB-4FA9-AC4E-3A3733A0F5A7}
 	EndGlobalSection
 EndGlobal
