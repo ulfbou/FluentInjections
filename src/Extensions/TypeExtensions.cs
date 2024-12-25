@@ -7,6 +7,101 @@ namespace FluentInjections.Extensions;
 
 public static class TypeExtensions
 {
+    // Check if a type is compatible with another type
+    public static bool IsCompatibleWith(this Type sourceType, Type targetType)
+    {
+        if (sourceType == null || targetType == null) return false;
+
+        // Check basic type compatibility
+        if (targetType.IsAssignableFrom(sourceType)) return true;
+
+        // Check generic type compatibility
+        if (sourceType.IsGenericType && targetType.IsGenericType)
+        {
+            var sourceGenericType = sourceType.GetGenericTypeDefinition();
+            var targetGenericType = targetType.GetGenericTypeDefinition();
+            if (sourceGenericType == targetGenericType)
+            {
+                var sourceGenericArguments = sourceType.GetGenericArguments();
+                var targetGenericArguments = targetType.GetGenericArguments();
+                return sourceGenericArguments.Length == targetGenericArguments.Length &&
+                       sourceGenericArguments.Zip(targetGenericArguments, IsCompatibleWith).All(x => x);
+            }
+        }
+
+        // Check interface implementation
+        if (targetType.IsInterface)
+        {
+            var interfaces = sourceType.GetInterfaces();
+            foreach (var iface in interfaces)
+            {
+                if (IsCompatibleWith(iface, targetType))
+                {
+                    return true;
+                }
+            }
+        }
+
+        // Check base class compatibility
+        var currentType = sourceType.BaseType;
+        while (currentType != null)
+        {
+            if (IsCompatibleWith(currentType, targetType))
+            {
+                return true;
+            }
+            currentType = currentType.BaseType;
+        }
+
+        // Check nullable type compatibility
+        if (Nullable.GetUnderlyingType(sourceType) != null && Nullable.GetUnderlyingType(targetType) != null)
+        {
+            return IsCompatibleWith(Nullable.GetUnderlyingType(sourceType), Nullable.GetUnderlyingType(targetType));
+        }
+
+        // Check array and collection type compatibility
+        if (sourceType.IsArray && targetType.IsArray)
+        {
+            return IsCompatibleWith(sourceType.GetElementType(), targetType.GetElementType());
+        }
+
+        // Check conversion operator compatibility
+        if (sourceType.HasConversionOperatorTo(targetType) || targetType.HasConversionOperatorTo(sourceType))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    // Attempt to convert an object to a specified type if they are compatible
+    public static bool TryConvertTo<TTarget>(this object source, out TTarget result) where TTarget : class
+    {
+        var sourceType = source.GetType();
+        var targetType = typeof(TTarget);
+        if (sourceType.IsCompatibleWith(targetType))
+        {
+            try
+            {
+                result = (TTarget)Convert.ChangeType(source, targetType);
+                return true;
+            }
+            catch
+            {
+                // Conversion failed
+            }
+        }
+        result = default(TTarget);
+        return false;
+    }
+
+    // Check if a type has an explicit or implicit conversion operator to another type
+    private static bool HasConversionOperatorTo(this Type fromType, Type toType)
+    {
+        return fromType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Any(m => (m.Name == "op_Explicit" || m.Name == "op_Implicit") && m.ReturnType == toType);
+    }
+
     public static bool IsNullable(this Type type)
     {
         return Nullable.GetUnderlyingType(type) != null;
