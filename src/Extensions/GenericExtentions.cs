@@ -10,7 +10,7 @@ public static class GenericExtensions
     /// <returns>The casted object, or default(T) if the cast fails.</returns>
     public static T As<T>(this object obj) where T : class
     {
-        return obj as T ?? default(T);
+        return obj as T ?? default(T)!;
     }
 
     /// <summary>
@@ -21,7 +21,7 @@ public static class GenericExtensions
     /// <returns>The casted object, or null if the cast fails.</returns>
     public static T AsNullable<T>(this object obj) where T : class
     {
-        return obj as T;
+        return (obj as T)!;
     }
 
     /// <summary>
@@ -32,7 +32,7 @@ public static class GenericExtensions
     /// <param name="action">The action to execute.</param>
     public static void IfNotNull<T>(this T obj, Action<T> action) where T : class
     {
-        if (obj != null)
+        if (obj is not null)
         {
             action(obj);
         }
@@ -54,7 +54,7 @@ public static class GenericExtensions
             return func(obj);
         }
 
-        return default(TResult);
+        return default(TResult)!;
     }
 
     /// <summary>
@@ -73,7 +73,7 @@ public static class GenericExtensions
             return func(obj);
         }
 
-        return null;
+        return null!;
     }
 
     /// <summary>

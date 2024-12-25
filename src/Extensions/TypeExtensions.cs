@@ -116,6 +116,66 @@ public static class TypeExtensions
     }
 
     /// <summary>
+    /// Safely casts an object to the specified type. Returns default(T) if the cast fails.
+    /// </summary>
+    /// <typeparam name="TTarget">The target type to cast to.</typeparam>
+    /// <param name="obj">The object to cast.</param>
+    /// <param name="result">The casted object, or default(T) if the cast fails.</param>
+    /// <returns><see langword="true"/> if the cast was successful; otherwise, <see langword="false"/>.</returns>
+    public static bool TryConvertTo<TTarget>(this object source, out TTarget result) where TTarget : class
+    {
+        result = default!;
+
+        if (source is TTarget directCastResult)
+        {
+            result = directCastResult;
+            return true;
+        }
+
+        var targetType = typeof(TTarget);
+
+        if (source is null)
+        {
+            if (targetType.IsNullable())
+            {
+                result = default!;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        // Fallback to compatibility check reflection-based conversion if direct cast fails
+        var sourceType = source.GetType();
+
+        if (sourceType.IsCompatibleWith(targetType))
+        {
+            try
+            {
+                result = (TTarget)Convert.ChangeType(source, targetType)!;
+                return true;
+            }
+            catch
+            {
+                // Handle more advanced conversions here
+                return TryConvertToAdvanced(source, targetType, out result);
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryConvertToAdvanced<TTarget>(object source, Type targetType, out TTarget result) where TTarget : class
+    {
+        // Handle more advanced conversions here
+        result = default!;
+        CacheCompatibility(source.GetType(), targetType, false);
+        return false;
+    }
+
+    /// <summary>
     /// Checks if a type is nullable.
     /// </summary>
     /// <param name="type">The type to check.</param>
