@@ -1,4 +1,8 @@
-﻿using FluentInjections.Internal.Configurators;
+﻿using FluentAssertions;
+
+using FluentInjections.Internal.Configurators;
+using FluentInjections.Internal.Registries;
+using FluentInjections.Tests.Modules;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -9,12 +13,146 @@ namespace FluentInjections.Tests.ConfiguratorTests;
 
 public class ServiceConfiguratorTests
 {
-    private readonly IServiceCollection _services = new ServiceCollection();
-    private readonly ServiceConfigurator _serviceConfigurator;
+    private readonly IServiceCollection _services;
+    private readonly ModuleRegistry _registry;
+    private readonly Mock<IServiceConfigurator> _configuratorMock;
 
     public ServiceConfiguratorTests()
     {
-        _serviceConfigurator = new ServiceConfigurator(_services);
+        _services = new ServiceCollection();
+        _services.AddFluentInjections(typeof(InjectionTestServiceModule).Assembly);
+        _registry = new ModuleRegistry(_services);
+        _configuratorMock = new Mock<IServiceConfigurator>();
+    }
+
+    [Fact]
+    public void Apply_Should_Configure_Modules_That_Can_Handle_Configurator()
+    {
+        // Arrange
+        var configuratorMock = new Mock<IConfigurator>();
+        var configurableModuleMock = new Mock<IConfigurableModule<IConfigurator>>();
+        var moduleMock = configurableModuleMock.As<IModule<IConfigurator>>();
+
+        // Setup CanHandle and Configure behavior
+        configurableModuleMock.Setup(m => m.CanHandle<IConfigurator>()).Returns(true);
+        configurableModuleMock.Setup(m => m.Configure(configuratorMock.Object));
+
+        // Register and apply the module
+        _registry.Register<IModule<IConfigurator>, IConfigurator>(configurableModuleMock.Object);
+        _registry.Apply(configuratorMock.Object);
+
+        // Verify Configure is called
+        configurableModuleMock.Verify(m => m.Configure(configuratorMock.Object), Times.Once);
+    }
+
+    [Fact]
+    public void Initialize_Should_Call_Initialize_On_Initializable_Modules()
+    {
+        // Arrange
+        var moduleMock = new Mock<IModule<IConfigurator>>(MockBehavior.Strict);
+        var initializableMock = moduleMock.As<IInitializable>();
+        initializableMock.Setup(m => m.Initialize());
+
+        _registry.Register<IModule<IConfigurator>, IConfigurator>(moduleMock.Object);
+
+        // Act
+        _registry.Initialize();
+
+        // Assert
+        initializableMock.Verify(m => m.Initialize(), Times.Once);
+    }
+
+    [Fact]
+    public void Register_Should_Add_Module_To_Registry()
+    {
+        // Arrange
+        var moduleMock = new Mock<IModule<IConfigurator>>();
+
+        // Act
+        _registry.Register<IModule<IConfigurator>, IConfigurator>(moduleMock.Object);
+
+        // Assert
+        _registry.GetAllModules()
+            .Should()
+            .ContainSingle(m => m == moduleMock.Object);
+    }
+
+    [Fact]
+    public void Register_Should_Throw_If_Module_Is_Already_Registered()
+    {
+        // Arrange
+        var moduleMock = new Mock<IModule<IConfigurator>>();
+        _registry.Register<IModule<IConfigurator>, IConfigurator>(moduleMock.Object);
+
+        // Act
+        Action act = () => _registry.Register<IModule<IConfigurator>, IConfigurator>(moduleMock.Object);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage($"Module of type {moduleMock.Object.GetType().Name} is already registered.");
+    }
+
+    [Fact]
+    public void Unregister_Should_Remove_Module_From_Registry()
+    {
+        // Arrange
+        var moduleMock = new Mock<IModule<IConfigurator>>();
+        _registry.Register<IModule<IConfigurator>, IConfigurator>(moduleMock.Object);
+
+        // Act
+        _registry.Unregister<IModule<IConfigurator>, IConfigurator>(moduleMock.Object);
+
+        // Assert
+        _registry.GetAllModules()
+            .Should()
+            .NotContain(moduleMock.Object);
+    }
+
+    [Fact]
+    public void Unregister_Should_Throw_If_Module_Not_Registered()
+    {
+        // Arrange
+        var moduleMock = new Mock<IModule<IConfigurator>>();
+
+        // Act
+        Action act = () => _registry.Unregister<IModule<IConfigurator>, IConfigurator>(moduleMock.Object);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage($"Module of type {moduleMock.Object.GetType().Name} is not registered.");
+    }
+
+    [Fact]
+    public void Register_With_Factory_Should_Create_And_Add_Module()
+    {
+        // Arrange
+        var moduleMock = new Mock<IModule<IConfigurator>>();
+
+        // Act
+        _registry.Register<IModule<IConfigurator>, IConfigurator>(() => moduleMock.Object);
+
+        // Assert
+        _registry.GetAllModules()
+            .Should()
+            .ContainSingle(m => m == moduleMock.Object);
+    }
+
+    [Fact]
+    public void Register_With_Factory_And_Configure_Action_Should_Invoke_Configuration()
+    {
+        // Arrange
+        var moduleMock = new Mock<IModule<IConfigurator>>();
+        var configureActionMock = new Mock<Action<IModule<IConfigurator>>>();
+        configureActionMock.Setup(a => a.Invoke(moduleMock.Object));
+
+        // Act
+        _registry.Register<IModule<IConfigurator>, IConfigurator>(() => moduleMock.Object, configureActionMock.Object);
+
+        // Assert
+        configureActionMock.Verify(a => a.Invoke(moduleMock.Object), Times.Once);
+        _registry.GetAllModules()
+            .Should()
+            .ContainSingle(m => m == moduleMock.Object);
     }
 
     [Fact]
@@ -22,7 +160,8 @@ public class ServiceConfiguratorTests
     {
         // Arrange
         Dictionary<string, object> parameters = new() { { "param1", "value1" }, { "param2", 42 } };
-        var binding = _serviceConfigurator.Bind<ITestService>()
+        var configurator = new ServiceConfigurator(_services);
+        var binding = configurator.Bind<ITestService>()
             .To<TestService>()
             .WithParameters(parameters.AsReadOnly());
 
@@ -41,7 +180,8 @@ public class ServiceConfiguratorTests
     public void Bind_ServiceToImplementation_ShouldRegisterService()
     {
         // Arrange
-        var binding = _serviceConfigurator.Bind<ITestService>().To<TestService>();
+        var configurator = new ServiceConfigurator(_services);
+        var binding = configurator.Bind<ITestService>().To<TestService>();
 
         // Act
         binding.Register();
@@ -55,7 +195,8 @@ public class ServiceConfiguratorTests
     public void Bind_ServiceWithLifetime_ShouldRegisterServiceWithLifetime()
     {
         // Arrange
-        var binding = _serviceConfigurator.Bind<ITestService>().To<TestService>().WithLifetime(ServiceLifetime.Singleton);
+        var configurator = new ServiceConfigurator(_services);
+        var binding = configurator.Bind<ITestService>().To<TestService>().WithLifetime(ServiceLifetime.Singleton);
 
         // Act
         binding.Register();
@@ -70,7 +211,8 @@ public class ServiceConfiguratorTests
     {
         // Arrange
         Dictionary<string, object> parameters = new() { { "param1", "value1" }, { "param2", 42 } };
-        var binding = _serviceConfigurator.Bind<ITestService>().To<TestService>().WithParameters(parameters.AsReadOnly());
+        var configurator = new ServiceConfigurator(_services);
+        var binding = configurator.Bind<ITestService>().To<TestService>().WithParameters(parameters.AsReadOnly());
 
         // Act
         binding.Register();
@@ -84,7 +226,8 @@ public class ServiceConfiguratorTests
     public void Bind_ServiceAsSelf_ShouldRegisterServiceAsSelf()
     {
         // Arrange
-        var binding = _serviceConfigurator.Bind<TestService>().AsSelf();
+        var configurator = new ServiceConfigurator(_services);
+        var binding = configurator.Bind<TestService>().AsSelf();
 
         // Act
         binding.Register();
@@ -99,7 +242,8 @@ public class ServiceConfiguratorTests
     {
         // Arrange
         var instance = new TestService();
-        var binding = _serviceConfigurator.Bind<ITestService>().WithInstance(instance);
+        var configurator = new ServiceConfigurator(_services);
+        var binding = configurator.Bind<ITestService>().WithInstance(instance);
 
         // Act
         binding.Register();
@@ -114,7 +258,8 @@ public class ServiceConfiguratorTests
     {
         // Arrange
         Func<IServiceProvider, ITestService> factory = sp => new TestService();
-        var binding = _serviceConfigurator.Bind<ITestService>().WithFactory(factory);
+        var configurator = new ServiceConfigurator(_services);
+        var binding = configurator.Bind<ITestService>().WithFactory(factory);
 
         // Act
         binding.Register();
@@ -129,7 +274,8 @@ public class ServiceConfiguratorTests
     {
         // Arrange
         var mockService = new Mock<ITestService>();
-        var binding = _serviceConfigurator.Bind<ITestService>().WithInstance(mockService.Object).Configure(service => service.DoSomething());
+        var configurator = new ServiceConfigurator(_services);
+        var binding = configurator.Bind<ITestService>().WithInstance(mockService.Object).Configure(service => service.DoSomething());
 
         // Act
         binding.Register();
@@ -142,7 +288,8 @@ public class ServiceConfiguratorTests
     public void Register_ServiceWithoutImplementation_ShouldThrowException()
     {
         // Arrange
-        var binding = _serviceConfigurator.Bind<ITestService>();
+        var configurator = new ServiceConfigurator(_services);
+        var binding = configurator.Bind<ITestService>();
 
         // Act & Assert
         Assert.Throws<InvalidOperationException>(() => binding.Register());
@@ -152,7 +299,8 @@ public class ServiceConfiguratorTests
     public void Bind_ServiceWithConfigureOptions_ShouldConfigureOptions()
     {
         // Arrange
-        var binding = _serviceConfigurator.Bind<TestService>().AsSelf().Configure<TestServiceOptions>(opts => opts.Option1 = "value");
+        var configurator = new ServiceConfigurator(_services);
+        var binding = configurator.Bind<TestService>().AsSelf().Configure<TestServiceOptions>(opts => opts.Option1 = "value");
 
         // Act
         binding.Register();

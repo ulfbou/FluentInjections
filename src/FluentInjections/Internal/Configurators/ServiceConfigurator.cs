@@ -10,94 +10,168 @@ using FluentInjections.Validation;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices.JavaScript;
 
 namespace FluentInjections.Internal.Configurators;
 
-public class ServiceConfigurator : IServiceConfigurator, IConfigurator<IServiceBinding>
+internal class ServiceConfigurator : IServiceConfigurator
 {
-    private readonly IServiceCollection _services;
     private readonly ContainerBuilder _builder;
-    private readonly List<IServiceBinding> _bindings = new();
-    private readonly IComponentRegistryBuilder? _componentRegistry;
+    private readonly List<ServiceBindingDescriptor> _bindings = new();
 
-    public ServiceConfigurator(IServiceCollection services, IComponentRegistryBuilder? componentRegistry = null)
+    internal ContainerBuilder Builder => _builder;
+    internal IReadOnlyList<ServiceBindingDescriptor> Bindings => _bindings.AsReadOnly();
+
+    public ServiceConfigurator(ContainerBuilder builder)
     {
-        _services = services ?? throw new ArgumentNullException(nameof(services));
-        _builder = new();
-        _componentRegistry = componentRegistry ?? throw new ArgumentNullException(nameof(componentRegistry));
+        _builder = builder;
     }
 
-    public IServiceBinding<TService> Bind<TService>() where TService : class, new()
+    public IServiceBinding<TService> Bind<TService>() where TService : notnull
     {
-        var binding = new ServiceBinding<TService>(_builder);
-        _bindings.Add(binding);
+        var descriptor = new ServiceBindingDescriptor(typeof(TService));
 
-        return binding;
+        _bindings.Add(descriptor);
+        return new ServiceBinding<TService>(this, descriptor);
     }
 
-    public void Unbind<TService>()
+    /// <summary>
+    /// Gets the service binding for the specified type.
+    /// </summary>
+    /// <param name="type">The type of the service.</param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException">Thrown when the service is not found.</exception>
+    /// <remarks>
+    /// This method is used internally to get the service binding for a specific type.
+    /// </remarks>
+    internal ServiceBindingDescriptor GetBinding(Type type)
     {
-        var binding = _bindings.FirstOrDefault(binding => binding.Descriptor.BindingType == typeof(TService));
+        ServiceBindingDescriptor? descriptor = _bindings.FirstOrDefault(descriptor => descriptor.BindingType == type);
 
-        if (binding is null)
+        if (descriptor is null)
         {
-            throw new InvalidOperationException($"Service of type {typeof(TService).Name} not found.");
+            throw new InvalidOperationException($"Service of type {type.Name} not found.");
         }
 
-        _bindings.Remove(binding);
-
-        // TODO: Remove the binding from the container builder.
+        return descriptor;
     }
 
     public void Register()
     {
         foreach (var binding in _bindings)
         {
-            binding.Register();
+            Register(binding);
         }
     }
 
-    internal class ServiceBinding<TService> : IServiceBinding<TService> where TService : class, new()
+    private void Register(ServiceBindingDescriptor descriptor)
     {
-        public ServiceBindingDescriptor Descriptor { get; }
-        private ContainerBuilder _builder;
 
-        public ServiceBinding(ContainerBuilder builder)
+        if (descriptor.ImplementationType is not null)
         {
-            Descriptor = new ServiceBindingDescriptor(typeof(TService));
-            _builder = builder ?? throw new ArgumentNullException(nameof(builder));
+            var registration = RegisterBuilder<object, ConcreteReflectionActivatorData, SingleRegistrationStyle>(
+                _builder.RegisterType(descriptor.ImplementationType).As(descriptor.BindingType),
+                descriptor);
+        }
+        else if (descriptor.Instance is not null)
+        {
+            RegisterBuilder<object, SimpleActivatorData, SingleRegistrationStyle>(
+                _builder.RegisterInstance(descriptor.Instance!).As(descriptor.BindingType),
+                descriptor);
+        }
+        else if (descriptor.Factory is not null)
+        {
+            RegisterBuilder<object, SimpleActivatorData, SingleRegistrationStyle>(
+                _builder.Register(c => descriptor.Factory!(c.Resolve<IServiceProvider>())).As(descriptor.BindingType),
+                descriptor);
+        }
+        else
+        {
+            RegisterBuilder<object, ConcreteReflectionActivatorData, SingleRegistrationStyle>(
+                _builder.RegisterType(descriptor.BindingType).AsSelf(),
+                descriptor);
+        }
+    }
+
+    private IRegistrationBuilder<TLimit, TActivatorData, TStyle> RegisterBuilder<TLimit, TActivatorData, TStyle>(
+        IRegistrationBuilder<TLimit, TActivatorData, TStyle> builder, ServiceBindingDescriptor descriptor)
+    {
+        // Handle SimpleActivatorData-based registrations here
+        if (descriptor.Lifetime == ServiceLifetime.Singleton)
+        {
+            builder = builder.SingleInstance();
+        }
+        else if (descriptor.Lifetime == ServiceLifetime.Scoped)
+        {
+            builder = builder.InstancePerLifetimeScope();
+        }
+        else
+        {
+            builder = builder.InstancePerDependency();
         }
 
-        public IServiceBinding<TService> AsScoped()
+        if (!string.IsNullOrEmpty(descriptor.Name))
         {
-            Descriptor.Lifetime = ServiceLifetime.Scoped;
-            return this;
+            builder = builder.Named(descriptor.Name!, descriptor.BindingType);
         }
 
-        public IServiceBinding<TService> AsSelf()
+        if (descriptor.Configure is not null)
         {
-            Descriptor.ImplementationType = typeof(TService);
-            return this;
+            if (descriptor.Instance is null)
+            {
+                throw new InvalidOperationException("Cannot configure an instance.");
+            }
+
+            builder = builder.OnActivating(e =>
+            {
+                descriptor.Configure(e.Instance!);
+            });
         }
 
-        public IServiceBinding<TService> AsSingleton()
+        if (descriptor.Parameters is not null)
         {
-            Descriptor.Lifetime = ServiceLifetime.Singleton;
-            return this;
+            if (builder.IsReflectionData())
+            {
+                RegisterParameters(builder.AsReflectionActivator(), descriptor);
+            }
+            else
+            {
+                throw new InvalidOperationException($"The builder does not contain reflection data.");
+            }
         }
 
-        public IServiceBinding<TService> AsTransient()
+        return builder;
+    }
+
+    private void RegisterParameters<TLimit, TStyle>(IRegistrationBuilder<TLimit, ReflectionActivatorData, TStyle> builder, ServiceBindingDescriptor descriptor)
+    {
+        if (descriptor.Parameters is not IReadOnlyDictionary<string, object> dictionary)
         {
-            Descriptor.Lifetime = ServiceLifetime.Transient;
-            return this;
+            throw new InvalidOperationException("Parameters must be a dictionary.");
         }
 
-        public IServiceBinding<TService> To<TImplementation>() where TImplementation : class, TService
+        var parameters = dictionary.Select(parameter => new ResolvedParameter((pi, ctx) => pi.Name == parameter.Key, (pi, ctx) => parameter.Value)).ToList();
+        builder.WithParameters(parameters);
+    }
+
+    internal class ServiceBinding<TService> : IServiceBinding<TService> where TService : notnull
+    {
+        private readonly ServiceConfigurator _configurator;
+        private readonly ServiceBindingDescriptor _descriptor;
+
+        public ServiceBindingDescriptor Descriptor => _descriptor;
+        internal ServiceConfigurator Configurator => _configurator;
+
+        public ServiceBinding(ServiceConfigurator configurator, ServiceBindingDescriptor descriptor)
         {
-            Descriptor.ImplementationType = typeof(TImplementation);
-            return this;
+            _configurator = configurator ?? throw new ArgumentNullException(nameof(configurator));
+            _descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
         }
+
+        public IServiceBinding<TService> To<TImplementation>() where TImplementation : class, TService => To(typeof(TImplementation));
 
         public IServiceBinding<TService> To(Type implementationType)
         {
@@ -107,11 +181,9 @@ public class ServiceConfigurator : IServiceConfigurator, IConfigurator<IServiceB
             return this;
         }
 
-        public IServiceBinding<TService> WithFactory(Func<IServiceProvider, TService> factory)
+        public IServiceBinding<TService> AsSelf()
         {
-            ArgumentGuard.NotNull(factory, nameof(factory));
-
-            Descriptor.Factory = factory;
+            Descriptor.ImplementationType = Descriptor.BindingType;
             return this;
         }
 
@@ -119,7 +191,47 @@ public class ServiceConfigurator : IServiceConfigurator, IConfigurator<IServiceB
         {
             ArgumentGuard.NotNull(instance, nameof(instance));
 
+            if (Descriptor.ImplementationType is not null)
+            {
+                Debug.WriteLine("Warning: Implementation type is already set. Setting instance will override the implementation type.");
+                Descriptor.ImplementationType = default;
+            }
+
+            if (Descriptor.Factory is not null)
+            {
+                Debug.WriteLine("Warning: Factory is already set. Setting instance will override the factory.");
+                Descriptor.Factory = default;
+            }
+
             Descriptor.Instance = instance;
+            return this;
+        }
+
+        public IServiceBinding<TService> WithFactory(Func<IServiceProvider, TService> factory)
+        {
+            ArgumentGuard.NotNull(factory, nameof(factory));
+
+            if (Descriptor.ImplementationType is not null)
+            {
+                Debug.WriteLine("Warning: Implementation type is already set. Setting factory will override the implementation type.");
+                Descriptor.ImplementationType = default;
+            }
+
+            if (Descriptor.Instance is not null)
+            {
+                Debug.WriteLine("Warning: Instance is already set. Setting factory will override the instance.");
+                Descriptor.Instance = default;
+            }
+
+            Descriptor.Factory = sp => factory(sp);
+            return this;
+        }
+
+        public IServiceBinding<TService> WithName(string name)
+        {
+            ArgumentGuard.NotNullOrEmpty(name, nameof(name));
+
+            Descriptor.Name = name;
             return this;
         }
 
@@ -129,36 +241,69 @@ public class ServiceConfigurator : IServiceConfigurator, IConfigurator<IServiceB
             return this;
         }
 
-        public IServiceBinding<TService> WithName(string name)
+        public IServiceBinding<TService> AsSingleton()
         {
-            Descriptor.Name = name;
+            Descriptor.Lifetime = ServiceLifetime.Singleton;
             return this;
         }
 
-        public IServiceBinding<TService> WithParameters(object parameters)
+        public IServiceBinding<TService> AsScoped()
         {
-            ArgumentGuard.NotNull(parameters, nameof(parameters));
+            Descriptor.Lifetime = ServiceLifetime.Scoped;
+            return this;
+        }
+
+        public IServiceBinding<TService> AsTransient()
+        {
+            Descriptor.Lifetime = ServiceLifetime.Transient;
+            return this;
+        }
+
+        public IServiceBinding<TService> WithParameter(string name, object value)
+        {
+            ArgumentGuard.NotNullOrEmpty(name, nameof(name));
+            ArgumentGuard.NotNull(value, nameof(value));
 
             if (Descriptor.Instance is not null)
             {
                 throw new InvalidOperationException("Cannot specify parameters for an instance.");
             }
 
-            if (parameters is IReadOnlyDictionary<string, object> dictionary)
+            if (Descriptor.Parameters.ContainsKey(name))
             {
-                Descriptor.Parameters = dictionary;
-            }
-            else
-            {
-                throw new ArgumentException("Parameters must be a dictionary.");
+                throw new InvalidOperationException($"Parameter with name {name} already exists.");
             }
 
+            Descriptor.Parameters.Add(name, value);
             return this;
+        }
+
+        public IServiceBinding<TService> WithParameters(object parameters)
+        {
+            if (parameters is not IReadOnlyDictionary<string, object> dictionary)
+            {
+                // convert object into dictionary
+                var properties = parameters?.GetType().GetProperties();
+                dictionary = properties?.ToDictionary(property => property.Name, property => property.GetValue(parameters)).AsReadOnly()!;
+            }
+
+            return WithParameters(dictionary);
         }
 
         public IServiceBinding<TService> WithParameters(IReadOnlyDictionary<string, object> parameters)
         {
-            Descriptor.Parameters = parameters;
+            ArgumentGuard.NotNull(parameters, nameof(parameters));
+
+            foreach (var parameter in parameters)
+            {
+                if (Descriptor.Parameters.ContainsKey(parameter.Key))
+                {
+                    throw new InvalidOperationException($"Parameter with name {parameter.Key} already exists.");
+                }
+
+                Descriptor.Parameters.Add(parameter.Key, parameter.Value);
+            }
+
             return this;
         }
 
@@ -166,40 +311,6 @@ public class ServiceConfigurator : IServiceConfigurator, IConfigurator<IServiceB
         {
             Descriptor.Configure = service => configure((TService)service);
             return this;
-        }
-
-        public IServiceBinding<TService> Configure<TOptions>(Action<TOptions> configure) where TOptions : class
-        {
-            Descriptor.ConfigureOptions = options => configure((TOptions)options);
-            return this;
-        }
-
-        public void Register()
-        {
-            if (Descriptor.ImplementationType is not null)
-            {
-                var builder = RegisterBuilder(_builder.RegisterType(Descriptor.ImplementationType!).As<TService>());
-                var parameterBuilder = RegisterParameters(builder.AsReflectionActivator());
-                parameterBuilder = RegisterConfiguration(parameterBuilder);
-            }
-            else if (Descriptor.Instance is not null)
-            {
-                var builder = RegisterBuilder(_builder.RegisterInstance(Descriptor.Instance!).As<TService>());
-                var parameterBuilder = RegisterParameters(builder.AsReflectionActivator());
-                parameterBuilder = RegisterConfiguration(parameterBuilder);
-            }
-            else if (Descriptor.Factory is not null)
-            {
-                var builder = RegisterBuilder(_builder.Register(c => Descriptor.Factory!(c.Resolve<IServiceProvider>())).As<TService>());
-                var parameterBuilder = RegisterParameters(builder.AsReflectionActivator());
-                parameterBuilder = RegisterConfiguration(parameterBuilder);
-            }
-            else
-            {
-                var builder = RegisterBuilder(_builder.RegisterType<TService>().AsSelf());
-                var parameterBuilder = RegisterParameters(builder.AsReflectionActivator());
-                parameterBuilder = RegisterConfiguration(parameterBuilder);
-            }
         }
 
         private IRegistrationBuilder<TLimit, TActivatorData, TStyle> RegisterBuilder<TLimit, TActivatorData, TStyle>(IRegistrationBuilder<TLimit, TActivatorData, TStyle> builder)
@@ -217,46 +328,9 @@ public class ServiceConfigurator : IServiceConfigurator, IConfigurator<IServiceB
                 builder = builder.InstancePerDependency();
             }
 
-            if (string.IsNullOrEmpty(Descriptor.Name))
+            if (!string.IsNullOrEmpty(Descriptor.Name))
             {
                 builder = builder.Named<TService>(Descriptor.Name!);
-            }
-
-            return builder;
-        }
-
-        private IRegistrationBuilder<TLimit, ReflectionActivatorData, TStyle> RegisterParameters<TLimit, TStyle>(IRegistrationBuilder<TLimit, ReflectionActivatorData, TStyle> builder)
-        {
-            // Add parameters if provided
-            if (Descriptor.Parameters is IReadOnlyDictionary<string, object> dictionary)
-            {
-                var parameters = dictionary.Select(parameter => new ResolvedParameter((pi, ctx) => pi.Name == parameter.Key, (pi, ctx) => parameter.Value)).ToList();
-
-                return builder.WithParameters(parameters);
-            }
-
-            throw new InvalidOperationException("Parameters must be a dictionary.");
-        }
-
-        private IRegistrationBuilder<TLimit, TActivatorData, TStyle> RegisterConfiguration<TLimit, TActivatorData, TStyle>(IRegistrationBuilder<TLimit, TActivatorData, TStyle> builder) where TActivatorData : ReflectionActivatorData
-        {
-            if (Descriptor.Configure is not null)
-            {
-                if (Descriptor.Instance is null)
-                {
-                    throw new InvalidOperationException("Cannot configure an instance.");
-                }
-
-                builder.OnActivating(e => Descriptor.Configure(e.Instance!));
-            }
-            if (Descriptor.ConfigureOptions is not null)
-            {
-                if (Descriptor.Instance is null)
-                {
-                    throw new InvalidOperationException("Cannot configure an instance.");
-                }
-
-                builder.OnActivating(e => Descriptor.ConfigureOptions(e.Instance!));
             }
 
             return builder;

@@ -1,5 +1,6 @@
 ﻿using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Descriptors;
+using FluentInjections.Validation;
 
 using Microsoft.AspNetCore.Builder;
 
@@ -14,15 +15,13 @@ public static class CallbackExtensions
     /// <param name="callback">The callback action.</param>
     /// <returns>The middleware binding instance.</returns>
     /// <exception cref="InvalidOperationException">Thrown if the binding type is invalid.</exception>
-    internal static IMiddlewareBinding Callback(this IMiddlewareBinding binding, Action<MiddlewareDescriptor> callback)
+    internal static IMiddlewareBinding Callback(this IMiddlewareBinding binding, Action<MiddlewareBindingDescriptor> callback)
     {
-        if (binding is MiddlewareConfigurator<IApplicationBuilder>.MiddlewareBinding middelwareBinding)
-        {
-            middelwareBinding._descriptor.Callback = descriptor => callback(descriptor);
-            return binding;
-        }
+        ArgumentGuard.NotNull(binding, nameof(binding));
+        ArgumentGuard.NotNull(callback, nameof(callback));
 
-        throw new InvalidOperationException("Invalid binding type.");
+        callback(binding.Descriptor);
+        return binding;
     }
 
     /// <summary>
@@ -34,6 +33,9 @@ public static class CallbackExtensions
     /// <returns>The instance.</returns>
     internal static T Callback<T>(this T instance, Action<T> callback)
     {
+        ArgumentGuard.NotNull(instance, nameof(instance));
+        ArgumentGuard.NotNull(callback, nameof(callback));
+
         callback(instance);
         return instance;
     }
@@ -49,6 +51,10 @@ public static class CallbackExtensions
     /// <returns>The instance.</returns>
     internal static TResponse Callback<TData, TResponse>(this TResponse instance, Func<TData, TResponse> callback, TData data)
     {
+        ArgumentGuard.NotNull(instance, nameof(instance));
+        ArgumentGuard.NotNull(callback, nameof(callback));
+        ArgumentGuard.NotNull(data, nameof(data));
+
         callback(data);
         return instance;
     }

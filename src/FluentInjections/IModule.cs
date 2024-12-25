@@ -7,16 +7,22 @@
 /// <remarks>
 /// This interface should be implemented by classes that define registrations and configurations.
 /// </remarks>
-public interface IModule<TConfigurator> where TConfigurator : IConfigurator
+public interface IModule<out TConfigurator>
+    where TConfigurator : IConfigurator
 {
     Type ConfiguratorType { get; set; }
 
     /// <summary>
-    /// Configures the module using the provided <typeparamref name="TConfigurator"/>.
+    /// Determines whether the module can handle the specified configurator type.
     /// </summary>
-    /// <param name="configurator">The configurator used to configure the module.</param>
-    /// <remarks>
-    /// This method is called to register and configure components within the application.
-    /// </remarks>
-    void Configure(TConfigurator configurator);
+    /// <typeparam name="T">The type of the configurator.</typeparam>
+    /// <returns><see langword="true"/> if the module can handle the specified configurator type; otherwise, <see langword="false"/>.</returns>
+    bool CanHandle<T>() where T : IConfigurator;
+
+    /// <summary>
+    /// Determines whether the module can handle the specified configurator type.
+    /// </summary>
+    /// <param name="configuratorType">The type of the configurator.</param>
+    /// <returns><see langword="true"/> if the module can handle the specified configurator type; otherwise, <see langword="false"/>.</returns>
+    bool CanHandle(Type configuratorType);
 }

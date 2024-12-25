@@ -2,9 +2,9 @@
 
 namespace FluentInjections.Tests.Modules;
 
-public sealed class InjectionTestServiceModule : IServiceModule
+public sealed class InjectionTestServiceModule() : Module<IServiceConfigurator>(), IServiceModule
 {
-    public void ConfigureServices(IServiceConfigurator configurator)
+    public override void Configure(IServiceConfigurator configurator)
     {
         configurator.Bind<ITestService>()
                     .To<TestService>()

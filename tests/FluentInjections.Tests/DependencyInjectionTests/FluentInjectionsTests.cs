@@ -30,7 +30,7 @@ public partial class FluentInjectionsTests : IDisposable
     public FluentInjectionsTests()
     {
         _builder = WebApplication.CreateBuilder();
-        _builder.Services.AddFluentInjections<WebApplicationBuilder>(typeof(InjectionTestServiceModule).Assembly);
+        _builder.Services.AddFluentInjections(Assembly.GetExecutingAssembly());
         _services = _builder.Services;
         _app = _builder.Build();
         _scope = _app.Services.CreateAsyncScope();

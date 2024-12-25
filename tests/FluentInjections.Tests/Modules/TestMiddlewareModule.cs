@@ -4,10 +4,7 @@ using Microsoft.AspNetCore.Builder;
 
 namespace FluentInjections.Tests.Modules;
 
-public sealed class TestMiddlewareModule : IMiddlewareModule<IApplicationBuilder>
+public sealed class TestMiddlewareModule() : Module<IMiddlewareConfigurator>(), IMiddlewareModule
 {
-    public void ConfigureMiddleware(IMiddlewareConfigurator<IApplicationBuilder> configurator)
-    {
-        configurator.UseMiddleware<TestMiddleware>();
-    }
+    public override void Configure(IMiddlewareConfigurator configurator) => configurator.UseMiddleware<TestMiddleware>();
 }

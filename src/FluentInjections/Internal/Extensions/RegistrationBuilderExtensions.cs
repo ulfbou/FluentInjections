@@ -9,12 +9,12 @@ internal static class RegistrationBuilderExtensions
     public static IRegistrationBuilder<TLimit, ReflectionActivatorData, TStyle> AsReflectionActivator<TLimit, TActivatorData, TStyle>(
         this IRegistrationBuilder<TLimit, TActivatorData, TStyle> registration)
     {
-        if (registration is IRegistrationBuilder<TLimit, ReflectionActivatorData, TStyle> reflectionBuilder)
+        if (registration.IsReflectionData())
         {
-            return reflectionBuilder;
+            return (registration as IRegistrationBuilder<TLimit, ReflectionActivatorData, TStyle>)!;
         }
 
-        throw new InvalidOperationException("The builder could not be cast to IRegistrationBuilder<TLimit, ReflectionActivatorData, TStyle>.");
+        throw new InvalidOperationException("The builder does not contain reflection data.");
     }
 
     public static IRegistrationBuilder<TLimit, ReflectionActivatorData, TStyle> WithParameters<TLimit, TStyle>(
@@ -27,5 +27,22 @@ internal static class RegistrationBuilderExtensions
         }
 
         return registration;
+    }
+
+    public static bool IsReflectionData<TLimit, TActivatorData, TStyle>(this IRegistrationBuilder<TLimit, TActivatorData, TStyle> registration)
+    {
+        return registration.ActivatorData is ReflectionActivatorData;
+    }
+
+    public static bool IsReflectionData<TLimit, TActivatorData, TStyle>(this IRegistrationBuilder<TLimit, TActivatorData, TStyle> registration, out ReflectionActivatorData reflectionData)
+    {
+        if (registration.ActivatorData is ReflectionActivatorData data)
+        {
+            reflectionData = data;
+            return true;
+        }
+
+        reflectionData = default!;
+        return false;
     }
 }

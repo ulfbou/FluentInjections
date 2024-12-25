@@ -2,7 +2,7 @@
 
 public static class ArgumentGuard
 {
-    public static void NotNull<T>(T value, string name) where T : class
+    public static void NotNull<T>(T value, string name)
     {
         if (value is null)
         {

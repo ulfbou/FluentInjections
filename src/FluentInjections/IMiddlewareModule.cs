@@ -6,6 +6,4 @@
 /// <remarks>
 /// This interface should be implemented by classes that define middleware registrations and configurations.
 /// </remarks>
-public interface IMiddlewareModule : IModule<IMiddlewareConfigurator>
-{
-}
+public interface IMiddlewareModule : IConfigurableModule<IMiddlewareConfigurator> { }

@@ -2,7 +2,7 @@
 
 namespace FluentInjections.Internal.Descriptors;
 
-internal class MiddlewareDescriptor
+public class MiddlewareBindingDescriptor
 {
     public Type MiddlewareType { get; set; }
 
@@ -67,15 +67,15 @@ internal class MiddlewareDescriptor
 
     public TimeSpan? Timeout { get; set; }
     public Func<Exception, Task>? ErrorHandler { get; set; }
-    internal Action<MiddlewareDescriptor>? Callback { get; set; }
-    internal MiddlewareDescriptor(Type middlewareType)
+    internal Action<MiddlewareBindingDescriptor>? Callback { get; set; }
+    internal MiddlewareBindingDescriptor(Type middlewareType)
     {
         MiddlewareType = middlewareType;
     }
 
     public override bool Equals(object? obj)
     {
-        if (obj is MiddlewareDescriptor other)
+        if (obj is MiddlewareBindingDescriptor other)
         {
             return MiddlewareType == other.MiddlewareType &&
                 Priority == other.Priority &&

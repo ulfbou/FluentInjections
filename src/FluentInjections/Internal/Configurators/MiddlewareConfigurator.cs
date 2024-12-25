@@ -1,5 +1,9 @@
 ﻿using Autofac.Core.Registration;
 
+using FluentInjections.Internal.Descriptors;
+
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
 using System;
@@ -10,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace FluentInjections.Internal.Configurators;
 
-public class MiddlewareConfigurator : IMiddlewareConfigurator
+internal class MiddlewareConfigurator : IMiddlewareConfigurator
 {
     private IServiceCollection _services;
     private IComponentRegistryBuilder _componentRegistry;
@@ -30,6 +34,7 @@ public class MiddlewareConfigurator : IMiddlewareConfigurator
     public IMiddlewareBinding GetMiddleware<TMiddleware>() where TMiddleware : class => throw new NotImplementedException();
     public IMiddlewareBinding GetMiddleware(Type middleware) => throw new NotImplementedException();
     public void Register() => throw new NotImplementedException();
+    internal void Register(Action<MiddlewareBindingDescriptor, HttpContext, IApplicationBuilder> register) => throw new NotImplementedException();
     public IMiddlewareBinding RemoveMiddleware<TMiddleware>() where TMiddleware : class => throw new NotImplementedException();
     public IMiddlewareBinding RemoveMiddleware(Type middleware) => throw new NotImplementedException();
 

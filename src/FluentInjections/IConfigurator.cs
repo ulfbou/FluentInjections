@@ -8,4 +8,8 @@
 /// </remarks>
 public interface IConfigurator
 {
+    /// <summary>
+    /// Registers a service binding with the service collection.
+    /// </summary>
+    void Register();
 }

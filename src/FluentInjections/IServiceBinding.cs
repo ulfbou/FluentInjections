@@ -19,7 +19,6 @@ namespace FluentInjections;
 public interface IServiceBinding : IBinding
 {
     ServiceBindingDescriptor Descriptor { get; }
-    void Register();
 }
 
 /// <summary>
@@ -29,7 +28,7 @@ public interface IServiceBinding : IBinding
 /// <remarks>
 /// This interface should be implemented by classes that define service bindings.
 /// </remarks>
-public interface IServiceBinding<TService> : IServiceBinding where TService : class
+public interface IServiceBinding<TService> : IServiceBinding where TService : notnull
 {
     /// <summary>
     /// Binds the service to a specific implementation type.
@@ -124,5 +123,5 @@ public interface IServiceBinding<TService> : IServiceBinding where TService : cl
     /// <typeparam name="TOptions">The type of the options.</typeparam>
     /// <param name="configure">The options configuration action.</param>
     /// <returns>The service binding instance.</returns>
-    IServiceBinding<TService> Configure<TOptions>(Action<TOptions> configure) where TOptions : class;
+    //IServiceBinding<TService> Configure<TOptions>(Action<TOptions> configure) where TOptions : class;
 }

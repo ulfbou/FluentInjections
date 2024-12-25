@@ -8,6 +8,4 @@ namespace FluentInjections;
 /// <remarks>
 /// This interface should be implemented by classes that define service registrations and configurations.
 /// </remarks>
-public interface IServiceModule : IModule<IServiceConfigurator>
-{
-}
+public interface IServiceModule : IConfigurableModule<IServiceConfigurator> { }

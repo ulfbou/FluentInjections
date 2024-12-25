@@ -14,11 +14,5 @@ public interface IServiceConfigurator : IConfigurator<IServiceBinding>
     /// Binds a service to the service collection.
     /// </summary>
     /// <returns>An interface for further configuring the service binding.</returns>
-    IServiceBinding<TService> Bind<TService>() where TService : class, new();
-
-    /// <summary>
-    /// Unbinds a service of the specified type from the service collection.
-    /// </summary>
-    /// <typeparam name="TService">The type of the service to unbind.</typeparam>
-    void Unbind<TService>();
+    IServiceBinding<TService> Bind<TService>() where TService : notnull;
 }

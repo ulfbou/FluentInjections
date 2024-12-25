@@ -10,7 +10,7 @@ namespace FluentInjections.Tests.Internal.Helpers;
 
 public static class PipelineHelper
 {
-    internal static RequestDelegate BuildPipeline(MiddlewareConfigurator<IApplicationBuilder> configurator, IServiceCollection services)
+    internal static RequestDelegate BuildPipeline(MiddlewareConfigurator configurator, IServiceCollection services)
     {
         var serviceProvider = services.BuildServiceProvider();
         var app = new ApplicationBuilder(serviceProvider);

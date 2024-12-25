@@ -15,6 +15,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="coverlet.collector" Version="6.0.2" />
+		<PackageReference Include="FluentAssertions" Version="7.0.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.0" />
 		<PackageReference Include="Microsoft.AspNetCore.TestHost" Version="9.0.0" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
@@ -36,10 +37,6 @@
 		<ProjectReference Include="..\..\src\FluentInjections\FluentInjections.csproj" />
 		<ProjectReference Include="..\..\src\Tests.Extensions\FluentInjections.Tests.Extensions.csproj" />
 		<ProjectReference Include="..\..\src\Tests.Utilities\FluentInjections.Tests.Utilities.csproj" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="NewFolder\" />
 	</ItemGroup>
 
 </Project>

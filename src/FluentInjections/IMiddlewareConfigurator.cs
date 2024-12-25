@@ -75,9 +75,4 @@ public interface IMiddlewareConfigurator : IConfigurator<IMiddlewareBinding>
     /// </summary>
     /// <param name="configure">The action to configure the middleware.</param>
     void ConfigureAll(Action<IMiddlewareBinding> configure);
-
-    /// <summary>
-    /// Registers the middleware configuration with the application.
-    /// </summary>
-    void Register();
 }

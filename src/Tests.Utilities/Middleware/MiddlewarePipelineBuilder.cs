@@ -53,6 +53,7 @@ public class MiddlewarePipelineBuilder : IMiddlewarePipelineBuilder
     private IMiddleware CreateMiddlewareInstance(Type middlewareType, object[] args)
     {
         var constructor = middlewareType.GetConstructor(BindingFlags.Public | BindingFlags.Instance, null, Array.ConvertAll(args, arg => arg?.GetType() ?? typeof(object)), null);
+
         if (constructor is null)
         {
             throw new InvalidOperationException($"No suitable constructor found for middleware type {middlewareType.Name}");
@@ -61,11 +62,5 @@ public class MiddlewarePipelineBuilder : IMiddlewarePipelineBuilder
         return (IMiddleware)constructor.Invoke(args);
     }
 
-    private RequestDelegate BuildMiddlewareDelegate(IMiddleware middleware, RequestDelegate next)
-    {
-        return async context =>
-        {
-            await middleware.InvokeAsync(context, next);
-        };
-    }
+    private RequestDelegate BuildMiddlewareDelegate(IMiddleware middleware, RequestDelegate next) => async context => await middleware.InvokeAsync(context, next);
 }

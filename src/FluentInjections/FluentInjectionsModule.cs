@@ -1,10 +1,13 @@
-﻿using Autofac.Core;
+﻿using Autofac;
+using Autofac.Core;
 using Autofac.Core.Registration;
 
 using FluentInjections;
 using FluentInjections.Internal.Configurators;
 
 using Microsoft.Extensions.DependencyInjection;
+
+using System.Reflection;
 
 internal class FluentInjectionsModule : IModule
 {
@@ -21,67 +24,63 @@ internal class FluentInjectionsModule : IModule
         // and register them with the container
 
         var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-        var serviceConfigurator = new ServiceConfigurator(_services, componentRegistry);
+        var serviceConfigurator = new ServiceConfigurator(new ContainerBuilder());
         var middlewareConfigurator = new MiddlewareConfigurator(_services, componentRegistry);
 
         foreach (var assembly in assemblies)
         {
-            var types = assembly.GetTypes();
-
-            foreach (var type in types)
+            // Discover all types that implement IConfigurableModule<>
+            foreach (var type in assembly.GetTypes().Where(t => !t.IsAbstract && !t.IsInterface))
             {
-                // Discover all types that implement IModule<IConfigurator>
-                if (type.IsAssignableTo(typeof(IModule)))
+                var interfaces = type.GetInterfaces().Where(t => t.IsGenericType);
+
+                if (!interfaces.Any(i => i.GetGenericTypeDefinition() == typeof(IConfigurableModule<>)))
                 {
-                    // Create an instance of the type
+                    continue;
+                }
+
+                try
+                {
+                    var genericType = interfaces.First(i => i.GetGenericTypeDefinition() == typeof(IConfigurableModule<>));
+                    var configuratorType = genericType.GetGenericArguments().First();
                     var instance = Activator.CreateInstance(type);
+                    var method = type.GetMethod("Configure");
 
-                    if (instance is IServiceModule serviceModule)
+                    if (method is null)
                     {
-                        serviceModule.Configure(serviceConfigurator);
-
+                        throw new InvalidOperationException($"No suitable method found for module type {type.Name}");
                     }
-                    else if (instance is IMiddlewareModule middlewareModule)
+
+                    if (configuratorType == typeof(IServiceConfigurator))
                     {
-                        middlewareModule.Configure(middlewareConfigurator);
+                        method.Invoke(instance, new object[] { serviceConfigurator });
                     }
-                    else if (instance is IModule module)
+                    else if (configuratorType == typeof(IMiddlewareConfigurator))
                     {
-                        module.Configure(componentRegistry);
+                        method.Invoke(instance, new object[] { middlewareConfigurator });
                     }
-                    else if (instance is IModule<IConfigurator> configuratorModule)
+                    else if (configuratorType.IsAbstract)
                     {
-                        var configurator = Activator.CreateInstance(configuratorModule.ConfiguratorType, _services) as IConfigurator;
-
-                        if (configurator is null || configurator is not IConfigurator typedConfigurator)
-                        {
-                            throw new InvalidOperationException($"Could not create an instance of {configuratorModule.ConfiguratorType.Name}.");
-                        }
-
-                        var configuratorType = configuratorModule.ConfiguratorType;
-
-                        if (configuratorType.IsAbstract ||
-                            configuratorType.IsInterface ||
-                            !configuratorType.IsAssignableFrom(typeof(IConfigurator)))
-                        {
-                            throw new InvalidOperationException($"Type {configuratorType.Name} does not implement IConfigurator.");
-                        }
-
-                        configuratorModule.Configure(typedConfigurator);
+                        throw new InvalidOperationException($"No suitable configurator found for module type {type.Name}");
                     }
                     else
                     {
-                        throw new InvalidOperationException($"Type {type.Name} does not implement IServiceModule, IMiddlewareModule, IModule, or IModule<IConfigurator>.");
+                        // Treat any implementation of IConfigurator as special case for now and attempt to create a configurator instance for it.
+                        var configuratorInstance = Activator.CreateInstance(configuratorType, _services, componentRegistry) as IConfigurator;
+
+                        if (configuratorInstance is null)
+                        {
+                            throw new InvalidOperationException($"No suitable configurator found for module type {type.Name}");
+                        }
+
+                        method.Invoke(instance, new object[] { configuratorInstance });
                     }
+                }
+                catch (TargetInvocationException ex)
+                {
+                    throw ex.InnerException ?? ex;
                 }
             }
         }
-
-        // For each type that implements IServiceModule
-        // Create an instance of the type
-        // Cast the instance to IServiceModule
-        // Call the Register method on the instance
-        // Pass the container to the Register method
-
     }
 }

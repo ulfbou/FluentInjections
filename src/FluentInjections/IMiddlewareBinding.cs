@@ -1,3 +1,5 @@
+using FluentInjections.Internal.Descriptors;
+
 using Microsoft.AspNetCore.Http;
 
 namespace FluentInjections;
@@ -10,4 +12,6 @@ namespace FluentInjections;
 /// </remarks>
 public interface IMiddlewareBinding : IBinding
 {
+    MiddlewareBindingDescriptor Descriptor { get; }
+    void Register();
 }
