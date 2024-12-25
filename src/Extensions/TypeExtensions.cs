@@ -8,14 +8,26 @@ namespace FluentInjections.Extensions;
 public static class TypeExtensions
 {
     // Check if a type is compatible with another type
+    private static readonly Dictionary<Type, Dictionary<Type, bool>> CompatibilityCache = new();
+
     public static bool IsCompatibleWith(this Type sourceType, Type targetType)
     {
         if (sourceType == null || targetType == null) return false;
 
-        // Check basic type compatibility
-        if (targetType.IsAssignableFrom(sourceType)) return true;
+        // Check cache first
+        if (CompatibilityCache.TryGetValue(sourceType, out var targetDict) && targetDict.TryGetValue(targetType, out var result))
+        {
+            return result;
+        }
 
-        // Check generic type compatibility
+        // Direct assignability check
+        if (targetType.IsAssignableFrom(sourceType))
+        {
+            CacheCompatibility(sourceType, targetType, true);
+            return true;
+        }
+
+        // Generic type compatibility check
         if (sourceType.IsGenericType && targetType.IsGenericType)
         {
             var sourceGenericType = sourceType.GetGenericTypeDefinition();
@@ -24,84 +36,47 @@ public static class TypeExtensions
             {
                 var sourceGenericArguments = sourceType.GetGenericArguments();
                 var targetGenericArguments = targetType.GetGenericArguments();
-                return sourceGenericArguments.Length == targetGenericArguments.Length &&
-                       sourceGenericArguments.Zip(targetGenericArguments, IsCompatibleWith).All(x => x);
+                var allCompatible = sourceGenericArguments.Length == targetGenericArguments.Length &&
+                                    sourceGenericArguments.Zip(targetGenericArguments, IsCompatibleWith).All(x => x);
+
+                CacheCompatibility(sourceType, targetType, allCompatible);
+                return allCompatible;
             }
         }
 
-        // Check interface implementation
-        if (targetType.IsInterface)
+        // Interface implementation check using the 'is' operator
+        if (targetType.IsInterface && sourceType.GetInterfaces().Any(iface => iface.IsGenericType ? iface.GetGenericTypeDefinition() == targetType : iface == targetType))
         {
-            var interfaces = sourceType.GetInterfaces();
-            foreach (var iface in interfaces)
-            {
-                if (IsCompatibleWith(iface, targetType))
-                {
-                    return true;
-                }
-            }
+            CacheCompatibility(sourceType, targetType, true);
+            return true;
         }
 
-        // Check base class compatibility
+        // Base type compatibility check
         var currentType = sourceType.BaseType;
         while (currentType != null)
         {
             if (IsCompatibleWith(currentType, targetType))
             {
+                CacheCompatibility(sourceType, targetType, true);
                 return true;
             }
             currentType = currentType.BaseType;
         }
 
-        // Check nullable type compatibility
-        if (Nullable.GetUnderlyingType(sourceType) != null && Nullable.GetUnderlyingType(targetType) != null)
-        {
-            return IsCompatibleWith(Nullable.GetUnderlyingType(sourceType), Nullable.GetUnderlyingType(targetType));
-        }
-
-        // Check array and collection type compatibility
-        if (sourceType.IsArray && targetType.IsArray)
-        {
-            return IsCompatibleWith(sourceType.GetElementType(), targetType.GetElementType());
-        }
-
-        // Check conversion operator compatibility
-        if (sourceType.HasConversionOperatorTo(targetType) || targetType.HasConversionOperatorTo(sourceType))
-        {
-            return true;
-        }
-
+        // Cache the result as false
+        CacheCompatibility(sourceType, targetType, false);
         return false;
     }
 
-    // Attempt to convert an object to a specified type if they are compatible
-    public static bool TryConvertTo<TTarget>(this object source, out TTarget result) where TTarget : class
+    private static void CacheCompatibility(Type sourceType, Type targetType, bool result)
     {
-        var sourceType = source.GetType();
-        var targetType = typeof(TTarget);
-        if (sourceType.IsCompatibleWith(targetType))
+        if (!CompatibilityCache.ContainsKey(sourceType))
         {
-            try
-            {
-                result = (TTarget)Convert.ChangeType(source, targetType);
-                return true;
-            }
-            catch
-            {
-                // Conversion failed
-            }
+            CompatibilityCache[sourceType] = new Dictionary<Type, bool>();
         }
-        result = default(TTarget);
-        return false;
+        CompatibilityCache[sourceType][targetType] = result;
     }
-
-    // Check if a type has an explicit or implicit conversion operator to another type
-    private static bool HasConversionOperatorTo(this Type fromType, Type toType)
-    {
-        return fromType.GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .Any(m => (m.Name == "op_Explicit" || m.Name == "op_Implicit") && m.ReturnType == toType);
-    }
-
+`    
     public static bool IsNullable(this Type type)
     {
         return Nullable.GetUnderlyingType(type) != null;
