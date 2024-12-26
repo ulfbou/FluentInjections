@@ -284,6 +284,16 @@ public static class TypeExtensions
         => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(TType);
 
     /// <summary>
+    /// Checks if a type is an open generic type definition.
+    /// </summary>
+    /// <param name="type">The type to check.</param>
+    /// <returns><see langword="true"/> if the type is an open generic type; otherwise, <see langword="false"/>.</returns>
+    public static bool IsOpenGeneric(this Type type)
+    {
+        return type.IsGenericType && type.ContainsGenericParameters;
+    }
+
+    /// <summary>
     /// Gets the base types of a type.
     /// </summary>
     /// <param name="type">The type to get the base types for.</param>

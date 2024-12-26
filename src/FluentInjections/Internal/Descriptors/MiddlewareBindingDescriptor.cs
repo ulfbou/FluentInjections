@@ -51,23 +51,33 @@ public class MiddlewareBindingDescriptor
     }
     private List<Type> _dependencies = new();
 
-    public List<Type>? PrecedingMiddleware
+    public List<Type> PrecedingMiddleware
     {
-        get => _precedingMiddleware;
-        set => _precedingMiddleware = value;
+        get
+        {
+            _precedingMiddleware ??= new();
+            return _precedingMiddleware;
+        }
+        set => _precedingMiddleware = value ?? throw new ArgumentNullException(nameof(value));
     }
-    private List<Type>? _precedingMiddleware = new();
+    private List<Type>? _precedingMiddleware;
 
-    public List<Type>? FollowingMiddleware
+    public List<Type> FollowingMiddleware
     {
-        get => _followingMiddleware;
-        set => _followingMiddleware = value;
+        get
+        {
+            _followingMiddleware ??= new();
+            return _followingMiddleware;
+        }
+        set => _followingMiddleware = value ?? throw new ArgumentNullException(nameof(value));
     }
-    private List<Type>? _followingMiddleware = new();
+    private List<Type>? _followingMiddleware;
 
     public TimeSpan? Timeout { get; set; }
     public Func<Exception, Task>? ErrorHandler { get; set; }
     internal Action<MiddlewareBindingDescriptor>? Callback { get; set; }
+    public string? Environment { get; set; }
+
     internal MiddlewareBindingDescriptor(Type middlewareType)
     {
         MiddlewareType = middlewareType;

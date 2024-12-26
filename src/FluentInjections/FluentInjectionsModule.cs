@@ -24,8 +24,9 @@ internal class FluentInjectionsModule : IModule
         // and register them with the container
 
         var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-        var serviceConfigurator = new ServiceConfigurator(new ContainerBuilder());
-        var middlewareConfigurator = new MiddlewareConfigurator(_services, componentRegistry);
+        var builder = new ContainerBuilder();
+        var serviceConfigurator = new ServiceConfigurator(builder);
+        var middlewareConfigurator = new MiddlewareConfigurator(builder);
 
         foreach (var assembly in assemblies)
         {
@@ -82,5 +83,8 @@ internal class FluentInjectionsModule : IModule
                 }
             }
         }
+
+        serviceConfigurator.Register();
+        middlewareConfigurator.Register();
     }
 }

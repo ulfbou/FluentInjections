@@ -7,11 +7,23 @@ using Microsoft.AspNetCore.Builder;
 using System.Reflection;
 using FluentInjections.Internal.Registries;
 using System.Diagnostics;
+using FluentInjections.Internal.Configurators;
 
 namespace FluentInjections;
 
 public static class DependencyInjection
 {
+    internal static ContainerBuilder Builder { get; private set; }
+    internal static AutofacServiceProvider ServiceProvider { get; private set; }
+    internal static IContainer Container { get; private set; }
+
+    static DependencyInjection()
+    {
+        Builder = new ContainerBuilder();
+        ServiceProvider = default!;
+        Container = default!;
+    }
+
     /// <summary>
     /// Configures FluentInjections as the DI container for the application.
     /// </summary>
@@ -22,45 +34,28 @@ public static class DependencyInjection
     {
         var targetAssemblies = assemblies?.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
 
-        var builder = new ContainerBuilder();
+        Builder = new ContainerBuilder();
+        Builder.Populate(services);
+        Builder.RegisterModule(new FluentInjectionsModule(services));
 
-        builder.RegisterModule(new FluentInjectionsModule(services));
+        // Build the container
+        Container = Builder.Build();
 
-        // Populate the services from the IServiceCollection
-        builder.Populate(services);
+        // Set up Autofac as the service provider
+        ServiceProvider = new AutofacServiceProvider(Container);
 
-        var registry = new ModuleRegistry(services);
-        var sp = services.BuildServiceProvider();
-
-        foreach (var assembly in targetAssemblies)
+        // Remove the default service provider
+        if (services.Any(s => s.ServiceType == typeof(IServiceProvider)))
         {
-            foreach (var type in assembly.GetTypes().Where(type => type.IsAssignableTo(typeof(IServiceModule))))
+            var serviceProviders = services.Where(s => s.ServiceType == typeof(IServiceProvider));
+            foreach (var serviceProvider in serviceProviders)
             {
-                var instance = GetInstance<IServiceModule>(type, sp) as IModule<IServiceConfigurator>;
-                if (instance is not null)
-                {
-                    registry.Register<IServiceConfigurator>(typeof(IModule<IServiceConfigurator>), instance);
-                }
+                services.Remove(serviceProvider);
             }
         }
 
-        // Register the module registry
-        builder.RegisterInstance(registry).As<IModuleRegistry>();
-
-        // Build the AutoFac container
-        var container = builder.Build();
-
-        // Set the service provider factory to use AutoFac
-        var serviceProvider = new AutofacServiceProvider(container);
-
-        // Remove the default service provider
-        foreach (var service in services.Where(s => s.ServiceType == typeof(IServiceProvider)))
-        {
-            services.Remove(service);
-        }
-
-        // Replace the default service provider with the AutoFac service provider
-        services.AddSingleton<IServiceProvider>(serviceProvider);
+        services.AddSingleton<IServiceProvider>(ServiceProvider);
+        services.AddSingleton<AutofacServiceProvider>();
 
         return services;
     }
@@ -79,42 +74,55 @@ public static class DependencyInjection
         var services = sp.GetRequiredService<IServiceCollection>();
         var registry = sp.GetRequiredService<IModuleRegistry>();
 
-        if (registry is null)
+        if (registry == null)
         {
             registry = new ModuleRegistry(services);
         }
 
+        var builder = new ContainerBuilder();
+        builder.Populate(services);
+        var middlewareConfigurator = new MiddlewareConfigurator(builder);
+
         foreach (var assembly in targetAssemblies)
         {
-            foreach (var type in assembly.GetTypes().Where(type => type.IsAssignableTo(typeof(IMiddlewareModule))))
+            foreach (var type in assembly.GetTypes().Where(type => typeof(IMiddlewareModule).IsAssignableFrom(type) && !type.IsAbstract))
             {
-                var instance = GetInstance<IMiddlewareModule>(type, sp) as IModule<IMiddlewareConfigurator>;
-                if (instance is not null)
+                var instance = GetInstance<IMiddlewareModule, IMiddlewareConfigurator>(type, sp);
+
+                if (instance != null)
                 {
+                    instance.Configure(middlewareConfigurator);
                     registry.Register<IMiddlewareConfigurator>(typeof(IMiddlewareModule), instance);
                 }
             }
         }
 
+        // Build the final container
+        var container = builder.Build();
+        var scope = container.Resolve<ILifetimeScope>();
+        services.AddSingleton(scope);
+
         return app;
     }
 
-    private static IModule<IConfigurator>? GetInstance<TModule>(Type type, IServiceProvider? sp = null) where TModule : IModule<IConfigurator>
+    private static IConfigurableModule<TConfigurator>? GetInstance<TModule, TConfigurator>(Type type, IServiceProvider? sp = null)
+        where TModule : IConfigurableModule<TConfigurator>
+        where TConfigurator : IConfigurator
     {
-        if (!type.IsAssignableFrom(typeof(TModule))) return null;
+        if (!typeof(TModule).IsAssignableFrom(type)) return null;
 
-        var instance = sp?.GetService(type) as IModule<IConfigurator>;
+        var instance = sp?.GetService(type) as IConfigurableModule<TConfigurator>;
 
-        if (instance is not null)
+        if (instance != null)
         {
             return instance;
         }
 
         try
         {
-            instance = Activator.CreateInstance(type) as IModule<IConfigurator>;
+            instance = Activator.CreateInstance(type) as IConfigurableModule<TConfigurator>;
 
-            if (instance is not null)
+            if (instance != null)
             {
                 return instance;
             }
@@ -147,5 +155,21 @@ public static class DependencyInjection
 
         // Return the service provider backed by AutoFac
         return new AutofacServiceProvider(container);
+    }
+
+    /// <summary>
+    /// Get a named service from the service provider. 
+    /// </summary>
+    /// <typeparam name="TService">The type of service to get.</typeparam>
+    /// <param name="provider">The service provider.</param>
+    /// <param name="name">The name of the service.</param>
+    /// <returns>The service instance.</returns>
+    public static TService? GetNamedService<TService>(this IServiceProvider provider, string name)
+    {
+        var autofacProvider = provider.GetService<AutofacServiceProvider>()
+            ?? provider.GetService<IServiceProvider>() as AutofacServiceProvider
+            ?? throw new InvalidOperationException("Initialize FluentInjections before using this method. Make sure to call AddFluentInjections before calling GetNamedService.");
+
+        return autofacProvider.GetKeyedService<TService>(name);
     }
 }

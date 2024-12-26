@@ -2,10 +2,10 @@
 
 namespace FluentInjections.Tests.Services;
 
-public sealed class TestServiceWithOptions : ITestService
+internal sealed class TestServiceWithOptions : ITestService
 {
-    public string Param1 { get; }
-    public int Param2 { get; }
+    public string Param1 { get; private set; }
+    public int Param2 { get; private set; }
 
     public TestServiceWithOptions(IOptions<TestServiceOptions> options)
     {
@@ -17,5 +17,10 @@ public sealed class TestServiceWithOptions : ITestService
     {
         public string Param1 { get; set; } = string.Empty;
         public int Param2 { get; set; }
+    }
+
+    public void DoSomething()
+    {
+        Param2 = -1;
     }
 }

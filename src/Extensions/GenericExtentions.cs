@@ -86,4 +86,14 @@ public static class GenericExtensions
     {
         return obj is T;
     }
+
+    /// <summary>
+    /// Checks if an object is an open generic type.
+    /// </summary>
+    /// <param name="obj">The object to check.</param>
+    /// <returns>True if the object is an open generic type, otherwise false.</returns>
+    public static bool IsOpenGenericType(this object obj)
+    {
+        return obj.GetType().IsGenericTypeDefinition;
+    }
 }

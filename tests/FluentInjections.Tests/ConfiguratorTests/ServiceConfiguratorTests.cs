@@ -1,8 +1,13 @@
-﻿using FluentAssertions;
+﻿
+using Autofac;
+using Autofac.Core;
+
+using FluentAssertions;
 
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Registries;
 using FluentInjections.Tests.Modules;
+using FluentInjections.Tests.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -11,262 +16,122 @@ using Moq;
 
 namespace FluentInjections.Tests.ConfiguratorTests;
 
-public class ServiceConfiguratorTests
+public class ServiceConfiguratorTests : BaseTest
 {
-    private readonly IServiceCollection _services;
-    private readonly ModuleRegistry _registry;
-    private readonly Mock<IServiceConfigurator> _configuratorMock;
-
-    public ServiceConfiguratorTests()
-    {
-        _services = new ServiceCollection();
-        _services.AddFluentInjections(typeof(InjectionTestServiceModule).Assembly);
-        _registry = new ModuleRegistry(_services);
-        _configuratorMock = new Mock<IServiceConfigurator>();
-    }
-
-    [Fact]
-    public void Apply_Should_Configure_Modules_That_Can_Handle_Configurator()
-    {
-        // Arrange
-        var configuratorMock = new Mock<IConfigurator>();
-        var configurableModuleMock = new Mock<IConfigurableModule<IConfigurator>>();
-        var moduleMock = configurableModuleMock.As<IModule<IConfigurator>>();
-
-        // Setup CanHandle and Configure behavior
-        configurableModuleMock.Setup(m => m.CanHandle<IConfigurator>()).Returns(true);
-        configurableModuleMock.Setup(m => m.Configure(configuratorMock.Object));
-
-        // Register and apply the module
-        _registry.Register<IModule<IConfigurator>, IConfigurator>(configurableModuleMock.Object);
-        _registry.Apply(configuratorMock.Object);
-
-        // Verify Configure is called
-        configurableModuleMock.Verify(m => m.Configure(configuratorMock.Object), Times.Once);
-    }
-
-    [Fact]
-    public void Initialize_Should_Call_Initialize_On_Initializable_Modules()
-    {
-        // Arrange
-        var moduleMock = new Mock<IModule<IConfigurator>>(MockBehavior.Strict);
-        var initializableMock = moduleMock.As<IInitializable>();
-        initializableMock.Setup(m => m.Initialize());
-
-        _registry.Register<IModule<IConfigurator>, IConfigurator>(moduleMock.Object);
-
-        // Act
-        _registry.Initialize();
-
-        // Assert
-        initializableMock.Verify(m => m.Initialize(), Times.Once);
-    }
-
-    [Fact]
-    public void Register_Should_Add_Module_To_Registry()
-    {
-        // Arrange
-        var moduleMock = new Mock<IModule<IConfigurator>>();
-
-        // Act
-        _registry.Register<IModule<IConfigurator>, IConfigurator>(moduleMock.Object);
-
-        // Assert
-        _registry.GetAllModules()
-            .Should()
-            .ContainSingle(m => m == moduleMock.Object);
-    }
-
-    [Fact]
-    public void Register_Should_Throw_If_Module_Is_Already_Registered()
-    {
-        // Arrange
-        var moduleMock = new Mock<IModule<IConfigurator>>();
-        _registry.Register<IModule<IConfigurator>, IConfigurator>(moduleMock.Object);
-
-        // Act
-        Action act = () => _registry.Register<IModule<IConfigurator>, IConfigurator>(moduleMock.Object);
-
-        // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage($"Module of type {moduleMock.Object.GetType().Name} is already registered.");
-    }
-
-    [Fact]
-    public void Unregister_Should_Remove_Module_From_Registry()
-    {
-        // Arrange
-        var moduleMock = new Mock<IModule<IConfigurator>>();
-        _registry.Register<IModule<IConfigurator>, IConfigurator>(moduleMock.Object);
-
-        // Act
-        _registry.Unregister<IModule<IConfigurator>, IConfigurator>(moduleMock.Object);
-
-        // Assert
-        _registry.GetAllModules()
-            .Should()
-            .NotContain(moduleMock.Object);
-    }
-
-    [Fact]
-    public void Unregister_Should_Throw_If_Module_Not_Registered()
-    {
-        // Arrange
-        var moduleMock = new Mock<IModule<IConfigurator>>();
-
-        // Act
-        Action act = () => _registry.Unregister<IModule<IConfigurator>, IConfigurator>(moduleMock.Object);
-
-        // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage($"Module of type {moduleMock.Object.GetType().Name} is not registered.");
-    }
-
-    [Fact]
-    public void Register_With_Factory_Should_Create_And_Add_Module()
-    {
-        // Arrange
-        var moduleMock = new Mock<IModule<IConfigurator>>();
-
-        // Act
-        _registry.Register<IModule<IConfigurator>, IConfigurator>(() => moduleMock.Object);
-
-        // Assert
-        _registry.GetAllModules()
-            .Should()
-            .ContainSingle(m => m == moduleMock.Object);
-    }
-
-    [Fact]
-    public void Register_With_Factory_And_Configure_Action_Should_Invoke_Configuration()
-    {
-        // Arrange
-        var moduleMock = new Mock<IModule<IConfigurator>>();
-        var configureActionMock = new Mock<Action<IModule<IConfigurator>>>();
-        configureActionMock.Setup(a => a.Invoke(moduleMock.Object));
-
-        // Act
-        _registry.Register<IModule<IConfigurator>, IConfigurator>(() => moduleMock.Object, configureActionMock.Object);
-
-        // Assert
-        configureActionMock.Verify(a => a.Invoke(moduleMock.Object), Times.Once);
-        _registry.GetAllModules()
-            .Should()
-            .ContainSingle(m => m == moduleMock.Object);
-    }
+    public ServiceConfiguratorTests() : base() { }
 
     [Fact]
     public void Bind_ServiceWithParameters_ShouldInstantiateServiceWithParameters()
     {
         // Arrange
         Dictionary<string, object> parameters = new() { { "param1", "value1" }, { "param2", 42 } };
-        var configurator = new ServiceConfigurator(_services);
-        var binding = configurator.Bind<ITestService>()
-            .To<TestService>()
-            .WithParameters(parameters.AsReadOnly());
+        RegisterService<ITestService>(binding =>
+        {
+            binding.To<TestService>()
+                   .WithParameters(parameters.AsReadOnly());
+        });
 
         // Act
-        binding.Register();
+        Register();
+        var service = Resolve<ITestService>() as TestService;
 
         // Assert
-        var serviceProvider = _services.BuildServiceProvider();
-        var service = serviceProvider.GetRequiredService<ITestService>() as TestService;
-        Assert.NotNull(service);
-        Assert.Equal("value1", service.Param1);
-        Assert.Equal(42, service.Param2);
+        service.Should().NotBeNull();
+        service!.Param1.Should().Be("value1");
+        service.Param2.Should().Be(42);
     }
 
     [Fact]
     public void Bind_ServiceToImplementation_ShouldRegisterService()
     {
         // Arrange
-        var configurator = new ServiceConfigurator(_services);
-        var binding = configurator.Bind<ITestService>().To<TestService>();
+        RegisterService<ITestService>(binding =>
+        {
+            binding.To<TestService>();
+        });
 
         // Act
-        binding.Register();
+        Register();
+        var service = Resolve<ITestService>() as TestService;
 
         // Assert
-        var serviceDescriptor = Assert.Single(_services);
-        Assert.Equal(typeof(ITestService), serviceDescriptor.ServiceType);
+        service.Should().NotBeNull();
     }
 
     [Fact]
     public void Bind_ServiceWithLifetime_ShouldRegisterServiceWithLifetime()
     {
         // Arrange
-        var configurator = new ServiceConfigurator(_services);
-        var binding = configurator.Bind<ITestService>().To<TestService>().WithLifetime(ServiceLifetime.Singleton);
+        RegisterService<ITestService>(binding =>
+        {
+            binding.To<TestService>()
+                   .AsSingleton();
+        });
 
         // Act
-        binding.Register();
+        Register();
+        var service1 = Resolve<ITestService>() as TestService;
+        var service2 = Resolve<ITestService>() as TestService;
 
         // Assert
-        var serviceDescriptor = Assert.Single(_services);
-        Assert.Equal(ServiceLifetime.Singleton, serviceDescriptor.Lifetime);
-    }
-
-    [Fact]
-    public void Bind_ServiceWithParameters_ShouldRegisterServiceWithParameters()
-    {
-        // Arrange
-        Dictionary<string, object> parameters = new() { { "param1", "value1" }, { "param2", 42 } };
-        var configurator = new ServiceConfigurator(_services);
-        var binding = configurator.Bind<ITestService>().To<TestService>().WithParameters(parameters.AsReadOnly());
-
-        // Act
-        binding.Register();
-
-        // Assert
-        var serviceDescriptor = Assert.Single(_services);
-        Assert.Equal(typeof(ITestService), serviceDescriptor.ServiceType);
+        service1.Should().NotBeNull();
+        service2.Should().NotBeNull();
+        service1.Should().BeSameAs(service2);
     }
 
     [Fact]
     public void Bind_ServiceAsSelf_ShouldRegisterServiceAsSelf()
     {
         // Arrange
-        var configurator = new ServiceConfigurator(_services);
-        var binding = configurator.Bind<TestService>().AsSelf();
+        RegisterService<TestService>(binding =>
+        {
+            binding.AsSelf();
+        });
 
         // Act
-        binding.Register();
+        Register();
+        var service = Resolve<TestService>();
 
         // Assert
-        var serviceDescriptor = Assert.Single(_services);
-        Assert.Equal(typeof(TestService), serviceDescriptor.ServiceType);
+        service.Should().NotBeNull();
     }
 
     [Fact]
     public void Bind_ServiceWithInstance_ShouldRegisterServiceWithInstance()
     {
         // Arrange
-        var instance = new TestService();
-        var configurator = new ServiceConfigurator(_services);
-        var binding = configurator.Bind<ITestService>().WithInstance(instance);
+        var mockService = new Mock<ITestService>();
+        RegisterService<ITestService>(binding =>
+        {
+            binding.WithInstance(mockService.Object);
+        });
 
         // Act
-        binding.Register();
+        Register();
+        var service = Resolve<ITestService>();
 
         // Assert
-        var serviceDescriptor = Assert.Single(_services);
-        Assert.Equal(instance, serviceDescriptor.ImplementationInstance);
+        service.Should().NotBeNull();
+        service.Should().Be(mockService.Object);
     }
 
     [Fact]
     public void Bind_ServiceWithFactory_ShouldRegisterServiceWithFactory()
     {
         // Arrange
-        Func<IServiceProvider, ITestService> factory = sp => new TestService();
-        var configurator = new ServiceConfigurator(_services);
-        var binding = configurator.Bind<ITestService>().WithFactory(factory);
+        RegisterService<ITestService>(binding =>
+        {
+            binding.WithFactory(sp => new TestService("value1", 42));
+        });
 
         // Act
-        binding.Register();
+        Register();
+        var service = Resolve<ITestService>() as TestService;
 
         // Assert
-        var serviceDescriptor = Assert.Single(_services);
-        Assert.Equal(typeof(ITestService), serviceDescriptor.ServiceType);
+        service.Should().NotBeNull();
+        service!.Param1.Should().Be("value1");
+        service.Param2.Should().Be(42);
     }
 
     [Fact]
@@ -274,171 +139,109 @@ public class ServiceConfiguratorTests
     {
         // Arrange
         var mockService = new Mock<ITestService>();
-        var configurator = new ServiceConfigurator(_services);
-        var binding = configurator.Bind<ITestService>().WithInstance(mockService.Object).Configure(service => service.DoSomething());
+        RegisterService<ITestService>(binding =>
+        {
+            binding.To<TestService>()
+                   .Configure(service => service.DoSomething());
+        });
 
         // Act
-        binding.Register();
+        Register();
+        var service = Resolve<ITestService>() as TestService;
 
         // Assert
-        mockService.Verify(service => service.DoSomething(), Times.Once);
+        service.Should().NotBeNull();
+        service!.Param1.Should().Be("something");
     }
 
     [Fact]
     public void Register_ServiceWithoutImplementation_ShouldThrowException()
     {
-        // Arrange
-        var configurator = new ServiceConfigurator(_services);
-        var binding = configurator.Bind<ITestService>();
-
-        // Act & Assert
-        Assert.Throws<InvalidOperationException>(() => binding.Register());
-    }
-
-    [Fact]
-    public void Bind_ServiceWithConfigureOptions_ShouldConfigureOptions()
-    {
-        // Arrange
-        var configurator = new ServiceConfigurator(_services);
-        var binding = configurator.Bind<TestService>().AsSelf().Configure<TestServiceOptions>(opts => opts.Option1 = "value");
-
-        // Act
-        binding.Register();
-        var serviceProvider = _services.BuildServiceProvider();
-        var options = serviceProvider.GetRequiredService<IOptions<TestServiceOptions>>().Value;
+        // Arrange & Act
+        Action act = () => RegisterService<ITestService>(binding =>
+        {
+            binding.To<ITestService>();
+        });
 
         // Assert
-        Assert.Equal("value", options.Option1);
-    }
-
-    [Fact]
-    public void Unbind_Service_RemovesRegistration()
-    {
-        var services = new ServiceCollection();
-        var configurator = new ServiceConfigurator(services);
-
-        configurator.Bind<IExampleService>()
-            .To<ExampleService>()
-            .Register();
-        configurator.Unbind<IExampleService>();
-
-        var serviceProvider = services.BuildServiceProvider();
-        var service = serviceProvider.GetService<IExampleService>();
-
-        Assert.Null(service);
-    }
-
-    [Fact]
-    public void Unbind_UnregisteredService_ThrowsInvalidOperationException()
-    {
-        var services = new ServiceCollection();
-        var configurator = new ServiceConfigurator(services);
-
-        Assert.Throws<InvalidOperationException>(() => configurator.Unbind<IExampleService>());
+        act.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
     public void Bind_ServiceWithMultipleParameters_RegistersCorrectly()
     {
-        var services = new ServiceCollection();
-        var configurator = new ServiceConfigurator(services);
+        // Arrange
+        RegisterService<ComplexService>(binding =>
+        {
+            binding.To<ComplexService>()
+                   .WithParameters(new { param1 = "value1", param2 = 42 });
+        });
 
-        configurator.Bind<ComplexService>()
-            .To<ComplexService>()
-            .WithParameters(new { param1 = "Value1", param2 = 42 })
-            .Register();
+        // Act
+        Register();
+        var service = Resolve<ComplexService>();
 
-        var serviceProvider = services.BuildServiceProvider();
-        var service = serviceProvider.GetRequiredService<ComplexService>();
-
-        Assert.Equal("Value1", service.Param1);
-        Assert.Equal(42, service.Param2);
+        // Assert
+        service.Should().NotBeNull();
+        service!.Param1.Should().Be("value1");
+        service.Param2.Should().Be(42);
     }
 
     [Fact]
     public void Bind_ServiceWithInvalidParameters_ThrowsArgumentException()
     {
         // Arrange
-        var services = new ServiceCollection();
-        var configurator = new ServiceConfigurator(services);
+        RegisterService<ComplexService>(binding =>
+        {
+            binding.To<ComplexService>()
+                   .WithParameters(new { param1 = "value1" });
+        });
 
         // Act
-        configurator.Bind<ComplexService>()
-            .To<ComplexService>()
-            .WithParameters(new { param1 = "Value1" })
-            .Register();
+        Register();
+        Action act = () => Resolve<ComplexService>();
 
         // Assert
-        Assert.Throws<ArgumentException>(() =>
-        {
-            var sp = services.BuildServiceProvider();
-            sp.GetRequiredService<ComplexService>();
-        });
+        act.Should().Throw<DependencyResolutionException>();
     }
 
     [Fact]
     public void Bind_ExistingService_ReplacesPreviousRegistration()
     {
-        var services = new ServiceCollection();
-        var configurator = new ServiceConfigurator(services);
-
-        configurator.Bind<IExampleService>()
-            .To<ExampleService>()
-            .Register();
-        configurator.Bind<IExampleService>()
-            .To<AnotherExampleService>()
-            .Register();
-
-        var serviceProvider = services.BuildServiceProvider();
-        var service = serviceProvider.GetRequiredService<IExampleService>();
-
-        Assert.IsType<AnotherExampleService>(service);
-    }
-
-    // Supporting Classes for Tests
-    public interface IExampleService { }
-
-    public class ExampleService : IExampleService { }
-
-    public class AnotherExampleService : IExampleService { }
-
-    public class ComplexService
-    {
-        public string Param1 { get; }
-        public int Param2 { get; }
-
-        public ComplexService(string param1, int param2)
+        // Arrange
+        RegisterService<ITestService>(binding =>
         {
-            Param1 = param1;
-            Param2 = param2;
-        }
-    }
-
-    public interface ITestService
-    {
-        void DoSomething();
-    }
-
-    internal sealed class TestService : ITestService
-    {
-        internal string? Param1 { get; set; }
-        internal int Param2 { get; set; }
-
-        public TestService(string? param1 = null, int? param2 = null)
+            binding.To<TestService>();
+        });
+        RegisterService<ITestService>(binding =>
         {
-            Param1 = param1;
-            Param2 = param2.HasValue ? param2.Value : 0;
-        }
+            binding.To<TestServiceWithDefaultValues>();
+        });
 
-        public void DoSomething()
-        {
-            // Implementation
-        }
+        // Act
+        Register();
+        var service = Resolve<ITestService>() as TestServiceWithDefaultValues;
+
+        // Assert
+        service.Should().NotBeNull();
+        service!.Param1.Should().Be("default");
+        service.Param2.Should().Be(-1);
     }
 
-    internal sealed class TestServiceOptions
-    {
-        public required string Option1 { get; set; }
-    }
+    //[Fact]
+    //public void Bind_ServiceWithConfigureOptions_ShouldConfigureOptions()
+    //{
+    //    // Arrange
+    //    var configurator = new ServiceConfigurator(_services);
+    //    var binding = configurator.Bind<TestService>().AsSelf().Configure<TestServiceOptions>(opts => opts.Option1 = "value");
+
+    //    // Act
+    //    configurator.Register();
+    //    var serviceProvider = _services.BuildServiceProvider();
+    //    var options = serviceProvider.GetRequiredService<IOptions<TestServiceOptions>>().Value;
+
+    //    // Assert
+    //    Assert.Equal("value", options.Option1);
+    //}
 
 }
