@@ -1,6 +1,5 @@
-﻿using Autofac;
+using Autofac;
 using Autofac.Core;
-using Autofac.Core.Registration;
 
 using FluentInjections;
 using FluentInjections.Internal.Configurators;
@@ -9,82 +8,78 @@ using Microsoft.Extensions.DependencyInjection;
 
 using System.Reflection;
 
-internal class FluentInjectionsModule : IModule
+namespace FluentInjections.Tests;
+
+internal class FluentInjectionsModule : Module
 {
     private readonly IServiceCollection _services;
 
     public FluentInjectionsModule(IServiceCollection services)
     {
-        _services = services;
+        _services = services ?? throw new ArgumentNullException(nameof(services));
     }
 
-    public void Configure(IComponentRegistryBuilder componentRegistry)
+    protected override void Load(ContainerBuilder builder)
     {
-        // Use reflection to find all types that implement IServiceModule
-        // and register them with the container
-
         var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-        var builder = new ContainerBuilder();
         var serviceConfigurator = new ServiceConfigurator(builder);
         var middlewareConfigurator = new MiddlewareConfigurator(builder);
 
         foreach (var assembly in assemblies)
         {
-            // Discover all types that implement IConfigurableModule<>
-            foreach (var type in assembly.GetTypes().Where(t => !t.IsAbstract && !t.IsInterface))
-            {
-                var interfaces = type.GetInterfaces().Where(t => t.IsGenericType);
-
-                if (!interfaces.Any(i => i.GetGenericTypeDefinition() == typeof(IConfigurableModule<>)))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    var genericType = interfaces.First(i => i.GetGenericTypeDefinition() == typeof(IConfigurableModule<>));
-                    var configuratorType = genericType.GetGenericArguments().First();
-                    var instance = Activator.CreateInstance(type);
-                    var method = type.GetMethod("Configure");
-
-                    if (method is null)
-                    {
-                        throw new InvalidOperationException($"No suitable method found for module type {type.Name}");
-                    }
-
-                    if (configuratorType == typeof(IServiceConfigurator))
-                    {
-                        method.Invoke(instance, new object[] { serviceConfigurator });
-                    }
-                    else if (configuratorType == typeof(IMiddlewareConfigurator))
-                    {
-                        method.Invoke(instance, new object[] { middlewareConfigurator });
-                    }
-                    else if (configuratorType.IsAbstract)
-                    {
-                        throw new InvalidOperationException($"No suitable configurator found for module type {type.Name}");
-                    }
-                    else
-                    {
-                        // Treat any implementation of IConfigurator as special case for now and attempt to create a configurator instance for it.
-                        var configuratorInstance = Activator.CreateInstance(configuratorType, _services, componentRegistry) as IConfigurator;
-
-                        if (configuratorInstance is null)
-                        {
-                            throw new InvalidOperationException($"No suitable configurator found for module type {type.Name}");
-                        }
-
-                        method.Invoke(instance, new object[] { configuratorInstance });
-                    }
-                }
-                catch (TargetInvocationException ex)
-                {
-                    throw ex.InnerException ?? ex;
-                }
-            }
+            RegisterModulesFromAssembly(assembly, serviceConfigurator, middlewareConfigurator);
         }
 
         serviceConfigurator.Register();
         middlewareConfigurator.Register();
+    }
+
+    private void RegisterModulesFromAssembly(Assembly assembly, IServiceConfigurator serviceConfigurator, IMiddlewareConfigurator middlewareConfigurator)
+    {
+        var moduleTypes = assembly.GetTypes()
+                                  .Where(t => !t.IsAbstract && !t.IsInterface)
+                                  .SelectMany(t => t.GetInterfaces()
+                                                    .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IConfigurableModule<>))
+                                                    .Select(i => new { ModuleType = t, Interface = i }))
+                                  .ToList();
+
+        foreach (var moduleType in moduleTypes)
+        {
+            RegisterModule(moduleType.ModuleType, moduleType.Interface, serviceConfigurator, middlewareConfigurator);
+        }
+    }
+
+    private void RegisterModule(Type moduleType, Type interfaceType, IServiceConfigurator serviceConfigurator, IMiddlewareConfigurator middlewareConfigurator)
+    {
+        var configuratorType = interfaceType.GetGenericArguments().First();
+        var instance = Activator.CreateInstance(moduleType);
+        var configureMethod = moduleType.GetMethod("Configure");
+
+        if (configureMethod is null)
+        {
+            throw new InvalidOperationException($"No suitable Configure method found for module type {moduleType.Name}");
+        }
+
+        if (configuratorType == typeof(IServiceConfigurator))
+        {
+            configureMethod.Invoke(instance, new object[] { serviceConfigurator });
+        }
+        else if (configuratorType == typeof(IMiddlewareConfigurator))
+        {
+            configureMethod.Invoke(instance, new object[] { middlewareConfigurator });
+        }
+        else if (!configuratorType.IsAbstract)
+        {
+            var configuratorInstance = Activator.CreateInstance(configuratorType, _services, builder.ComponentRegistry) as IConfigurator;
+            if (configuratorInstance is null)
+            {
+                throw new InvalidOperationException($"Failed to create an instance of {configuratorType.Name} for module type {moduleType.Name}");
+            }
+            configureMethod.Invoke(instance, new object[] { configuratorInstance });
+        }
+        else
+        {
+            throw new InvalidOperationException($"No suitable configurator found for module type {moduleType.Name}");
+        }
     }
 }
