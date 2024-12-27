@@ -74,6 +74,7 @@ public static class DependencyInjection
             // Add Autofac service provider
             services.AddSingleton<IServiceProvider>(ServiceProvider);
             services.AddSingleton(ServiceProvider);
+            services.AddSingleton<IContainer>(Container);
 
             return services;
         }

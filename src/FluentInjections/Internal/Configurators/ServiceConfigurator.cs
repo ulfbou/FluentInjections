@@ -29,7 +29,7 @@ internal class ServiceConfigurator : IServiceConfigurator
     public IServiceBinding<TService> Bind<TService>() where TService : notnull
     {
         var descriptor = new ServiceBindingDescriptor(typeof(TService));
-        var existing_descriptor = _bindings.FirstOrDefault(binding => binding.BindingType == descriptor.BindingType);
+        var existing_descriptor = _bindings.FirstOrDefault(binding => binding.BindingType == descriptor.BindingType && binding.Name == descriptor.Name);
 
         if (existing_descriptor is not null)
         {
