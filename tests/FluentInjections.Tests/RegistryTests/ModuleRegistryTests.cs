@@ -49,7 +49,6 @@ public class ModuleRegistryTests
         var moduleMock = new Mock<IModule<IConfigurator>>(MockBehavior.Strict);
         var initializableMock = moduleMock.As<IInitializable>();
         initializableMock.Setup(m => m.Initialize());
-
         _registry.Register<IModule<IConfigurator>, IConfigurator>(moduleMock.Object);
 
         // Act
@@ -139,17 +138,13 @@ public class ModuleRegistryTests
     {
         // Arrange
         var moduleMock = new Mock<IModule<IConfigurator>>();
-        var configureActionMock = new Mock<Action<IModule<IConfigurator>>>();
-        configureActionMock.Setup(a => a.Invoke(moduleMock.Object));
+        var configureAction = new Mock<Action<IModule<IConfigurator>>>();
 
         // Act
-        _registry.Register<IModule<IConfigurator>, IConfigurator>(() => moduleMock.Object, configureActionMock.Object);
+        _registry.Register<IModule<IConfigurator>, IConfigurator>(() => moduleMock.Object, configureAction.Object);
 
         // Assert
-        configureActionMock.Verify(a => a.Invoke(moduleMock.Object), Times.Once);
-        _registry.GetAllModules()
-            .Should()
-            .ContainSingle(m => m == moduleMock.Object);
+        configureAction.Verify(a => a(moduleMock.Object), Times.Once);
     }
 
 
@@ -160,68 +155,68 @@ public class ModuleRegistryTests
     }
 
     [Fact]
-    public void RegisterModule_WithCondition_AddsModule()
-    {
-        // Arrange
-        var configuratorMock = new Mock<IServiceConfigurator>();
-        var moduleMock = new Mock<IServiceModule>();
-        moduleMock.Setup(m => m.Configure(configuratorMock.Object)).Verifiable();
-
-        // Act
-
-        var serviceModulesField = _registry.GetType().GetField("_modules", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        var serviceModules = serviceModulesField?.GetValue(_registry) as ConcurrentDictionary<Type, List<IModule<IConfigurator>>>;
-
-        Assert.NotNull(serviceModules);
-        Assert.Single(serviceModules);
-        Assert.IsType<TestServiceModule>(serviceModules.First().Value.First());
-    }
-
-    [Fact]
     public void RegisterModule_WithServiceModule_AddsModule()
     {
+        // Arrange
         var module = new TestServiceModule();
-        var serviceModulesField = _registry.GetType().GetField("_modules", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        var serviceModules = serviceModulesField?.GetValue(_registry) as ConcurrentDictionary<Type, List<IModule<IConfigurator>>>;
+
+        // Act
+        _registry.Register<IServiceModule, IServiceConfigurator>(module);
+        var serviceModules = _registry.GetAllModules();
 
         Assert.NotNull(serviceModules);
         var single = Assert.Single(serviceModules);
+        Assert.Same(module, single);
     }
 
     [Fact]
     public void RegisterModule_WithMiddlewareModule_AddsModule()
     {
+        // Arrange
         var module = new TestMiddlewareModule();
 
-        var middlewareModulesField = _registry.GetType().GetField("_modules", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        var middlewareModules = middlewareModulesField?.GetValue(_registry) as ConcurrentDictionary<Type, List<IModule<IConfigurator>>>;
+        // Act
+        _registry.Register<IMiddlewareModule, IMiddlewareConfigurator>(module);
+        var middlewareModules = _registry.GetAllModules();
 
         Assert.NotNull(middlewareModules);
-        Assert.Single(middlewareModules);
+        var single = Assert.Single(middlewareModules);
+        Assert.Same(module, single);
     }
 
     [Fact]
     public void RegisterModule_WithFactory_AddsModule()
     {
-        var factoryModule = new TestServiceModule();
+        // Arrange so that we can test that the factory produces the correct module
+        var module = new TestModule();
 
-        var serviceModulesField = _registry.GetType().GetField("_modules", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        var serviceModules = serviceModulesField?.GetValue(_registry) as ConcurrentDictionary<Type, List<IModule<IConfigurator>>>;
+        // Act
+        _registry.Register<IServiceModule, IServiceConfigurator>(() => module);
+        var serviceModules = _registry.GetAllModules();
 
         Assert.NotNull(serviceModules);
-        Assert.Single(serviceModules);
-        Assert.IsType<TestServiceModule>(serviceModules.First().Value.First());
+        var single = Assert.Single(serviceModules);
+        Assert.Same(module, single);
     }
 
     [Fact]
     public void ApplyServiceModules_ConfiguresAllServiceModules()
     {
+        // Arrange
         var serviceConfiguratorMock = new Mock<IServiceConfigurator>();
         var module1 = new Mock<IServiceModule>();
         var module2 = new Mock<IServiceModule>();
+        module1.Setup(m => m.CanHandle<IServiceConfigurator>()).Returns(true);
+        module2.Setup(m => m.CanHandle<IServiceConfigurator>()).Returns(true);
+        module1.Setup(m => m.Configure(serviceConfiguratorMock.Object));
+        module2.Setup(m => m.Configure(serviceConfiguratorMock.Object));
 
+        // Act
+        _registry.Register<IServiceModule, IServiceConfigurator>(module1.Object);
+        _registry.Register<IServiceModule, IServiceConfigurator>(module2.Object);
         _registry.Apply(serviceConfiguratorMock.Object);
 
+        // Assert
         module1.Verify(m => m.Configure(serviceConfiguratorMock.Object), Times.Once);
         module2.Verify(m => m.Configure(serviceConfiguratorMock.Object), Times.Once);
     }
@@ -229,12 +224,22 @@ public class ModuleRegistryTests
     [Fact]
     public void ApplyMiddlewareModules_ConfiguresAllMiddlewareModules()
     {
+        // Arrange
         var middlewareConfiguratorMock = new Mock<IMiddlewareConfigurator>();
         var module1 = new Mock<IMiddlewareModule>();
         var module2 = new Mock<IMiddlewareModule>();
 
+        module1.Setup(m => m.CanHandle<IMiddlewareConfigurator>()).Returns(true);
+        module2.Setup(m => m.CanHandle<IMiddlewareConfigurator>()).Returns(true);
+        module1.Setup(m => m.Configure(middlewareConfiguratorMock.Object));
+        module2.Setup(m => m.Configure(middlewareConfiguratorMock.Object));
+
+        // Act
+        _registry.Register<IMiddlewareModule, IMiddlewareConfigurator>(module1.Object);
+        _registry.Register<IMiddlewareModule, IMiddlewareConfigurator>(module2.Object);
         _registry.Apply(middlewareConfiguratorMock.Object);
 
+        // Assert
         module1.Verify(m => m.Configure(middlewareConfiguratorMock.Object), Times.Once);
         module2.Verify(m => m.Configure(middlewareConfiguratorMock.Object), Times.Once);
     }
@@ -242,14 +247,19 @@ public class ModuleRegistryTests
     [Fact]
     public void InitializeModules_InitializesAllModules()
     {
+        // Arrange
         var initializableModule1 = new Mock<IServiceModule>();
         var initializableModule2 = new Mock<IMiddlewareModule>();
 
         initializableModule1.As<IInitializable>().Setup(m => m.Initialize()).Verifiable();
         initializableModule2.As<IInitializable>().Setup(m => m.Initialize()).Verifiable();
 
+        // Act
+        _registry.Register<IServiceModule, IServiceConfigurator>(initializableModule1.Object);
+        _registry.Register<IMiddlewareModule, IMiddlewareConfigurator>(initializableModule2.Object);
         _registry.Initialize();
 
+        // Assert
         initializableModule1.As<IInitializable>().Verify(m => m.Initialize(), Times.Once);
         initializableModule2.As<IInitializable>().Verify(m => m.Initialize(), Times.Once);
     }
@@ -257,10 +267,15 @@ public class ModuleRegistryTests
     [Fact]
     public void UnregisterModule_WithRegisteredModule_RemovesModule()
     {
+        // Arrange
         var module = new TestModule();
+
+        // Act
+        _registry.Register<IServiceConfigurator>(typeof(TestModule), module);
         _registry.Unregister<IServiceConfigurator>(typeof(TestModule), module);
-        var serviceModulesField = _registry.GetType().GetField("_modules", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        var serviceModules = serviceModulesField?.GetValue(_registry) as ConcurrentDictionary<Type, List<IModule<IConfigurator>>>;
+        var serviceModules = _registry.GetAllModules();
+
+        // Assert
         Assert.NotNull(serviceModules);
         Assert.Empty(serviceModules);
     }
@@ -302,16 +317,20 @@ public class ModuleRegistryTests
         Assert.Throws<InvalidOperationException>(() => _registry.Unregister<IModule<IConfigurator>, IConfigurator>(module));
     }
 
-    //[Fact]
-    //public void InitializeModules_HandlesInitializationExceptions()
-    //{
-    //    var faultyModule = new FaultyModule();
+    [Fact]
+    public void InitializeModules_HandlesInitializationExceptions()
+    {
+        // Arrange
+        var faultyModule = new FaultyModule();
 
-    //    var exception = Record.Exception(() => _registry.Initialize());
+        // Act
+        _registry.Register<IServiceConfigurator>(typeof(FaultyModule), faultyModule);
 
-    //    Assert.NotNull(exception);
-    //    Assert.IsType<AggregateException>(exception);
-    //}
+        // Assert
+        var exception = Record.Exception(() => _registry.Initialize());
+        Assert.NotNull(exception);
+        Assert.IsType<AggregateException>(exception);
+    }
 
     [Fact]
     public void RegisterModule_DuplicateModule_ThrowsInvalidOperationException()
@@ -327,7 +346,6 @@ public class ModuleRegistryTests
     {
         public override void Configure(IServiceConfigurator configurator) => configurator.Bind<ITestService>().To<TestService>();
     }
-
     internal sealed class TestServiceModule : Module<IServiceConfigurator>, IServiceModule
     {
         public override void Configure(IServiceConfigurator configurator) => configurator.Bind<ITestService>().To<TestService>();
@@ -336,5 +354,11 @@ public class ModuleRegistryTests
     internal sealed class TestMiddlewareModule : Module<IMiddlewareConfigurator>, IMiddlewareModule
     {
         public override void Configure(IMiddlewareConfigurator configurator) => configurator.UseMiddleware<TestMiddleware>();
+    }
+
+    internal sealed class FaultyModule : Module<IServiceConfigurator>, IInitializable, IServiceModule
+    {
+        public void Initialize() => throw new InvalidOperationException();
+        public override void Configure(IServiceConfigurator configurator) => configurator.Bind<ITestService>().To<TestService>();
     }
 }

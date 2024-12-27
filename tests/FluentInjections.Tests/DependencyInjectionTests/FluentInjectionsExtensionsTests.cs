@@ -4,16 +4,30 @@ using FluentInjections.Tests;
 using Microsoft.Extensions.DependencyInjection;
 using FluentAssertions;
 using FluentInjections.Tests.Modules;
+using System.Configuration;
+using FluentInjections.Internal.Configurators;
 
 namespace FluentInjections.Tests.DependencyInjectionTests;
 
-public class FluentInjectionsExtensionsTests : BaseExtensionTest
+public class FluentInjectionsExtensionsServiceTests : BaseConfiguratorTest<IServiceConfigurator, IServiceBinding>
 {
+    public FluentInjectionsExtensionsServiceTests() : base()
+    {
+        Services.AddFluentInjections(typeof(NamedTestServiceModule).Assembly);
+        Configurator = new ServiceConfigurator(Builder);
+    }
     // Test that TestService is registered correctly: Resolves with no name and has the correct parameters set.
     [Fact]
     public void AddFluentInjections_ShouldRegisterTestService_WithDefaultValues()
     {
-        // Arrange & Act
+        // Arrange
+        Register<ITestService>(binding =>
+        {
+            binding.To<TestServiceWithDefaultValues>();
+        });
+
+        // Act
+        Register();
         var testService = Resolve<ITestService>();
 
         // Assert
@@ -57,5 +71,12 @@ public class FluentInjectionsExtensionsTests : BaseExtensionTest
         // Assert
         testService.Should().NotBeNull();
         testService.Should().BeOfType<TestServiceWithDefaultValues>();
+    }
+
+
+    protected void Register<TService>(Action<IServiceBinding<TService>> configure) where TService : notnull
+    {
+        var binding = Configurator.Bind<TService>();
+        configure(binding);
     }
 }

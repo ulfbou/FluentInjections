@@ -41,8 +41,16 @@ internal class ModuleRegistry : IModuleRegistry
     {
         foreach (var module in _modules.Values.SelectMany(m => m).OfType<IInitializable>())
         {
-            module.Initialize();
+            try
+            {
+                module.Initialize();
+            }
+            catch (Exception ex)
+            {
+                throw new AggregateException($"Failed to initialize module of type {module.GetType().Name}.", ex);
+            }
         }
+
         return this;
     }
 

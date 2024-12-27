@@ -32,9 +32,5 @@ public sealed class NamedTestServiceModule : Module<IServiceConfigurator>, IServ
         //            .To<TestServiceWithOptions>()
         //            .WithName("Test44")
         //            .AsSingleton();
-
-        configurator.Bind<ITestService>()
-                    .To<TestServiceWithDefaultValues>()
-                    .AsSingleton();
     }
 }
