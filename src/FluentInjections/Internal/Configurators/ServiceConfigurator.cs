@@ -1,8 +1,6 @@
 ﻿using Autofac;
 using Autofac.Builder;
 using Autofac.Core;
-using Autofac.Core.Registration;
-using Autofac.Extensions.DependencyInjection;
 
 using FluentInjections.Extensions;
 using FluentInjections.Internal.Descriptors;
@@ -11,10 +9,7 @@ using FluentInjections.Validation;
 
 using Microsoft.Extensions.DependencyInjection;
 
-using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Runtime.InteropServices.JavaScript;
 
 namespace FluentInjections.Internal.Configurators;
 

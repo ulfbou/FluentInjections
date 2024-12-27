@@ -1,5 +1,4 @@
-﻿
-using Autofac;
+﻿using Autofac;
 using Autofac.Core;
 
 using FluentAssertions;
@@ -16,16 +15,21 @@ using Moq;
 
 namespace FluentInjections.Tests.ConfiguratorTests;
 
-public class ServiceConfiguratorTests : BaseTest
+public class ServiceConfiguratorTests : BaseConfiguratorTest<IServiceConfigurator, IServiceBinding>
 {
-    public ServiceConfiguratorTests() : base() { }
+    internal override IServiceConfigurator Configurator { get; }
+
+    public ServiceConfiguratorTests() : base()
+    {
+        Configurator = new ServiceConfigurator(Builder);
+    }
 
     [Fact]
     public void Bind_ServiceWithParameters_ShouldInstantiateServiceWithParameters()
     {
         // Arrange
         Dictionary<string, object> parameters = new() { { "param1", "value1" }, { "param2", 42 } };
-        RegisterService<ITestService>(binding =>
+        Register<ITestService>(binding =>
         {
             binding.To<TestService>()
                    .WithParameters(parameters.AsReadOnly());
@@ -42,10 +46,10 @@ public class ServiceConfiguratorTests : BaseTest
     }
 
     [Fact]
-    public void Bind_ServiceToImplementation_ShouldRegisterService()
+    public void Bind_ServiceToImplementation_ShouldRegister()
     {
         // Arrange
-        RegisterService<ITestService>(binding =>
+        Register<ITestService>(binding =>
         {
             binding.To<TestService>();
         });
@@ -59,10 +63,10 @@ public class ServiceConfiguratorTests : BaseTest
     }
 
     [Fact]
-    public void Bind_ServiceWithLifetime_ShouldRegisterServiceWithLifetime()
+    public void Bind_ServiceWithLifetime_ShouldRegisterWithLifetime()
     {
         // Arrange
-        RegisterService<ITestService>(binding =>
+        Register<ITestService>(binding =>
         {
             binding.To<TestService>()
                    .AsSingleton();
@@ -80,10 +84,10 @@ public class ServiceConfiguratorTests : BaseTest
     }
 
     [Fact]
-    public void Bind_ServiceAsSelf_ShouldRegisterServiceAsSelf()
+    public void Bind_ServiceAsSelf_ShouldRegisterAsSelf()
     {
         // Arrange
-        RegisterService<TestService>(binding =>
+        Register<TestService>(binding =>
         {
             binding.AsSelf();
         });
@@ -97,11 +101,11 @@ public class ServiceConfiguratorTests : BaseTest
     }
 
     [Fact]
-    public void Bind_ServiceWithInstance_ShouldRegisterServiceWithInstance()
+    public void Bind_ServiceWithInstance_ShouldRegisterWithInstance()
     {
         // Arrange
         var mockService = new Mock<ITestService>();
-        RegisterService<ITestService>(binding =>
+        Register<ITestService>(binding =>
         {
             binding.WithInstance(mockService.Object);
         });
@@ -116,10 +120,10 @@ public class ServiceConfiguratorTests : BaseTest
     }
 
     [Fact]
-    public void Bind_ServiceWithFactory_ShouldRegisterServiceWithFactory()
+    public void Bind_ServiceWithFactory_ShouldRegisterWithFactory()
     {
         // Arrange
-        RegisterService<ITestService>(binding =>
+        Register<ITestService>(binding =>
         {
             binding.WithFactory(sp => new TestService("value1", 42));
         });
@@ -139,7 +143,7 @@ public class ServiceConfiguratorTests : BaseTest
     {
         // Arrange
         var mockService = new Mock<ITestService>();
-        RegisterService<ITestService>(binding =>
+        Register<ITestService>(binding =>
         {
             binding.To<TestService>()
                    .Configure(service => service.DoSomething());
@@ -158,7 +162,7 @@ public class ServiceConfiguratorTests : BaseTest
     public void Register_ServiceWithoutImplementation_ShouldThrowException()
     {
         // Arrange & Act
-        Action act = () => RegisterService<ITestService>(binding =>
+        Action act = () => Register<ITestService>(binding =>
         {
             binding.To<ITestService>();
         });
@@ -171,9 +175,9 @@ public class ServiceConfiguratorTests : BaseTest
     public void Bind_ServiceWithMultipleParameters_RegistersCorrectly()
     {
         // Arrange
-        RegisterService<ComplexService>(binding =>
+        Register<ComplexService>(binding =>
         {
-            binding.To<ComplexService>()
+            binding.AsSelf()
                    .WithParameters(new { param1 = "value1", param2 = 42 });
         });
 
@@ -191,9 +195,9 @@ public class ServiceConfiguratorTests : BaseTest
     public void Bind_ServiceWithInvalidParameters_ThrowsArgumentException()
     {
         // Arrange
-        RegisterService<ComplexService>(binding =>
+        Register<ComplexService>(binding =>
         {
-            binding.To<ComplexService>()
+            binding.AsSelf()
                    .WithParameters(new { param1 = "value1" });
         });
 
@@ -209,11 +213,11 @@ public class ServiceConfiguratorTests : BaseTest
     public void Bind_ExistingService_ReplacesPreviousRegistration()
     {
         // Arrange
-        RegisterService<ITestService>(binding =>
+        Register<ITestService>(binding =>
         {
             binding.To<TestService>();
         });
-        RegisterService<ITestService>(binding =>
+        Register<ITestService>(binding =>
         {
             binding.To<TestServiceWithDefaultValues>();
         });
@@ -227,6 +231,13 @@ public class ServiceConfiguratorTests : BaseTest
         service!.Param1.Should().Be("default");
         service.Param2.Should().Be(-1);
     }
+
+    protected void Register<TService>(Action<IServiceBinding<TService>> configure) where TService : notnull
+    {
+        var binding = Configurator.Bind<TService>();
+        configure(binding);
+    }
+
 
     //[Fact]
     //public void Bind_ServiceWithConfigureOptions_ShouldConfigureOptions()
