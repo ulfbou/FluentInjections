@@ -17,8 +17,6 @@ namespace FluentInjections.Tests.ConfiguratorTests;
 
 public class ServiceConfiguratorTests : BaseConfiguratorTest<IServiceConfigurator, IServiceBinding>
 {
-    internal override IServiceConfigurator Configurator { get; }
-
     public ServiceConfiguratorTests() : base()
     {
         Configurator = new ServiceConfigurator(Builder);

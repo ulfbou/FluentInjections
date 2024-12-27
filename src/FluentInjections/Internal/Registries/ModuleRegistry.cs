@@ -46,8 +46,12 @@ internal class ModuleRegistry : IModuleRegistry
         return this;
     }
 
-    public IModuleRegistry Register<TModule, TConfigurator>(TModule module) where TModule : IModule<TConfigurator> where TConfigurator : IConfigurator =>
-        Register(module.GetType(), module);
+    public IModuleRegistry Register<TModule, TConfigurator>(TModule module) where TModule : IModule<TConfigurator> where TConfigurator : IConfigurator
+    {
+        ArgumentGuard.NotNull(module, nameof(module));
+
+        return Register(module.GetType(), module);
+    }
 
     public IModuleRegistry Register<TConfigurator>(Type moduleType, IModule<TConfigurator> module) where TConfigurator : IConfigurator
     {
@@ -87,7 +91,10 @@ internal class ModuleRegistry : IModuleRegistry
     public IModuleRegistry Unregister<TModule, TConfigurator>(TModule module)
         where TModule : IModule<TConfigurator>
         where TConfigurator : IConfigurator
-        => Unregister(module.GetType(), module);
+    {
+        ArgumentGuard.NotNull(module, nameof(module));
+        return Unregister(module.GetType(), module);
+    }
 
     public IModuleRegistry Unregister<TConfigurator>(Type moduleType, IModule<TConfigurator> module)
         where TConfigurator : IConfigurator

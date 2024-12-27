@@ -1,9 +1,20 @@
 ﻿using FluentInjections.Tests.Services;
 
+using Moq;
+
 namespace FluentInjections.Tests.Modules;
 
-public sealed class InjectionTestServiceModule() : Module<IServiceConfigurator>(), IServiceModule
+public sealed class NamedTestServiceModule : Module<IServiceConfigurator>, IServiceModule
 {
+    internal Mock<ITestService> Test43Mock { get; }
+
+    public NamedTestServiceModule() : base()
+    {
+        Test43Mock = new Mock<ITestService>();
+        Test43Mock.Setup(x => x.Param1).Returns("value1");
+        Test43Mock.Setup(x => x.Param2).Returns(43);
+    }
+
     public override void Configure(IServiceConfigurator configurator)
     {
         configurator.Bind<ITestService>()
@@ -13,14 +24,14 @@ public sealed class InjectionTestServiceModule() : Module<IServiceConfigurator>(
                     .AsSingleton();
 
         configurator.Bind<ITestService>()
-                    .WithInstance(new TestService("value1", 43))
+                    .WithInstance(Test43Mock.Object)
                     .WithName("Test43")
                     .AsSingleton();
 
-        configurator.Bind<ITestService>()
-                    .To<TestServiceWithOptions>()
-                    .WithName("Test44")
-                    .AsSingleton();
+        //configurator.Bind<ITestService>()
+        //            .To<TestServiceWithOptions>()
+        //            .WithName("Test44")
+        //            .AsSingleton();
 
         configurator.Bind<ITestService>()
                     .To<TestServiceWithDefaultValues>()
