@@ -20,19 +20,20 @@ namespace FluentInjections;
 internal sealed class FluentInjectionsModule : Autofac.Module
 {
     private readonly IServiceCollection _services;
+    private readonly Assembly[] _assemblies;
 
-    public FluentInjectionsModule(IServiceCollection services)
+    public FluentInjectionsModule(IServiceCollection services, Assembly[] assemblies)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
+        _assemblies = assemblies ?? throw new ArgumentNullException(nameof(assemblies));
     }
 
     protected override void Load(ContainerBuilder builder)
     {
-        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
         var serviceConfigurator = new ServiceConfigurator(builder);
         var middlewareConfigurator = new MiddlewareConfigurator(builder);
 
-        foreach (var assembly in assemblies)
+        foreach (var assembly in _assemblies)
         {
             RegisterModulesFromAssembly(assembly, serviceConfigurator, middlewareConfigurator);
         }

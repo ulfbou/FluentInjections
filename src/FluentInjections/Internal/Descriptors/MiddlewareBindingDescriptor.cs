@@ -1,4 +1,7 @@
-﻿using FluentInjections.Internal.Constants;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using FluentInjections.Internal.Constants;
 
 namespace FluentInjections.Internal.Descriptors;
 
@@ -6,9 +9,9 @@ public class MiddlewareBindingDescriptor
 {
     public Type MiddlewareType { get; set; }
 
-    public object Instance
+    public object? Instance
     {
-        get => _instance ?? throw new InvalidOperationException(ExceptionMessages.InstanceNotSet);
+        get => _instance;
         set => _instance = value ?? throw new ArgumentNullException(nameof(value));
     }
     private object? _instance;

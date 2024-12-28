@@ -1,4 +1,7 @@
-﻿using FluentInjections.Internal.Configurators;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Descriptors;
 using FluentInjections.Validation;
 
@@ -17,8 +20,8 @@ public static class CallbackExtensions
     /// <exception cref="InvalidOperationException">Thrown if the binding type is invalid.</exception>
     internal static IMiddlewareBinding Callback(this IMiddlewareBinding binding, Action<MiddlewareBindingDescriptor> callback)
     {
-        ArgumentGuard.NotNull(binding, nameof(binding));
-        ArgumentGuard.NotNull(callback, nameof(callback));
+        Guard.NotNull(binding, nameof(binding));
+        Guard.NotNull(callback, nameof(callback));
 
         callback(binding.Descriptor);
         return binding;
@@ -33,8 +36,8 @@ public static class CallbackExtensions
     /// <returns>The instance.</returns>
     internal static T Callback<T>(this T instance, Action<T> callback)
     {
-        ArgumentGuard.NotNull(instance, nameof(instance));
-        ArgumentGuard.NotNull(callback, nameof(callback));
+        Guard.NotNull(instance, nameof(instance));
+        Guard.NotNull(callback, nameof(callback));
 
         callback(instance);
         return instance;
@@ -51,9 +54,9 @@ public static class CallbackExtensions
     /// <returns>The instance.</returns>
     internal static TResponse Callback<TData, TResponse>(this TResponse instance, Func<TData, TResponse> callback, TData data)
     {
-        ArgumentGuard.NotNull(instance, nameof(instance));
-        ArgumentGuard.NotNull(callback, nameof(callback));
-        ArgumentGuard.NotNull(data, nameof(data));
+        Guard.NotNull(instance, nameof(instance));
+        Guard.NotNull(callback, nameof(callback));
+        Guard.NotNull(data, nameof(data));
 
         callback(data);
         return instance;

@@ -1,3 +1,8 @@
+// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using FluentInjections.Internal.Descriptors;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 
@@ -26,42 +31,24 @@ public interface IMiddlewareConfigurator : IConfigurator<IMiddlewareBinding>
     /// </summary>
     /// <typeparam name="TMiddleware">The type of the middleware to register.</typeparam>
     /// <returns>A binding interface to configure the middleware.</returns>
-    IMiddlewareBinding UseMiddleware<TMiddleware>() where TMiddleware : class;
+    IMiddlewareBinding<TMiddleware> UseMiddleware<TMiddleware>() where TMiddleware : class;
 
-    /// <summary>
-    /// Registers a middleware of the specified type.
-    /// </summary>
-    /// <param name="middleware">The type of the middleware to register.</typeparam>
-    /// <returns>A binding interface to configure the middleware.</returns>
-    IMiddlewareBinding UseMiddleware(Type middleware);
 
     /// <summary>
     /// Removes a middleware of the specified type.
     /// </summary>
     /// <typeparam name="TMiddleware">The type of the middleware to remove.</typeparam>
-    /// <returns>A binding interface to configure the middleware removal.</returns>
-    IMiddlewareBinding RemoveMiddleware<TMiddleware>() where TMiddleware : class;
-
-    /// <summary>
-    /// Removes a middleware of the specified type.
-    /// </summary>
-    /// <param name="middleware">The type of the middleware to remove.</typeparam>
-    /// <returns>A binding interface to configure the middleware removal.</returns>
-    IMiddlewareBinding RemoveMiddleware(Type middleware);
+    /// <param name="descriptor">Optional. The descriptor of the middleware to remove.</param>
+    /// <returns><see langword="true" />if the middleware was removed; otherwise, <see langword="false" />.</returns>
+    bool RemoveMiddleware<TMiddleware>(MiddlewareBindingDescriptor? descriptor = null) where TMiddleware : class;
 
     /// <summary>
     /// Gets the configuration binding for a middleware of the specified type.
     /// </summary>
     /// <typeparam name="TMiddleware">The type of the middleware to get.</typeparam>
+    /// <param name="descriptor">Optional. The descriptor of the middleware to get.</param>
     /// <returns>A binding interface to configure the middleware.</returns>
-    IMiddlewareBinding GetMiddleware<TMiddleware>() where TMiddleware : class;
-
-    /// <summary>
-    /// Gets the configuration binding for a middleware of the specified type.
-    /// </summary>
-    /// <param name="middleware">The type of the middleware to get.</typeparam>
-    /// <returns>A binding interface to configure the middleware.</returns>
-    IMiddlewareBinding GetMiddleware(Type middleware);
+    IMiddlewareBinding<TMiddleware>? GetMiddleware<TMiddleware>(MiddlewareBindingDescriptor? descriptor = null) where TMiddleware : class;
 
     /// <summary>
     /// Applies a configuration action to all middleware in the specified group.

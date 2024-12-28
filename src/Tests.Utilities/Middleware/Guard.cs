@@ -1,4 +1,7 @@
-﻿namespace FluentInjections.Tests.Utilities;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace FluentInjections.Tests.Utilities;
 
 /// <summary>
 /// Represents a class that provides methods to guard against invalid arguments.

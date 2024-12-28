@@ -1,9 +1,13 @@
-﻿using Autofac.Core;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using Autofac.Core;
 
 using FluentInjections;
 using FluentInjections.Internal.Registries;
 using FluentInjections.Tests.Internal.Extensions;
 using FluentInjections.Tests.Modules;
+using FluentInjections.Tests.Modules.Unnamed;
 using FluentInjections.Tests.Services;
 
 using Microsoft.AspNetCore.Builder;
@@ -30,7 +34,7 @@ public class FluentInjectionsTests : IDisposable
     public FluentInjectionsTests()
     {
         _builder = WebApplication.CreateBuilder();
-        _builder.Services.AddFluentInjections(Assembly.GetExecutingAssembly());
+        _builder.Services.AddFluentInjections(typeof(UnnamedTestServiceModule).Assembly);
         _services = _builder.Services;
         _app = _builder.Build();
         _scope = _app.Services.CreateAsyncScope();

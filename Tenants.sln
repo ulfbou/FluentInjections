@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tenants", "src\Tenants\Tenants.csproj", "{22224B30-8195-4A6B-9C34-8061B28E7B5F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentInjections", "src\FluentInjections\FluentInjections.csproj", "{CD6A5AB2-9D06-4138-9DC6-3E148026F350}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{22224B30-8195-4A6B-9C34-8061B28E7B5F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{22224B30-8195-4A6B-9C34-8061B28E7B5F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{22224B30-8195-4A6B-9C34-8061B28E7B5F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{22224B30-8195-4A6B-9C34-8061B28E7B5F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CD6A5AB2-9D06-4138-9DC6-3E148026F350}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CD6A5AB2-9D06-4138-9DC6-3E148026F350}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CD6A5AB2-9D06-4138-9DC6-3E148026F350}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CD6A5AB2-9D06-4138-9DC6-3E148026F350}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

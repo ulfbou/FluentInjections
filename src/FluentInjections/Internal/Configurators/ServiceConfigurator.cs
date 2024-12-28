@@ -1,4 +1,7 @@
-﻿using Autofac;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using Autofac;
 using Autofac.Builder;
 using Autofac.Core;
 
@@ -176,7 +179,7 @@ internal class ServiceConfigurator : IServiceConfigurator
 
         public IServiceBinding<TService> To(Type implementationType)
         {
-            ArgumentGuard.NotNull(implementationType, nameof(implementationType));
+            Guard.NotNull(implementationType, nameof(implementationType));
 
             if (implementationType != Descriptor.BindingType && !implementationType.IsAssignableTo(Descriptor.BindingType))
             {
@@ -243,7 +246,7 @@ internal class ServiceConfigurator : IServiceConfigurator
 
         public IServiceBinding<TService> WithInstance(TService instance)
         {
-            ArgumentGuard.NotNull(instance, nameof(instance));
+            Guard.NotNull(instance, nameof(instance));
 
             if (Descriptor.ImplementationType is not null)
             {
@@ -266,7 +269,7 @@ internal class ServiceConfigurator : IServiceConfigurator
 
         public IServiceBinding<TService> WithFactory(Func<IServiceProvider, TService> factory)
         {
-            ArgumentGuard.NotNull(factory, nameof(factory));
+            Guard.NotNull(factory, nameof(factory));
 
             if (Descriptor.ImplementationType is not null)
             {
@@ -286,7 +289,7 @@ internal class ServiceConfigurator : IServiceConfigurator
 
         public IServiceBinding<TService> WithName(string name)
         {
-            ArgumentGuard.NotNullOrEmpty(name, nameof(name));
+            Guard.NotNullOrEmpty(name, nameof(name));
 
             Descriptor.Name = name;
             Debug.WriteLine($"Setting name of service {Descriptor.BindingType.Name} to {name}.");
@@ -329,8 +332,8 @@ internal class ServiceConfigurator : IServiceConfigurator
 
         public IServiceBinding<TService> WithParameter(string name, object value)
         {
-            ArgumentGuard.NotNullOrEmpty(name, nameof(name));
-            ArgumentGuard.NotNull(value, nameof(value));
+            Guard.NotNullOrEmpty(name, nameof(name));
+            Guard.NotNull(value, nameof(value));
 
             if (Descriptor.Instance is not null)
             {
@@ -366,7 +369,7 @@ internal class ServiceConfigurator : IServiceConfigurator
 
         public IServiceBinding<TService> WithParameters(IReadOnlyDictionary<string, object> parameters)
         {
-            ArgumentGuard.NotNull(parameters, nameof(parameters));
+            Guard.NotNull(parameters, nameof(parameters));
 
             foreach (var parameter in parameters)
             {

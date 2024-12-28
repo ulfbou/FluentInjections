@@ -1,4 +1,7 @@
-﻿using System.Collections.Concurrent;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using System.Collections.Concurrent;
 using System.Linq;
 
 using FluentInjections;
@@ -22,9 +25,10 @@ internal class ModuleRegistry : IModuleRegistry
         _services = services ?? throw new ArgumentNullException(nameof(services));
     }
 
+    /// <inheritdoc />
     public IModuleRegistry Apply<TConfigurator>(TConfigurator configurator) where TConfigurator : IConfigurator
     {
-        ArgumentGuard.NotNull(configurator, nameof(configurator));
+        Guard.NotNull(configurator, nameof(configurator));
 
         foreach (var module in _modules.Values.SelectMany(m => m))
         {
@@ -37,6 +41,7 @@ internal class ModuleRegistry : IModuleRegistry
         return this;
     }
 
+    /// <inheritdoc />
     public IModuleRegistry Initialize()
     {
         foreach (var module in _modules.Values.SelectMany(m => m).OfType<IInitializable>())
@@ -54,17 +59,19 @@ internal class ModuleRegistry : IModuleRegistry
         return this;
     }
 
+    /// <inheritdoc />
     public IModuleRegistry Register<TModule, TConfigurator>(TModule module) where TModule : IModule<TConfigurator> where TConfigurator : IConfigurator
     {
-        ArgumentGuard.NotNull(module, nameof(module));
+        Guard.NotNull(module, nameof(module));
 
         return Register(module.GetType(), module);
     }
 
+    /// <inheritdoc />
     public IModuleRegistry Register<TConfigurator>(Type moduleType, IModule<TConfigurator> module) where TConfigurator : IConfigurator
     {
-        ArgumentGuard.NotNull(moduleType, nameof(moduleType));
-        ArgumentGuard.NotNull(module, nameof(module));
+        Guard.NotNull(moduleType, nameof(moduleType));
+        Guard.NotNull(module, nameof(module));
 
         if (!_modules.ContainsKey(moduleType))
         {
@@ -81,33 +88,41 @@ internal class ModuleRegistry : IModuleRegistry
             throw new InvalidOperationException($"Module of type {moduleType.Name} is already registered.");
         }
 
+        if (module is IValidatable validatableModule)
+        {
+            validatableModule.Validate();
+        }
+
         _modules[moduleType].Add(configuratorModule);
         return this;
     }
 
+    /// <inheritdoc />
     public IModuleRegistry Register<TModule, TConfigurator>(Func<TModule> factory, Action<TModule>? configure = null)
         where TModule : IModule<TConfigurator>
         where TConfigurator : IConfigurator
     {
-        ArgumentGuard.NotNull(factory, nameof(factory));
+        Guard.NotNull(factory, nameof(factory));
 
         var module = factory();
         configure?.Invoke(module);
         return Register(module.GetType(), module);
     }
 
+    /// <inheritdoc />
     public IModuleRegistry Unregister<TModule, TConfigurator>(TModule module)
         where TModule : IModule<TConfigurator>
         where TConfigurator : IConfigurator
     {
-        ArgumentGuard.NotNull(module, nameof(module));
+        Guard.NotNull(module, nameof(module));
         return Unregister(module.GetType(), module);
     }
 
+    /// <inheritdoc />
     public IModuleRegistry Unregister<TConfigurator>(Type moduleType, IModule<TConfigurator> module)
         where TConfigurator : IConfigurator
     {
-        ArgumentGuard.NotNull(module, nameof(module));
+        Guard.NotNull(module, nameof(module));
 
         if (!(module is IModule<IConfigurator> configuratorModule))
         {

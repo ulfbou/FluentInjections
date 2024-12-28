@@ -1,4 +1,7 @@
-﻿using FluentInjections.Internal.Configurators;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Descriptors;
 using FluentInjections.Tests.Internal.Extensions;
 

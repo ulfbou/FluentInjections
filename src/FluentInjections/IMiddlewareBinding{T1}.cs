@@ -1,3 +1,6 @@
+// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 using Microsoft.AspNetCore.Http;
 
 namespace FluentInjections;
@@ -13,7 +16,7 @@ public interface IMiddlewareBinding<TMiddleware> : IMiddlewareBinding
     /// <summary>
     /// Gets the instance of the middleware.
     /// </summary>
-    TMiddleware Middleware { get; }
+    TMiddleware Instance { get; }
 
     /// <summary>
     /// Sets the instance of the middleware.

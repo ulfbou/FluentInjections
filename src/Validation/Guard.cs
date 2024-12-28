@@ -1,6 +1,9 @@
-﻿namespace FluentInjections.Validation;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
 
-public static class ArgumentGuard
+namespace FluentInjections.Validation;
+
+public static class Guard
 {
     public static void NotNull<T>(T value, string name)
     {

@@ -1,4 +1,7 @@
-﻿using FluentAssertions.Common;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using FluentAssertions.Common;
 using FluentInjections.Tests.Services;
 using FluentInjections.Tests;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,25 +9,31 @@ using FluentAssertions;
 using FluentInjections.Tests.Modules;
 using System.Configuration;
 using FluentInjections.Internal.Configurators;
+using Autofac.Extensions.DependencyInjection;
+using Autofac;
 
 namespace FluentInjections.Tests.DependencyInjectionTests;
 
 public class FluentInjectionsExtensionsServiceTests : BaseConfiguratorTest<IServiceConfigurator, IServiceBinding>
 {
+    public AutofacServiceProvider AppServices { get; private set; }
+
     public FluentInjectionsExtensionsServiceTests() : base()
     {
         Services.AddFluentInjections(typeof(NamedTestServiceModule).Assembly);
-        Configurator = new ServiceConfigurator(Builder);
+        AppServices = new AutofacServiceProvider(DependencyInjection.Container);
+        Configurator = new ServiceConfigurator(DependencyInjection.Builder);
     }
+
     // Test that TestService is registered correctly: Resolves with no name and has the correct parameters set.
     [Fact]
     public void AddFluentInjections_ShouldRegisterTestService_WithDefaultValues()
     {
         // Arrange
-        Register<ITestService>(binding =>
-        {
-            binding.To<TestServiceWithDefaultValues>();
-        });
+        //Register<ITestService>(binding =>
+        //{
+        //    binding.To<TestServiceWithDefaultValues>();
+        //});
 
         // Act
         Register();

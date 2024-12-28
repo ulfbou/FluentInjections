@@ -1,4 +1,7 @@
-﻿namespace FluentInjections;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace FluentInjections;
 
 /// <summary>
 /// Represents a registry for managing service and middleware modules.
