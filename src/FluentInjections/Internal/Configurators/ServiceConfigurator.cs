@@ -1,6 +1,8 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using Autofac.Core;
+
 using FluentInjections.Extensions;
 using FluentInjections.Internal.Descriptors;
 using FluentInjections.Internal.Utils;
@@ -10,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using System.Diagnostics;
+using System.Text;
 
 namespace FluentInjections.Internal.Configurators;
 
@@ -31,53 +34,11 @@ public abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
     /// <inheritdoc />
     public IServiceBinding<TService> Bind<TService>() where TService : notnull
     {
-        var descriptor = new ServiceBindingDescriptor(typeof(TService));
-        var existing_descriptor = _bindings.FirstOrDefault(binding => binding.BindingType == descriptor.BindingType && binding.Name == descriptor.Name);
-
-        ResolveConflict(descriptor, existing_descriptor);
+        var descriptor = new ServiceBindingDescriptor(typeof(TService), this);
+        var existingDescriptor = _bindings.FirstOrDefault(binding => binding.BindingType == descriptor.BindingType && binding.Name == descriptor.Name);
 
         _bindings.Add(descriptor);
         return new ServiceBinding<TService>(this, descriptor);
-    }
-
-    private void ResolveConflict(ServiceBindingDescriptor descriptor, ServiceBindingDescriptor? existingDescriptor)
-    {
-        if (existingDescriptor is not null)
-        {
-            switch (ConflictResolution)
-            {
-                case ConflictResolutionMode.Replace:
-                    _bindings.Remove(existingDescriptor);
-                    break;
-                case ConflictResolutionMode.WarnAndReplace:
-                    _logger.LogWarning($"Service of type {descriptor.BindingType.Name} already exists. Replacing with new descriptor.");
-                    _bindings.Remove(existingDescriptor);
-                    break;
-                case ConflictResolutionMode.Prevent:
-                    _logger.LogError($"Service of type {descriptor.BindingType.Name} already exists. Registration prevented.");
-                    throw new InvalidOperationException($"Service of type {descriptor.BindingType.Name} already exists.");
-                case ConflictResolutionMode.Merge:
-                    MergeDescriptors(existingDescriptor, descriptor);
-                    break;
-                default:
-                    throw new NotImplementedException($"Conflict resolution mode {ConflictResolution} not supported.");
-            }
-        }
-    }
-
-    private void MergeDescriptors(ServiceBindingDescriptor existingDescriptor, ServiceBindingDescriptor newDescriptor)
-    {
-        foreach (var param in newDescriptor.Parameters)
-        {
-            existingDescriptor.Parameters[param.Key] = param.Value;
-        }
-
-        foreach (var metadata in newDescriptor.Metadata)
-        {
-            existingDescriptor.Metadata[metadata.Key] = metadata.Value;
-        }
-
-        existingDescriptor.Configure += newDescriptor.Configure;
     }
 
     /// <summary>
@@ -116,11 +77,100 @@ public abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
 
     public void Register()
     {
+        ValidateBindings();
+
         foreach (var binding in _bindings)
         {
             Register(binding);
         }
     }
+
+    private void ValidateBindings()
+    {
+        var duplicateGroups = _bindings.GroupBy(binding => new { binding.BindingType, binding.Name })
+                                       .Where(group => group.Count() > 1)
+                                       .ToList();
+
+        if (duplicateGroups.Any())
+        {
+            StringBuilder sb = new();
+            sb.AppendLine("Duplicate service bindings found:");
+
+            foreach (var group in duplicateGroups)
+            {
+                var key = group.Key;
+                var message = $"Duplicate service binding for type {key.BindingType.Name}";
+
+                if (key.Name is not null)
+                {
+                    message += $" with name {key.Name}";
+                }
+
+                switch (ConflictResolution)
+                {
+                    case ConflictResolutionMode.WarnAndReplace:
+                        _logger.LogWarning(message);
+                        ReplaceBindings(group);
+                        break;
+                    case ConflictResolutionMode.Replace:
+                        ReplaceBindings(group);
+                        break;
+                    case ConflictResolutionMode.Prevent:
+                        sb.AppendLine(message);
+                        break;
+                    case ConflictResolutionMode.Merge:
+                        _logger.LogWarning(message);
+                        MergeBindings(group);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException("Invalid conflict resolution mode.");
+                }
+            }
+
+            if (ConflictResolution == ConflictResolutionMode.Prevent && sb.Length > 0)
+            {
+                throw new InvalidOperationException(sb.ToString());
+            }
+        }
+    }
+
+    private void ReplaceBindings(IGrouping<object, ServiceBindingDescriptor> group)
+    {
+        var bindings = group.ToList();
+
+        // Keep the last binding and remove the rest
+        var lastBinding = bindings.Last();
+        _bindings.RemoveAll(binding => binding.BindingType == lastBinding.BindingType && binding.Name == lastBinding.Name && binding != lastBinding);
+    }
+
+    private void MergeBindings(IGrouping<object, ServiceBindingDescriptor> group)
+    {
+        var bindings = group.ToList();
+        var primaryBinding = bindings.First();
+
+        foreach (var binding in bindings.Skip(1))
+        {
+            MergeDescriptors(primaryBinding, binding);
+            _bindings.Remove(binding);
+        }
+    }
+
+    private void MergeDescriptors(ServiceBindingDescriptor existingDescriptor, ServiceBindingDescriptor newDescriptor)
+    {
+        foreach (var param in newDescriptor.Parameters)
+        {
+            existingDescriptor.Parameters[param.Key] = param.Value;
+        }
+
+        foreach (var metadata in newDescriptor.Metadata)
+        {
+            existingDescriptor.Metadata[metadata.Key] = metadata.Value;
+        }
+
+        existingDescriptor.Configure += newDescriptor.Configure;
+    }
+
+
 
     protected abstract void Register(ServiceBindingDescriptor descriptor);
 
@@ -250,7 +300,7 @@ public abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
             return this;
         }
 
-        public IServiceBinding<TService> WithKey(string name)
+        public IServiceBinding<TService> WithName(string name)
         {
             Guard.NotNullOrEmpty(name, nameof(name));
 

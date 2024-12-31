@@ -62,9 +62,9 @@ public interface IServiceBinding<TService> : IServiceBinding where TService : no
     /// <summary>
     /// Names the service binding.
     /// </summary>
-    /// <param name="key">The name of the binding.</param>
+    /// <param name="name">The name of the binding.</param>
     /// <returns>The service binding instance.</returns>
-    IServiceBinding<TService> WithKey(string key);
+    IServiceBinding<TService> WithName(string name);
 
     /// <summary>
     /// Sets a custom lifetime for the service.

@@ -103,19 +103,19 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TService, TFixture
     }
 
     [Fact]
-    public void Register_WithKey_RegistersKeyedTestService()
+    public void Register_WithName_RegistersnameedTestService()
     {
         // Arrange
         var binding = Configurator.Bind<ITestService>()
                                   .To<TestService>()
-                                  .WithKey("key")
+                                  .WithName("name")
                                   as ServiceBinding<ITestService>;
         var descriptor = binding?.GetDescriptor();
 
         // Act
         Configurator.Register();
         BuildProvider();
-        var service = GetRequiredNamedService<ITestService>("key");
+        var service = GetRequiredNamedService<ITestService>("name");
 
         // Assert
         service.Should().NotBeNull();
@@ -123,17 +123,17 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TService, TFixture
     }
 
     [Fact]
-    public void Register_WithKeyAndFactory_RegistersKeyedFactory()
+    public void Register_WithNameAndFactory_RegistersnameedFactory()
     {
         // Arrange
         Configurator.Bind<ITestService>()
-                    .WithKey("key")
+                    .WithName("name")
                     .WithFactory(provider => _mockService.Object);
 
         // Act
         Configurator.Register();
         BuildProvider();
-        var service = GetRequiredNamedService<ITestService>("key");
+        var service = GetRequiredNamedService<ITestService>("name");
 
         // Assert
         service.Should().NotBeNull();
@@ -162,8 +162,8 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TService, TFixture
     [Fact]
     public void Register_MultipleImplementations_ResolvesCorrectly()
     {
-        Configurator.Bind<ITestService>().To<TestService>().WithKey("Service1");
-        Configurator.Bind<ITestService>().To<AnotherTestService>().WithKey("Service2");
+        Configurator.Bind<ITestService>().To<TestService>().WithName("Service1");
+        Configurator.Bind<ITestService>().To<AnotherTestService>().WithName("Service2");
 
         Configurator.Register();
         BuildProvider();
@@ -194,7 +194,7 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TService, TFixture
     }
 
     [Fact]
-    public void Register_ScopedService_CreatesNewInstancePerScope()
+    public void Register_ScopedService_ReturnsSameInstanceWithinScope()
     {
         Configurator.Bind<ITestService>().To<TestService>().AsScoped();
 
@@ -206,7 +206,26 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TService, TFixture
             var service1 = scope.ServiceProvider.GetService<ITestService>();
             var service2 = scope.ServiceProvider.GetService<ITestService>();
 
-            service1.Should().NotBeSameAs(service2);
+            service1.Should().BeSameAs(service2);
+        }
+    }
+
+    [Fact]
+    public void Register_ScopedService_ReturnsDifferentInstancesWithNewScope()
+    {
+        Configurator.Bind<ITestService>().To<TestService>().AsScoped();
+
+        Configurator.Register();
+        BuildProvider();
+
+        using (var scope = Provider!.CreateScope())
+        {
+            var service1 = scope.ServiceProvider.GetService<ITestService>();
+            using (var newScope = Provider.CreateScope())
+            {
+                var service2 = newScope.ServiceProvider.GetService<ITestService>();
+                service1.Should().NotBeSameAs(service2);
+            }
         }
     }
 
@@ -216,12 +235,14 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TService, TFixture
         // Act
         Configurator.Bind<ITestService>()
                     .To<TestService>()
-                    .WithMetadata("key1", "value1")
+                    .WithName("MetadataTest")
+                    .WithMetadata("name1", "value1")
                     .WithParameter("param1", "value1");
 
         Configurator.Bind<ITestService>()
                     .To<TestService>()
-                    .WithMetadata("key2", "value2")
+                    .WithName("MetadataTest")
+                    .WithMetadata("name2", "value2")
                     .WithParameter("param2", "value2");
 
         Configurator.ConflictResolution = ConflictResolutionMode.Merge;
@@ -230,11 +251,12 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TService, TFixture
         BuildProvider();
         var configurator = Configurator as ServiceConfigurator;
         var descriptor = configurator?.TryGetDescriptor(typeof(ITestService));
+        var metadata = Provider?.GetMetadata("MetadataTest", typeof(ITestService));
 
         descriptor.Should().NotBeNull();
-        descriptor!.Metadata.Should().ContainKey("key1").And.ContainValue("value1");
-        descriptor.Metadata.Should().ContainKey("key2").And.ContainValue("value2");
-        descriptor.Parameters.Should().ContainKey("param1").And.ContainValue("value1");
+        metadata.Should().ContainKey("name1").And.ContainValue("value1");
+        metadata.Should().ContainKey("name2").And.ContainValue("value2");
+        descriptor!.Parameters.Should().ContainKey("param1").And.ContainValue("value1");
         descriptor.Parameters.Should().ContainKey("param2").And.ContainValue("value2");
     }
 }

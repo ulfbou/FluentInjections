@@ -23,12 +23,12 @@ public sealed class NamedTestServiceModule : Module<IServiceConfigurator>, IServ
         configurator.Bind<ITestService>()
                     .To<TestService>()
                     .WithParameters(new { param1 = "value1", param2 = 42 })
-                    .WithKey("Test42")
+                    .WithName("Test42")
                     .AsSingleton();
 
         configurator.Bind<ITestService>()
                     .WithInstance(Test43Mock.Object)
-                    .WithKey("Test43")
+                    .WithName("Test43")
                     .AsSingleton();
 
         //configurator.Bind<ITestService>()

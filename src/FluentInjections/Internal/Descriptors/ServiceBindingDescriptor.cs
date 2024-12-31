@@ -3,6 +3,8 @@
 
 using Autofac.Builder;
 
+using FluentInjections.Internal.Configurators;
+
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentInjections.Internal.Descriptors;
@@ -19,12 +21,16 @@ public class ServiceBindingDescriptor
     public Action<object>? Configure { get; set; }
     public Dictionary<string, object> Metadata { get; set; } = new();
     public Dictionary<string, object> Parameters { get; set; } = new();
+    public ServiceConfigurator ServiceConfigurator { get; }
 
-    public ServiceBindingDescriptor(Type bindingType)
+    public ServiceBindingDescriptor(Type bindingType, ServiceConfigurator serviceConfigurator)
     {
         BindingType = bindingType ?? throw new ArgumentNullException(nameof(bindingType));
+        ServiceConfigurator = serviceConfigurator ?? throw new ArgumentNullException(nameof(serviceConfigurator));
         Lifetime = ServiceLifetime.Transient;
     }
 }
 
-public class ServiceBindingDescriptor<TService>() : ServiceBindingDescriptor(typeof(TService)) where TService : notnull { }
+public class ServiceBindingDescriptor<TService>(ServiceConfigurator configurator)
+    : ServiceBindingDescriptor(typeof(TService), configurator) where TService : notnull
+{ }

@@ -261,7 +261,7 @@ public static class TypeExtensions
     /// <param name="type">The type to check.</param>
     /// <returns><see langword="true"/> if the type has a default constructor; otherwise, <see langword="false"/>.</returns>
     public static bool HasDefaultConstructor(this Type type)
-        => type.GetConstructor(Type.EmptyTypes) != null && type.GetConstructor(Type.EmptyTypes).IsPublic;
+        => type.GetConstructor(Type.EmptyTypes) != null && (type.GetConstructor(Type.EmptyTypes)?.IsPublic ?? false);
 
     /// <summary>
     /// Checks if a type is a numeric type.
