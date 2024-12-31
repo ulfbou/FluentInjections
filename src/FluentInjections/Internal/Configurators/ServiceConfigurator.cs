@@ -1,51 +1,96 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using Autofac;
-using Autofac.Builder;
-using Autofac.Core;
-
 using FluentInjections.Extensions;
 using FluentInjections.Internal.Descriptors;
-using FluentInjections.Internal.Extensions;
+using FluentInjections.Internal.Utils;
 using FluentInjections.Validation;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using System.Diagnostics;
 
 namespace FluentInjections.Internal.Configurators;
 
-internal class ServiceConfigurator : IServiceConfigurator
+public abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
 {
-    private readonly ContainerBuilder _builder;
-    private readonly List<ServiceBindingDescriptor> _bindings = new();
+    protected readonly List<ServiceBindingDescriptor> _bindings = new();
+    protected readonly ILogger<ServiceConfigurator> _logger;
 
-    internal ContainerBuilder Builder => _builder;
     internal IReadOnlyList<ServiceBindingDescriptor> Bindings => _bindings.AsReadOnly();
+    public ConflictResolutionMode ConflictResolution { get; set; }
 
-    public ServiceConfigurator(ContainerBuilder builder)
+    public ServiceConfigurator(ConflictResolutionMode? mode = null, ILogger<ServiceConfigurator>? logger = null)
     {
-        _builder = builder;
+        ConflictResolution = mode ?? ConflictResolutionMode.WarnAndReplace;
+        _logger = logger ?? LoggerUtility.CreateLogger<ServiceConfigurator>();
     }
 
+    // TODO: Handle open generic types
+    /// <inheritdoc />
     public IServiceBinding<TService> Bind<TService>() where TService : notnull
     {
         var descriptor = new ServiceBindingDescriptor(typeof(TService));
         var existing_descriptor = _bindings.FirstOrDefault(binding => binding.BindingType == descriptor.BindingType && binding.Name == descriptor.Name);
 
-        if (existing_descriptor is not null)
-        {
-            _bindings.Remove(existing_descriptor);
-            Debug.WriteLine($"Warning: Service of type {descriptor.BindingType.Name} already exists. Overwriting existing service.");
-        }
-        else
-        {
-            Debug.WriteLine($"Binding service of type {descriptor.BindingType.Name}.");
-        }
+        ResolveConflict(descriptor, existing_descriptor);
 
         _bindings.Add(descriptor);
         return new ServiceBinding<TService>(this, descriptor);
+    }
+
+    private void ResolveConflict(ServiceBindingDescriptor descriptor, ServiceBindingDescriptor? existingDescriptor)
+    {
+        if (existingDescriptor is not null)
+        {
+            switch (ConflictResolution)
+            {
+                case ConflictResolutionMode.Replace:
+                    _bindings.Remove(existingDescriptor);
+                    break;
+                case ConflictResolutionMode.WarnAndReplace:
+                    _logger.LogWarning($"Service of type {descriptor.BindingType.Name} already exists. Replacing with new descriptor.");
+                    _bindings.Remove(existingDescriptor);
+                    break;
+                case ConflictResolutionMode.Prevent:
+                    _logger.LogError($"Service of type {descriptor.BindingType.Name} already exists. Registration prevented.");
+                    throw new InvalidOperationException($"Service of type {descriptor.BindingType.Name} already exists.");
+                case ConflictResolutionMode.Merge:
+                    MergeDescriptors(existingDescriptor, descriptor);
+                    break;
+                default:
+                    throw new NotImplementedException($"Conflict resolution mode {ConflictResolution} not supported.");
+            }
+        }
+    }
+
+    private void MergeDescriptors(ServiceBindingDescriptor existingDescriptor, ServiceBindingDescriptor newDescriptor)
+    {
+        foreach (var param in newDescriptor.Parameters)
+        {
+            existingDescriptor.Parameters[param.Key] = param.Value;
+        }
+
+        foreach (var metadata in newDescriptor.Metadata)
+        {
+            existingDescriptor.Metadata[metadata.Key] = metadata.Value;
+        }
+
+        existingDescriptor.Configure += newDescriptor.Configure;
+    }
+
+    /// <summary>
+    /// Tries to get the service binding for the specified type.
+    /// </summary>
+    /// <param name="type">The type of the service.</param>
+    /// <returns>The service binding descriptor or <see langword="null"/> if not found.</returns>
+    /// <remarks>
+    /// This method is used internally to get the service binding for a specific type.
+    /// </remarks>
+    internal ServiceBindingDescriptor? TryGetDescriptor(Type type)
+    {
+        return _bindings.FirstOrDefault(descriptor => descriptor.BindingType == type);
     }
 
     /// <summary>
@@ -57,9 +102,9 @@ internal class ServiceConfigurator : IServiceConfigurator
     /// <remarks>
     /// This method is used internally to get the service binding for a specific type.
     /// </remarks>
-    internal ServiceBindingDescriptor GetBinding(Type type)
+    internal ServiceBindingDescriptor GetDescriptor(Type type)
     {
-        ServiceBindingDescriptor? descriptor = _bindings.FirstOrDefault(descriptor => descriptor.BindingType == type);
+        ServiceBindingDescriptor? descriptor = TryGetDescriptor(type);
 
         if (descriptor is null)
         {
@@ -77,89 +122,7 @@ internal class ServiceConfigurator : IServiceConfigurator
         }
     }
 
-    private void Register(ServiceBindingDescriptor descriptor)
-    {
-        IRegistrationBuilder<object, ConcreteReflectionActivatorData, SingleRegistrationStyle> registration = null!;
-
-        if (descriptor.ImplementationType is not null)
-        {
-            registration = Register(
-                _builder.RegisterType(descriptor.ImplementationType).As(descriptor.BindingType),
-                descriptor);
-        }
-
-        if (descriptor.Instance is not null)
-        {
-            var instanceRegistration = _builder.RegisterInstance(descriptor.Instance!).As(descriptor.BindingType);
-
-            instanceRegistration = Register(instanceRegistration, descriptor);
-
-            if (descriptor.Configure is not null)
-            {
-                instanceRegistration.OnActivating(e => descriptor.Configure(e.Instance!));
-            }
-
-            return;
-        }
-
-        if (descriptor.Factory is not null)
-        {
-            var factoryRegistration = _builder.Register(c => descriptor.Factory!(c.Resolve<IServiceProvider>())).As(descriptor.BindingType);
-
-            if (descriptor.Configure is not null)
-            {
-                factoryRegistration.OnActivating(e => descriptor.Configure(e.Instance!));
-            }
-
-            return;
-        }
-
-        if (registration is null)
-        {
-            registration = Register(_builder.RegisterType(descriptor.BindingType).AsSelf(), descriptor);
-        }
-
-        if (descriptor.Parameters.Any())
-        {
-            if (!registration.IsReflectionData())
-            {
-                throw new InvalidOperationException("Parameters are only supported for reflection-based registrations.");
-            }
-
-            var parameters = descriptor.Parameters.Select(parameter => new ResolvedParameter((pi, ctx) => pi.Name == parameter.Key, (pi, ctx) => parameter.Value)).ToList();
-            registration.WithParameters(parameters);
-        }
-
-        if (descriptor.Configure is not null)
-        {
-            registration.OnActivating(e => descriptor.Configure(e.Instance!));
-        }
-    }
-
-    private IRegistrationBuilder<TLimit, TActivatorData, TStyle> Register<TLimit, TActivatorData, TStyle>(
-        IRegistrationBuilder<TLimit, TActivatorData, TStyle> builder, ServiceBindingDescriptor descriptor)
-    {
-        // Handle SimpleActivatorData-based registrations here
-        if (descriptor.Lifetime == ServiceLifetime.Singleton)
-        {
-            builder = builder.SingleInstance();
-        }
-        else if (descriptor.Lifetime == ServiceLifetime.Scoped)
-        {
-            builder = builder.InstancePerLifetimeScope();
-        }
-        else
-        {
-            builder = builder.InstancePerDependency();
-        }
-
-        if (!string.IsNullOrEmpty(descriptor.Name))
-        {
-            builder = builder.Named(descriptor.Name!, descriptor.BindingType);
-        }
-
-        return builder;
-    }
+    protected abstract void Register(ServiceBindingDescriptor descriptor);
 
     internal class ServiceBinding<TService> : IServiceBinding<TService> where TService : notnull
     {
@@ -287,7 +250,7 @@ internal class ServiceConfigurator : IServiceConfigurator
             return this;
         }
 
-        public IServiceBinding<TService> WithName(string name)
+        public IServiceBinding<TService> WithKey(string name)
         {
             Guard.NotNullOrEmpty(name, nameof(name));
 
@@ -385,11 +348,33 @@ internal class ServiceConfigurator : IServiceConfigurator
             return this;
         }
 
+        public IServiceBinding<TService> WithMetadata(string name, object value)
+        {
+            Guard.NotNullOrEmpty(name, nameof(name));
+            Guard.NotNull(value, nameof(value));
+
+            if (Descriptor.Metadata.ContainsKey(name))
+            {
+                throw new InvalidOperationException($"Metadata with name {name} already exists.");
+            }
+
+            Descriptor.Metadata.Add(name, value);
+            Debug.WriteLine($"Setting metadata {name} of service {Descriptor.BindingType.Name} to {value}.");
+            return this;
+        }
+
         public IServiceBinding<TService> Configure(Action<TService> configure)
         {
             Descriptor.Configure = service => configure((TService)service);
             Debug.WriteLine($"Setting configuration for service {Descriptor.BindingType.Name}.");
             return this;
         }
+
+        internal ServiceBindingDescriptor<TService> GetDescriptor() => (_descriptor as ServiceBindingDescriptor<TService>)!;
+    }
+
+    public void Dispose()
+    {
+        _bindings.Clear();
     }
 }

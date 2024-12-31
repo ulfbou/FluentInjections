@@ -1,4 +1,4 @@
-// Copyright (c) FluentInjections Project. All rights reserved.
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Autofac;
@@ -17,32 +17,16 @@ namespace FluentInjections;
 /// <summary>
 /// Represents a module that provides methods to configure services and middleware within the application.
 /// </summary>
-internal sealed class FluentInjectionsModule : Autofac.Module
+internal abstract class FluentInjectionsModule : Autofac.Module
 {
-    private readonly IServiceCollection _services;
-    private readonly Assembly[] _assemblies;
+    protected readonly Assembly[] _assemblies;
 
-    public FluentInjectionsModule(IServiceCollection services, Assembly[] assemblies)
+    public FluentInjectionsModule(Assembly[] assemblies)
     {
-        _services = services ?? throw new ArgumentNullException(nameof(services));
         _assemblies = assemblies ?? throw new ArgumentNullException(nameof(assemblies));
     }
 
-    protected override void Load(ContainerBuilder builder)
-    {
-        var serviceConfigurator = new ServiceConfigurator(builder);
-        var middlewareConfigurator = new MiddlewareConfigurator(builder);
-
-        foreach (var assembly in _assemblies)
-        {
-            RegisterModulesFromAssembly(assembly, serviceConfigurator, middlewareConfigurator);
-        }
-
-        serviceConfigurator.Register();
-        middlewareConfigurator.Register();
-    }
-
-    private void RegisterModulesFromAssembly(Assembly assembly, IServiceConfigurator serviceConfigurator, IMiddlewareConfigurator middlewareConfigurator)
+    protected void RegisterModulesFromAssembly(Assembly assembly, IServiceConfigurator serviceConfigurator, IMiddlewareConfigurator middlewareConfigurator)
     {
         var moduleTypes = assembly.GetTypes()
             .Where(t => !t.IsAbstract && !t.IsInterface && t.IsPublic)
@@ -57,7 +41,7 @@ internal sealed class FluentInjectionsModule : Autofac.Module
         }
     }
 
-    private void RegisterModule(Type moduleType, Type interfaceType, IServiceConfigurator serviceConfigurator, IMiddlewareConfigurator middlewareConfigurator)
+    protected void RegisterModule(Type moduleType, Type interfaceType, IServiceConfigurator serviceConfigurator, IMiddlewareConfigurator middlewareConfigurator)
     {
         var configuratorType = interfaceType.GetGenericArguments().First();
         var instance = Activator.CreateInstance(moduleType);

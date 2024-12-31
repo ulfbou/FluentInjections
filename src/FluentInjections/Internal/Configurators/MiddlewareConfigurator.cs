@@ -13,21 +13,22 @@ using System.Diagnostics;
 
 namespace FluentInjections.Internal.Configurators;
 
-internal class MiddlewareConfigurator : IMiddlewareConfigurator
+public abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
 {
-    private readonly ContainerBuilder _builder;
     private object? _middleware;
     private Type? _middlewareType;
     private List<MiddlewareBindingDescriptor> _descriptors = new();
     private List<MiddlewareBinding> _bindings = new();
 
-    public object Middleware => _middleware!;
-    public Type MiddlewareType => _middlewareType!;
     internal IReadOnlyList<MiddlewareBindingDescriptor> MiddlewareBindings => _descriptors.AsReadOnly();
 
-    public MiddlewareConfigurator(ContainerBuilder builder)
+    public object Middleware => _middleware!;
+    public Type MiddlewareType => _middlewareType!;
+    public ConflictResolutionMode ConflictResolution { get; set; }
+
+    public MiddlewareConfigurator()
     {
-        _builder = builder ?? throw new ArgumentNullException(nameof(builder));
+        ConflictResolution = ConflictResolutionMode.WarnAndReplace;
     }
 
     /// <inheritdoc/>
@@ -101,24 +102,10 @@ internal class MiddlewareConfigurator : IMiddlewareConfigurator
     /// <inheritdoc/>
     public void Register() => _descriptors.ForEach(d => Register(d));
 
-    internal void Register(Action<MiddlewareBindingDescriptor, HttpContext, IApplicationBuilder> register) => _descriptors.ForEach(d => Register(d, register));
+    internal void Register(Action<MiddlewareBindingDescriptor, HttpContext, TBuilder> register) => _descriptors.ForEach(d => Register(d, register));
 
     // TODO: Implement the registration of middleware components correctly.
-    private void Register(MiddlewareBindingDescriptor descriptor, Action<MiddlewareBindingDescriptor, HttpContext, IApplicationBuilder>? register = null)
-    {
-        if (descriptor.Instance is not null)
-        {
-            _builder.RegisterInstance(descriptor.Instance).As(descriptor.MiddlewareType).SingleInstance();
-        }
-        else
-        {
-            _builder.Register(ctx =>
-            {
-                var middleware = ctx.Resolve(descriptor.MiddlewareType);
-                return middleware;
-            }).As(descriptor.MiddlewareType).InstancePerLifetimeScope();
-        }
-    }
+    protected abstract void Register(MiddlewareBindingDescriptor descriptor, Action<MiddlewareBindingDescriptor, HttpContext, TBuilder>? register = null);
 
     /// <inheritdoc/>
     internal class MiddlewareBinding : IMiddlewareBinding

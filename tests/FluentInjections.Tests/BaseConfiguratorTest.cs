@@ -5,15 +5,19 @@ using Autofac.Core;
 
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Descriptors;
-using FluentInjections.Tests.Services;
+using FluentInjections.Tests.Internal.Services;
+using FluentInjections.Tests.Utility.Fixtures;
+
+using Microsoft.Extensions.DependencyInjection;
 
 using System;
 
 namespace FluentInjections.Tests;
 
-public abstract class BaseConfiguratorTest<TConfigurator, TBinding> : BaseTest
-    where TConfigurator : IConfigurator<TBinding>
+public abstract class BaseConfiguratorTest<TConfigurator, TBinding, TFixture> : BaseTest
+    where TConfigurator : class, IConfigurator<TBinding>
     where TBinding : IBinding
+    where TFixture : class, IConfiguratorFixture<TConfigurator, ServiceCollection>, new()
 {
     protected TConfigurator Configurator { get; set; }
 

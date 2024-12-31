@@ -62,9 +62,9 @@ public interface IServiceBinding<TService> : IServiceBinding where TService : no
     /// <summary>
     /// Names the service binding.
     /// </summary>
-    /// <param name="name">The name of the binding.</param>
+    /// <param name="key">The name of the binding.</param>
     /// <returns>The service binding instance.</returns>
-    IServiceBinding<TService> WithName(string name);
+    IServiceBinding<TService> WithKey(string key);
 
     /// <summary>
     /// Sets a custom lifetime for the service.
@@ -72,6 +72,13 @@ public interface IServiceBinding<TService> : IServiceBinding where TService : no
     /// <param name="lifetime">The service lifetime.</param>
     /// <returns>The service binding instance.</returns>
     IServiceBinding<TService> WithLifetime(ServiceLifetime lifetime);
+
+    /// <summary>
+    /// Specifies parameters for the service using a dictionary.
+    /// </summary>
+    /// <param name="parameters">The parameters as a dictionary.</param>
+    /// <returns>The service binding instance.</returns>
+    IServiceBinding<TService> WithParameter(string key, object value);
 
     /// <summary>
     /// Specifies parameters for the service.
@@ -100,6 +107,14 @@ public interface IServiceBinding<TService> : IServiceBinding where TService : no
     /// <param name="configure">The configuration action.</param>
     /// <returns>The service binding instance.</returns>
     IServiceBinding<TService> Configure(Action<TService> configure);
+
+    /// <summary>
+    /// Adds metadata to the service.
+    /// </summary>
+    /// <param name="name">The name of the metadata.</param>
+    /// <param name="value">The value of the metadata.</param>
+    /// <returns>The service binding instance.</returns>
+    IServiceBinding<TService> WithMetadata(string name, object value);
 
     /// <summary>
     /// Configures options for the service.

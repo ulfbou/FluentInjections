@@ -24,7 +24,7 @@ internal static class ServiceProviderExtensions
         var serviceDescriptor = serviceCollection.FirstOrDefault(
             descriptor => descriptor.ServiceType == typeof(T) &&
             descriptor is NamedServiceDescriptor named &&
-            named.Name == name);
+            named.ServiceKey?.ToString() == name);
 
         return serviceDescriptor?.ImplementationInstance as T;
     }

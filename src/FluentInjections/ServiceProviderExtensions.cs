@@ -3,6 +3,8 @@
 
 using Autofac;
 
+using Microsoft.Extensions.DependencyInjection;
+
 namespace FluentInjections;
 
 public static class ServiceProviderExtensions
@@ -14,10 +16,10 @@ public static class ServiceProviderExtensions
     /// <param name="provider">The service provider.</param>
     /// <param name="name">The name of the service.</param>
     /// <returns>The service instance.</returns>
-    public static TService? GetNamedService<TService>(this IServiceProvider provider, string name) where TService : notnull
-    {
-        return DependencyInjection.Container.ResolveNamed<TService>(name);
-    }
+    //public static TService? GetNamedService<TService>(this IServiceProvider provider, string name) where TService : notnull
+    //{
+    //    return provider.GetKeyedService<TService>(name);
+    //}
 
     /// <summary>
     /// Get a required named service from the service provider.
@@ -26,9 +28,8 @@ public static class ServiceProviderExtensions
     /// <param name="provider">The service provider.</param>
     /// <param name="name">The name of the service.</param>
     /// <returns>The service instance.</returns>
-    public static TService GetRequiredNamedService<TService>(this IServiceProvider provider, string name) where TService : notnull
-    {
-        return DependencyInjection.Container.ResolveNamed<TService>(name)
-            ?? throw new InvalidOperationException($"Service {name} not found.");
-    }
+    //public static TService GetRequiredNamedService<TService>(this IServiceProvider provider, string name) where TService : notnull
+    //{
+    //    return provider.GetRequiredKeyedService<TService>(name);
+    //}
 }

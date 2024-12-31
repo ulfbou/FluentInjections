@@ -19,7 +19,7 @@ public static class HostBuilderExtensions
     {
         builder.ConfigureServices((context, services) =>
         {
-            DependencyInjection.AddFluentInjections(services, assemblies);
+            DependencyInjection.AddFluentInjections(services, builder, assemblies);
         });
 
         return builder;

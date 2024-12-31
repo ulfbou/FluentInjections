@@ -17,8 +17,8 @@ public class ServiceBindingDescriptor
     public Func<IServiceProvider, object>? Factory { get; set; }
     public string? Name { get; set; }
     public Action<object>? Configure { get; set; }
-    public readonly Dictionary<string, object> Metadata = new();
-    public readonly Dictionary<string, object> Parameters = new();
+    public Dictionary<string, object> Metadata { get; set; } = new();
+    public Dictionary<string, object> Parameters { get; set; } = new();
 
     public ServiceBindingDescriptor(Type bindingType)
     {
