@@ -215,9 +215,9 @@ public static class AutofacNamedServiceExtensions
     /// <param name="context">The component context.</param>
     /// <param name="name">The name of the service.</param>
     /// <returns>The metadata of the named service.</returns>
-    public static IReadOnlyDictionary<string, object> GetNamedServiceMetadata<TService>(this IComponentContext context, string name) where TService : notnull
+    public static IReadOnlyDictionary<string, object> GetMetadata<TService>(this IComponentContext context, string name) where TService : notnull
     {
-        return GetNamedServiceMetadata(context, typeof(TService), name);
+        return GetMetadata(context, typeof(TService), name);
     }
 
     /// <summary>
@@ -227,7 +227,7 @@ public static class AutofacNamedServiceExtensions
     /// <param name="serviceType">The type of the service.</param>
     /// <param name="name">The name of the service.</param>
     /// <returns>The metadata of the named service.</returns>
-    private static IReadOnlyDictionary<string, object> GetNamedServiceMetadata(IComponentContext context, Type type, string name)
+    private static IReadOnlyDictionary<string, object> GetMetadata(IComponentContext context, Type type, string name)
     {
         Guard.NotNull(context, nameof(context));
         Guard.NotNullOrEmpty(name, nameof(name));
