@@ -16,7 +16,7 @@ using System.Text;
 
 namespace FluentInjections.Internal.Configurators;
 
-public abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
+internal abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
 {
     protected readonly List<ServiceBindingDescriptor> _bindings = new();
     protected readonly ILogger<ServiceConfigurator> _logger;
@@ -24,7 +24,7 @@ public abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
     internal IReadOnlyList<ServiceBindingDescriptor> Bindings => _bindings.AsReadOnly();
     public ConflictResolutionMode ConflictResolution { get; set; }
 
-    public ServiceConfigurator(ConflictResolutionMode? mode = null, ILogger<ServiceConfigurator>? logger = null)
+    internal ServiceConfigurator(ConflictResolutionMode? mode = null, ILogger<ServiceConfigurator>? logger = null)
     {
         ConflictResolution = mode ?? ConflictResolutionMode.WarnAndReplace;
         _logger = logger ?? LoggerUtility.CreateLogger<ServiceConfigurator>();
@@ -157,6 +157,45 @@ public abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
 
     private void MergeDescriptors(ServiceBindingDescriptor existingDescriptor, ServiceBindingDescriptor newDescriptor)
     {
+        if (newDescriptor.Lifetime != ServiceLifetime.Transient)
+        {
+            existingDescriptor.Lifetime = newDescriptor.Lifetime;
+        }
+
+        if (newDescriptor.ImplementationType is not null)
+        {
+            existingDescriptor.ImplementationType = newDescriptor.ImplementationType;
+            existingDescriptor.Factory = null;
+            existingDescriptor.Instance = null;
+        }
+        else if (newDescriptor.Factory is not null)
+        {
+            existingDescriptor.Factory = newDescriptor.Factory;
+            existingDescriptor.ImplementationType = null;
+            existingDescriptor.Instance = null;
+        }
+        else if (newDescriptor.Instance is not null)
+        {
+            existingDescriptor.Instance = newDescriptor.Instance;
+            existingDescriptor.ImplementationType = null;
+            existingDescriptor.Factory = null;
+        }
+
+        if (newDescriptor.Name is not null)
+        {
+            existingDescriptor.Name = newDescriptor.Name;
+        }
+
+        if (newDescriptor.Configure is not null)
+        {
+            existingDescriptor.Configure += newDescriptor.Configure;
+        }
+
+        if (newDescriptor.Condition is not null)
+        {
+            existingDescriptor.Condition += newDescriptor.Condition;
+        }
+
         foreach (var param in newDescriptor.Parameters)
         {
             existingDescriptor.Parameters[param.Key] = param.Value;
@@ -166,8 +205,6 @@ public abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
         {
             existingDescriptor.Metadata[metadata.Key] = metadata.Value;
         }
-
-        existingDescriptor.Configure += newDescriptor.Configure;
     }
 
     protected abstract void Register(ServiceBindingDescriptor descriptor);
