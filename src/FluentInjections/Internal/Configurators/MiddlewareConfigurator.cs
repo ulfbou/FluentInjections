@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Autofac;
+using Autofac.Core;
 
 using FluentInjections.Internal.Descriptors;
 using FluentInjections.Validation;
@@ -133,20 +134,7 @@ public abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
         public IMiddlewareBinding<TMiddleware> DependsOn<TOtherMiddleware>()
         {
             Descriptor.Dependencies.Add(typeof(TOtherMiddleware));
-            return this;
-        }
-
-        /// <inheritdoc/>
-        public IMiddlewareBinding<TMiddleware> Disable()
-        {
-            Descriptor.IsEnabled = false;
-            return this;
-        }
-
-        /// <inheritdoc/>
-        public IMiddlewareBinding<TMiddleware> Enable()
-        {
-            Descriptor.IsEnabled = true;
+            Debug.WriteLine($"Set the middleware component to depend on {typeof(TOtherMiddleware).Name}.");
             return this;
         }
 
@@ -154,6 +142,7 @@ public abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
         public IMiddlewareBinding<TMiddleware> Follows<TFollowingMiddleware>()
         {
             Descriptor.FollowingMiddleware.Add(typeof(TFollowingMiddleware));
+            Debug.WriteLine($"Set the middleware component to follow {typeof(TFollowingMiddleware).Name}.");
             return this;
         }
 
@@ -163,6 +152,7 @@ public abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
             Guard.NotNullOrWhiteSpace(group, nameof(group));
 
             Descriptor.Group = group;
+            Debug.WriteLine($"Grouped the middleware component with {group}.");
             return this;
         }
 
@@ -172,6 +162,7 @@ public abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
             Guard.NotNull(errorHandler, nameof(errorHandler));
 
             Descriptor.ErrorHandler = errorHandler;
+            Debug.WriteLine("Set the error handler for the middleware component.");
             return this;
         }
 
@@ -179,15 +170,7 @@ public abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
         public IMiddlewareBinding<TMiddleware> Precedes<TPrecedingMiddleware>()
         {
             Descriptor.PrecedingMiddleware.Add(typeof(TPrecedingMiddleware));
-            return this;
-        }
-
-        /// <inheritdoc/>
-        public IMiddlewareBinding<TMiddleware> RequireEnvironment(string environment)
-        {
-            Guard.NotNullOrWhiteSpace(environment, nameof(environment));
-
-            Descriptor.Environment = environment;
+            Debug.WriteLine($"Set the middleware component to precede {typeof(TPrecedingMiddleware).Name}.");
             return this;
         }
 
@@ -197,6 +180,7 @@ public abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
             Guard.NotNull(func, nameof(func));
 
             Descriptor.Condition = func;
+            Debug.WriteLine($"Set the condition for the middleware component to {func.Method.Name}.");
             return this;
         }
 
@@ -207,6 +191,7 @@ public abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
 
             // TODO: Handle context-based conditions correctly. 
             Descriptor.Condition = () => func(default!);
+            Debug.WriteLine($"Set the condition for the middleware component to {func.Method.Name}.");
             return this;
         }
 
@@ -216,6 +201,7 @@ public abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
             Guard.NotNull(value, nameof(value));
 
             Descriptor.ExecutionPolicy = value;
+            Debug.WriteLine($"Set the execution policy for the middleware component to {typeof(TPolicy).Name}.");
             return this;
         }
 
@@ -225,6 +211,7 @@ public abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
             Guard.NotNull(fallback, nameof(fallback));
 
             Descriptor.Fallback = fallback;
+            Debug.WriteLine("Set the fallback function for the middleware component.");
             return this;
         }
 
@@ -239,17 +226,26 @@ public abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
             }
 
             Instance = middleware;
+            Debug.WriteLine($"Set the instance of the middleware component to {middleware.GetType().Name}.");
             return this;
         }
 
         /// <inheritdoc/>
-        public IMiddlewareBinding<TMiddleware> WithMetadata<TMetadata>(TMetadata metadata)
+        public IMiddlewareBinding<TMiddleware> WithMetadata(string name, object value)
         {
-            Guard.NotNull(metadata, nameof(metadata));
+            Guard.NotNullOrEmpty(name, nameof(name));
+            Guard.NotNull(value, nameof(value));
 
-            Descriptor.Metadata = metadata;
+            if (Descriptor.Metadata.ContainsKey(name))
+            {
+                throw new InvalidOperationException($"Metadata with name {name} already exists.");
+            }
+
+            Descriptor.Metadata.Add(name, value);
+            Debug.WriteLine($"Added metadata with name {name} to the middleware component.");
             return this;
         }
+
 
         /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> WithOptions<TOptions>(TOptions options) where TOptions : class
@@ -258,6 +254,7 @@ public abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
 
             Descriptor.Options = options;
             Descriptor.OptionsType = typeof(TOptions);
+            Debug.WriteLine($"Added options of type {typeof(TOptions).Name} to the middleware component.");
             return this;
         }
 
@@ -265,6 +262,7 @@ public abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
         public IMiddlewareBinding<TMiddleware> WithPriority(int priority)
         {
             Descriptor.Priority = priority;
+            Debug.WriteLine($"Set the priority of the middleware component to {priority}.");
             return this;
         }
 
@@ -274,6 +272,7 @@ public abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
             Guard.NotNull(priority, nameof(priority));
 
             Descriptor.Priority = priority();
+            Debug.WriteLine($"Set the priority of the middleware component to {Descriptor.Priority}.");
             return this;
         }
 
@@ -285,6 +284,7 @@ public abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
             // TODO: Handle context-based priorities correctly.
             var context = default(TContext);
             Descriptor.Priority = priority(context!);
+            Debug.WriteLine($"Set the priority of the middleware component to {Descriptor.Priority}.");
             return this;
         }
 
@@ -294,6 +294,7 @@ public abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
             Guard.NotNullOrWhiteSpace(tag, nameof(tag));
 
             Descriptor.Tag = tag;
+            Debug.WriteLine($"Tagged the middleware component with {tag}.");
             return this;
         }
 
@@ -301,6 +302,7 @@ public abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
         public IMiddlewareBinding<TMiddleware> WithTimeout(TimeSpan timeout)
         {
             Descriptor.Timeout = timeout;
+            Debug.WriteLine($"Set the timeout of the middleware component to {timeout}.");
             return this;
         }
     }

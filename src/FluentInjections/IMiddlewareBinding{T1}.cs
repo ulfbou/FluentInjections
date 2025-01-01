@@ -58,10 +58,10 @@ public interface IMiddlewareBinding<TMiddleware> : IMiddlewareBinding
     /// <summary>
     /// Attaches metadata to the middleware.
     /// </summary>
-    /// <typeparam name="TMetadata">The type of the metadata.</typeparam>
-    /// <param name="metadata">The metadata to attach.</param>
+    /// <param name="name">The name of the metadata.</param>
+    /// <param name="value">The value of the metadata.</param>
     /// <returns>The middleware binding instance.</returns>
-    IMiddlewareBinding<TMiddleware> WithMetadata<TMetadata>(TMetadata metadata);
+    IMiddlewareBinding<TMiddleware> WithMetadata(string name, object value);
 
     /// <summary>
     /// Sets a fallback function for the middleware.
@@ -127,25 +127,6 @@ public interface IMiddlewareBinding<TMiddleware> : IMiddlewareBinding
     /// <typeparam name="TFollowingMiddleware">The type of the following middleware.</typeparam>
     /// <returns>The middleware binding instance.</returns>
     IMiddlewareBinding<TMiddleware> Follows<TFollowingMiddleware>();
-
-    /// <summary>
-    /// Disables the middleware.
-    /// </summary>
-    /// <returns>The middleware binding instance.</returns>
-    IMiddlewareBinding<TMiddleware> Disable();
-
-    /// <summary>
-    /// Enables the middleware.
-    /// </summary>
-    /// <returns>The middleware binding instance.</returns>
-    IMiddlewareBinding<TMiddleware> Enable();
-
-    /// <summary>
-    /// Sets the required environment for the middleware.
-    /// </summary>
-    /// <param name="environment">The required environment.</param>
-    /// <returns>The middleware binding instance.</returns>
-    IMiddlewareBinding<TMiddleware> RequireEnvironment(string environment);
 
     /// <summary>
     /// Sets a timeout for the middleware execution.

@@ -5,100 +5,72 @@ using FluentInjections.Internal.Constants;
 
 namespace FluentInjections.Internal.Descriptors;
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
 public class MiddlewareBindingDescriptor
 {
-    public Type MiddlewareType { get; set; }
+    private readonly object _lock = new();
 
-    public object? Instance
-    {
-        get => _instance;
-        set => _instance = value ?? throw new ArgumentNullException(nameof(value));
-    }
-    private object? _instance;
-
-    public int Priority
-    {
-        get => _priority ?? DefaultValues.Priority;
-        set => _priority = value;
-    }
-    private int? _priority;
-
-    public string Group
-    {
-        get => _group ?? DefaultValues.Group;
-        set => _group = value ?? throw new ArgumentNullException(nameof(value));
-    }
-    private string? _group;
-
+    public Type MiddlewareType { get; }
+    public object? Instance { get; set; }
+    public int Priority { get; set; } = DefaultValues.Priority;
+    public string Group { get; set; } = DefaultValues.Group;
     public string? RequiredEnvironment { get; set; }
     public object? ExecutionPolicy { get; set; }
     public Func<object, Task>? Fallback { get; set; }
     public object? Options { get; set; }
     public Type? OptionsType { get; set; }
-
-    public object? Metadata { get; set; }
-    public string? Tag { get; set; }
-    public Func<bool>? Condition { get; set; }
-
-    public bool IsEnabled
-    {
-        get => _isEnabled ?? true;
-        set => _isEnabled = value;
-    }
-    private bool? _isEnabled;
-
-    public List<Type> Dependencies
-    {
-        get => _dependencies;
-        set => _dependencies = value ?? throw new ArgumentNullException(nameof(value));
-    }
-    private List<Type> _dependencies = new();
-
-    public List<Type> PrecedingMiddleware
-    {
-        get
-        {
-            _precedingMiddleware ??= new();
-            return _precedingMiddleware;
-        }
-        set => _precedingMiddleware = value ?? throw new ArgumentNullException(nameof(value));
-    }
-    private List<Type>? _precedingMiddleware;
-
-    public List<Type> FollowingMiddleware
-    {
-        get
-        {
-            _followingMiddleware ??= new();
-            return _followingMiddleware;
-        }
-        set => _followingMiddleware = value ?? throw new ArgumentNullException(nameof(value));
-    }
-    private List<Type>? _followingMiddleware;
-
+    public Dictionary<string, object> Metadata { get; set; } = new();
+    public List<Type> Dependencies { get; set; } = new();
+    public List<Type> PrecedingMiddleware { get; set; } = new();
+    public List<Type> FollowingMiddleware { get; set; } = new();
     public TimeSpan? Timeout { get; set; }
     public Func<Exception, Task>? ErrorHandler { get; set; }
-    internal Action<MiddlewareBindingDescriptor>? Callback { get; set; }
-    public string? Environment { get; set; }
+    public string? Tag { get; set; }
+    public Func<bool>? Condition { get; set; }
+    public bool IsEnabled => Condition?.Invoke() ?? true;
 
     internal MiddlewareBindingDescriptor(Type middlewareType)
     {
-        MiddlewareType = middlewareType;
+        MiddlewareType = middlewareType ?? throw new ArgumentNullException(nameof(middlewareType));
     }
 
-    public override bool Equals(object? obj)
+    public MiddlewareBindingDescriptor AddDependency(Type dependency)
     {
-        if (obj is MiddlewareBindingDescriptor other)
+        if (dependency == null) throw new ArgumentNullException(nameof(dependency));
+        lock (_lock)
         {
-            return MiddlewareType == other.MiddlewareType &&
-                Priority == other.Priority &&
-                Group == other.Group;
+            Dependencies.Add(dependency);
         }
-        return false;
+        return this;
     }
 
-    public override int GetHashCode()
+    public MiddlewareBindingDescriptor AddMetadata(string key, object value)
     {
-        return HashCode.Combine(MiddlewareType, Priority, Group);
+        if (string.IsNullOrWhiteSpace(key)) throw new ArgumentNullException(nameof(key));
+        if (value == null) throw new ArgumentNullException(nameof(value));
+        lock (_lock)
+        {
+            Metadata[key] = value;
+        }
+        return this;
     }
+
+    public void Validate()
+    {
+        if (MiddlewareType == null) throw new InvalidOperationException("MiddlewareType must be set.");
+        if (Dependencies.Distinct().Count() != Dependencies.Count)
+            throw new InvalidOperationException("Dependencies contain duplicates.");
+    }
+
+    public override bool Equals(object? obj) =>
+        obj is MiddlewareBindingDescriptor other &&
+        MiddlewareType == other.MiddlewareType &&
+        Priority == other.Priority &&
+        Group == other.Group;
+
+    public override int GetHashCode() => HashCode.Combine(MiddlewareType, Priority, Group);
 }
