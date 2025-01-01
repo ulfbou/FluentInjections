@@ -21,7 +21,7 @@ public abstract class ConfiguratorTests<TConfigurator, TContainer, TFixture>
         Fixture = new TFixture();
         Fixture.Setup();
 
-        Container = Fixture.Services;
+        Container = Fixture.Container;
         Configurator = Fixture.Configurator;
     }
 

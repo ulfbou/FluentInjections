@@ -8,21 +8,21 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentInjections.Tests.Internal.Utility.Fixtures;
 
-public class NetCoreMiddlewareConfiguratorFixture : MiddlewareConfiguratorFixture<NetCoreMiddlewareConfigurator<IApplicationBuilder>, ServiceCollection>
+internal class NetCoreMiddlewareConfiguratorFixture : MiddlewareConfiguratorFixture<NetCoreMiddlewareConfigurator<IApplicationBuilder>, ServiceCollection>
 {
     public IServiceProvider Provider { get; private set; }
     public IApplicationBuilder Builder { get; private set; }
 
     public NetCoreMiddlewareConfiguratorFixture() : base()
     {
-        Provider = Services.BuildServiceProvider();
+        Provider = Container.BuildServiceProvider();
         Builder = new ApplicationBuilder(Provider);
     }
 
     public override void Setup()
     {
         base.Setup();
-        Provider = Services.BuildServiceProvider();
+        Provider = Container.BuildServiceProvider();
         Builder = new ApplicationBuilder(Provider);
     }
 }

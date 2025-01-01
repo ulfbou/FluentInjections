@@ -1,78 +1,80 @@
-﻿using Autofac;
-using Autofac.Extensions.DependencyInjection;
-
-using FluentInjections;
-using FluentInjections.Tests.Internal.Utility.Fixtures;
-using FluentInjections.Internal.Configurators;
-
-using Microsoft.Extensions.DependencyInjection;
+﻿using FluentInjections;
+using FluentInjections.Tests.Utilities;
 
 namespace FluentInjections.Tests.Units.Configurator;
-
-public sealed class AutofacServiceConfiguratorTests : ServiceConfiguratorTests<AutofacServiceConfigurator, ContainerBuilder, AutofacServiceConfiguratorFixture>
+public class AutofacServiceConfiguratorTests
 {
-    IContainer? Container { get; set; }
-    IServiceCollection ServiceCollection { get; set; }
+    private readonly InternalAutofacServiceConfiguratorTests _internal = new InternalAutofacServiceConfiguratorTests();
 
-    public AutofacServiceConfiguratorTests() : base()
+    [Fact]
+    void Register_DuplicateRegistrations_UsesLatest()
     {
-        ServiceCollection = new ServiceCollection();
+        _internal.Register_DuplicateRegistrations_UsesLatest();
     }
 
-    protected override void BuildProvider()
+    [Fact]
+    void Register_MergeDescriptors_MergesMetadataAndParameters()
     {
-        if (Container is not null)
-        {
-            throw new InvalidOperationException("Container has already been built.");
-        }
-
-        base.Container.Populate(ServiceCollection);
-        Container = base.Container.Build();
-        Provider = new AutofacServiceProvider(Container);
+        _internal.Register_MergeDescriptors_MergesMetadataAndParameters();
     }
 
-    protected override T? GetService<T>() where T : class
+    [Fact]
+    void Register_MultipleImplementations_ResolvesCorrectly()
     {
-        if (Container is null)
-        {
-            throw new InvalidOperationException("Container has not been built. Ensure that BuildProvider is called prior to calling GetService<T>.");
-        }
-
-        return Container.Resolve<T>();
+        _internal.Register_MultipleImplementations_ResolvesCorrectly();
     }
 
-    protected override T GetRequiredService<T>()
+    [Fact]
+    void Register_ScopedService_ReturnsDifferentInstancesWithNewScope()
     {
-        if (Container is null)
-        {
-            throw new InvalidOperationException("Container has not been built. Ensure that BuildProvider is called prior to calling GetRequiredService<T>.");
-        }
-
-        return Container.Resolve<T>();
+        _internal.Register_ScopedService_ReturnsDifferentInstancesWithNewScope();
     }
 
-    protected override object? GetRequiredNamedService<T>(string name)
+    [Fact]
+    void Register_ScopedService_ReturnsSameInstanceWithinScope()
     {
-        if (Container is null)
-        {
-            throw new InvalidOperationException("Container has not been built. Ensure that BuildProvider is called prior to calling GetRequiredNamedService<T>.");
-        }
-
-        return Container.ResolveKeyed<T>(name);
+        _internal.Register_ScopedService_ReturnsSameInstanceWithinScope();
     }
 
-
-    protected override IReadOnlyDictionary<string, object> GetMetadata<TService>(string name)
+    [Fact]
+    void Register_WithConfigure_CallsConfigure()
     {
-        if (Container is null)
-        {
-            throw new InvalidOperationException("Container has not been built. Ensure that BuildProvider is called prior to calling GetMetadata.");
-        }
+        _internal.Register_WithConfigure_CallsConfigure();
+    }
 
-        var sp = Provider as AutofacServiceProvider ?? throw new InvalidOperationException("Provider is not an AutofacServiceProvider.");
+    [Fact]
+    void Register_WithFactory_RegistersFactory()
+    {
+        _internal.Register_WithFactory_RegistersFactory();
+    }
 
-        IComponentContext context = sp.GetAutofacRoot() ?? throw new InvalidOperationException("Autofac root is not available.");
+    [Fact]
+    void Register_WithImplementationType_RegistersType()
+    {
+        _internal.Register_WithImplementationType_RegistersType();
+    }
 
-        return context.GetMetadata<TService>(name);
+    [Fact]
+    void Register_WithInstance_RegistersInstance()
+    {
+        _internal.Register_WithInstance_RegistersInstance();
+    }
+
+    [Fact]
+    void Register_WithMetadata_RegistersMetadata()
+    {
+        _internal.Register_WithMetadata_RegistersMetadata();
+    }
+
+    [Fact]
+    void Register_WithNameAndFactory_RegistersnameedFactory()
+    {
+        _internal.Register_WithNameAndFactory_RegistersnameedFactory();
+    }
+
+    [Fact]
+    void Register_WithName_RegistersnameedTestService()
+    {
+        _internal.Register_WithName_RegistersnameedTestService();
     }
 }

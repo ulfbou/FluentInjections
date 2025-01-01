@@ -8,12 +8,12 @@ using FluentInjections.Internal.Configurators;
 
 namespace FluentInjections.Tests.Internal.Utility.Fixtures;
 
-public class AutofacServiceConfiguratorFixture : ServiceConfiguratorFixture<AutofacServiceConfigurator, ContainerBuilder>
+internal class AutofacServiceConfiguratorFixture : ServiceConfiguratorFixture<AutofacServiceConfigurator, ContainerBuilder>
 {
     public IContainer Container { get; private set; }
 
     public AutofacServiceConfiguratorFixture() : base()
     {
-        Container = Services.Build();
+        Container = base.Container.Build();
     }
 }

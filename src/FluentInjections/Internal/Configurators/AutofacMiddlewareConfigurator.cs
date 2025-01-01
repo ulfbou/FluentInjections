@@ -5,6 +5,7 @@ using Autofac;
 using Microsoft.AspNetCore.Builder;
 using FluentInjections.Internal.Descriptors;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace FluentInjections.Internal.Configurators;
 
@@ -12,7 +13,8 @@ internal sealed class AutofacMiddlewareConfigurator : MiddlewareConfigurator<IAp
 {
     private readonly ContainerBuilder _builder;
 
-    public AutofacMiddlewareConfigurator(ContainerBuilder builder)
+    public AutofacMiddlewareConfigurator(ContainerBuilder builder, ILogger<AutofacMiddlewareConfigurator> logger)
+        : base(logger)
     {
         _builder = builder ?? throw new ArgumentNullException(nameof(builder));
     }

@@ -9,6 +9,7 @@ using FluentInjections.Internal.Descriptors;
 using FluentInjections.Internal.Extensions;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace FluentInjections.Internal.Configurators;
 
@@ -17,9 +18,9 @@ internal class AutofacServiceConfigurator : ServiceConfigurator
     private readonly ContainerBuilder _builder;
     internal ContainerBuilder Builder => _builder;
 
-    public AutofacServiceConfigurator(ContainerBuilder builder) : base()
+    public AutofacServiceConfigurator(ContainerBuilder builder, ILogger<AutofacServiceConfigurator> logger) : base(logger)
     {
-        _builder = builder;
+        _builder = builder ?? throw new ArgumentNullException(nameof(builder));
     }
 
     protected override void Register(ServiceBindingDescriptor descriptor)

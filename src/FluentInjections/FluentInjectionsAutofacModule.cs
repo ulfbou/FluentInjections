@@ -7,6 +7,7 @@ using Autofac.Core.Registration;
 
 using FluentInjections;
 using FluentInjections.Internal.Configurators;
+using FluentInjections.Internal.Utils;
 
 using System.Reflection;
 
@@ -21,8 +22,8 @@ internal sealed class FluentInjectionsAutofacModule : FluentInjectionsModule
 
     protected override void Load(ContainerBuilder builder)
     {
-        var serviceConfigurator = new AutofacServiceConfigurator(builder);
-        var middlewareConfigurator = new AutofacMiddlewareConfigurator(builder);
+        var serviceConfigurator = new AutofacServiceConfigurator(builder, LoggerUtility.CreateLogger<AutofacServiceConfigurator>());
+        var middlewareConfigurator = new AutofacMiddlewareConfigurator(builder, LoggerUtility.CreateLogger<AutofacMiddlewareConfigurator>());
 
         foreach (var assembly in _assemblies)
         {

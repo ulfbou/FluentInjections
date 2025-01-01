@@ -100,4 +100,12 @@ public static class Guard
             throw new ArgumentException("Value cannot be null or empty.", name);
         }
     }
+
+    public static void InRange<TEnum>(TEnum mode, string parameterName) where TEnum : Enum
+    {
+        if (!Enum.IsDefined(typeof(TEnum), mode))
+        {
+            throw new ArgumentOutOfRangeException(parameterName, "Value is not defined in the enum.");
+        }
+    }
 }

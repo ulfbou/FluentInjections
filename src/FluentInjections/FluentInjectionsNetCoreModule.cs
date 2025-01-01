@@ -4,6 +4,7 @@
 using Autofac;
 
 using FluentInjections.Internal.Configurators;
+using FluentInjections.Internal.Utils;
 using FluentInjections.Validation;
 
 using Microsoft.AspNetCore.Builder;
@@ -40,8 +41,8 @@ internal sealed class FluentInjectionsNetCoreModule<TBuilder> : FluentInjections
 
     internal void Load()
     {
-        var serviceConfigurator = new NetCoreServiceConfigurator(_services);
-        var middlewareConfigurator = new NetCoreMiddlewareConfigurator<TBuilder>(_app);
+        var serviceConfigurator = new NetCoreServiceConfigurator(_services, LoggerUtility.CreateLogger<NetCoreServiceConfigurator>());
+        var middlewareConfigurator = new NetCoreMiddlewareConfigurator<TBuilder>(_app, LoggerUtility.CreateLogger<NetCoreMiddlewareConfigurator<TBuilder>>());
 
         foreach (var assembly in _assemblies)
         {

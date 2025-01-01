@@ -115,6 +115,13 @@ internal abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurat
         _descriptors.ForEach(d => Register(d));
     }
 
+    internal void Register(Action<MiddlewareBindingDescriptor, HttpContext, TBuilder> register)
+    {
+        ValidateBindings();
+        _descriptors.ForEach(d => Register(d, register));
+    }
+
+    #region Validation
     private void ValidateBindings()
     {
         var duplicates = _descriptors.GroupBy(binding => new { binding.MiddlewareType, binding.Name })
@@ -285,6 +292,7 @@ internal abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurat
             existingDescriptor.ErrorHandler += newDescriptor.ErrorHandler;
         }
     }
+    #endregion
 
     protected abstract void Register(MiddlewareBindingDescriptor descriptor, Action<MiddlewareBindingDescriptor, HttpContext, TBuilder>? register = null);
 

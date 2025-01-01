@@ -16,19 +16,9 @@ using System.Text;
 
 namespace FluentInjections.Internal.Configurators;
 
-internal abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
+internal abstract class ServiceConfigurator : Configurator<IServiceBinding, ServiceBindingDescriptor>, IServiceConfigurator
 {
-    protected readonly List<ServiceBindingDescriptor> _bindings = new();
-    protected readonly ILogger<ServiceConfigurator> _logger;
-
-    internal IReadOnlyList<ServiceBindingDescriptor> Bindings => _bindings.AsReadOnly();
-    public ConflictResolutionMode ConflictResolution { get; set; }
-
-    internal ServiceConfigurator(ConflictResolutionMode? mode = null, ILogger<ServiceConfigurator>? logger = null)
-    {
-        ConflictResolution = mode ?? ConflictResolutionMode.WarnAndReplace;
-        _logger = logger ?? LoggerUtility.CreateLogger<ServiceConfigurator>();
-    }
+    internal ServiceConfigurator(ILogger logger) : base(logger) { }
 
     // TODO: Handle open generic types
     /// <inheritdoc />
@@ -41,51 +31,7 @@ internal abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
         return new ServiceBinding<TService>(this, descriptor);
     }
 
-    /// <summary>
-    /// Tries to get the service binding for the specified type.
-    /// </summary>
-    /// <param name="type">The type of the service.</param>
-    /// <returns>The service binding descriptor or <see langword="null"/> if not found.</returns>
-    /// <remarks>
-    /// This method is used internally to get the service binding for a specific type.
-    /// </remarks>
-    internal ServiceBindingDescriptor? TryGetDescriptor(Type type)
-    {
-        return _bindings.FirstOrDefault(descriptor => descriptor.BindingType == type);
-    }
-
-    /// <summary>
-    /// Gets the service binding for the specified type.
-    /// </summary>
-    /// <param name="type">The type of the service.</param>
-    /// <returns></returns>
-    /// <exception cref="InvalidOperationException">Thrown when the service is not found.</exception>
-    /// <remarks>
-    /// This method is used internally to get the service binding for a specific type.
-    /// </remarks>
-    internal ServiceBindingDescriptor GetDescriptor(Type type)
-    {
-        ServiceBindingDescriptor? descriptor = TryGetDescriptor(type);
-
-        if (descriptor is null)
-        {
-            throw new InvalidOperationException($"Service of type {type.Name} not found.");
-        }
-
-        return descriptor;
-    }
-
-    public void Register()
-    {
-        ValidateBindings();
-
-        foreach (var binding in _bindings)
-        {
-            Register(binding);
-        }
-    }
-
-    private void ValidateBindings()
+    protected override void ValidateBindings()
     {
         var duplicateGroups = _bindings.GroupBy(binding => new { binding.BindingType, binding.Name })
                                        .Where(group => group.Count() > 1)
@@ -136,6 +82,8 @@ internal abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
 
     private void ReplaceBindings(IGrouping<object, ServiceBindingDescriptor> group)
     {
+        Guard.NotNull(group, nameof(group));
+
         var bindings = group.ToList();
 
         // Keep the last binding and remove the rest
@@ -145,6 +93,8 @@ internal abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
 
     private void MergeBindings(IGrouping<object, ServiceBindingDescriptor> group)
     {
+        Guard.NotNull(group, nameof(group));
+
         var bindings = group.ToList();
         var primaryBinding = bindings.First();
 
@@ -157,6 +107,9 @@ internal abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
 
     private void MergeDescriptors(ServiceBindingDescriptor existingDescriptor, ServiceBindingDescriptor newDescriptor)
     {
+        Guard.NotNull(existingDescriptor, nameof(existingDescriptor));
+        Guard.NotNull(newDescriptor, nameof(newDescriptor));
+
         if (newDescriptor.Lifetime != ServiceLifetime.Transient)
         {
             existingDescriptor.Lifetime = newDescriptor.Lifetime;
@@ -207,7 +160,12 @@ internal abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
         }
     }
 
-    protected abstract void Register(ServiceBindingDescriptor descriptor);
+    // TryGetDescriptor
+    internal ServiceBindingDescriptor? TryGetDescriptor<TService>(string? name = null)
+    {
+        var descriptor = _bindings.FirstOrDefault(binding => binding.BindingType == typeof(TService) && binding.Name == name);
+        return descriptor;
+    }
 
     internal class ServiceBinding<TService> : IServiceBinding<TService> where TService : notnull
     {
@@ -346,11 +304,7 @@ internal abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
 
         public IServiceBinding<TService> WithLifetime(ServiceLifetime lifetime)
         {
-            // Check if the lifetime is out of range
-            if (lifetime < ServiceLifetime.Singleton || lifetime > ServiceLifetime.Transient)
-            {
-                throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, "Lifetime must be within the range of the enumeration.");
-            }
+            Guard.InRange<ServiceLifetime>(lifetime, nameof(lifetime));
 
             Descriptor.Lifetime = lifetime;
             Debug.WriteLine($"Setting lifetime of service {Descriptor.BindingType.Name} to {lifetime}.");
@@ -400,6 +354,8 @@ internal abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
 
         public IServiceBinding<TService> WithParameters(object parameters)
         {
+            Guard.NotNull(parameters, nameof(parameters));
+
             if (parameters is not IReadOnlyDictionary<string, object> dictionary)
             {
                 // convert object into dictionary
@@ -450,16 +406,13 @@ internal abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
 
         public IServiceBinding<TService> Configure(Action<TService> configure)
         {
+            Guard.NotNull(configure, nameof(configure));
+
             Descriptor.Configure = service => configure((TService)service);
             Debug.WriteLine($"Setting configuration for service {Descriptor.BindingType.Name}.");
             return this;
         }
 
         internal ServiceBindingDescriptor<TService> GetDescriptor() => (_descriptor as ServiceBindingDescriptor<TService>)!;
-    }
-
-    public void Dispose()
-    {
-        _bindings.Clear();
     }
 }

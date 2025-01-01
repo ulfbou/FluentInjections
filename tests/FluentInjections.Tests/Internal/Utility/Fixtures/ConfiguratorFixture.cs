@@ -6,6 +6,7 @@ using Autofac.Core;
 using FluentAssertions.Common;
 
 using FluentInjections;
+using FluentInjections.Internal.Utils;
 using FluentInjections.Tests.Internal.Utility.Fixtures;
 
 using System.Configuration;
@@ -17,20 +18,23 @@ public abstract class ConfiguratorFixture<TConfigurator, TService>
     where TService : class, new()
 {
     public TConfigurator Configurator { get; set; }
-    public TService Services { get; set; }
+    public TService Container { get; set; }
 
     public ConfiguratorFixture()
     {
-        Services = new TService();
-        Configurator = Activator.CreateInstance(typeof(TConfigurator), Services) as TConfigurator
+        Container = new TService();
+        var logger = LoggerUtility.CreateLogger<TConfigurator>();
+        Configurator = Activator.CreateInstance(typeof(TConfigurator), Container, logger) as TConfigurator
             ?? throw new ConfigurationErrorsException($"Failed to create instance of {typeof(TConfigurator).Name}");
     }
 
     public virtual void Setup()
     {
-        Services = new TService();
-        Configurator = Activator.CreateInstance(typeof(TConfigurator), Services) as TConfigurator
+        Container = new TService();
+        var logger = LoggerUtility.CreateLogger<TConfigurator>();
+        Configurator = Activator.CreateInstance(typeof(TConfigurator), Container, logger) as TConfigurator
             ?? throw new ConfigurationErrorsException($"Failed to create instance of {typeof(TConfigurator).Name}");
     }
+
     public virtual void Cleanup() { }
 }

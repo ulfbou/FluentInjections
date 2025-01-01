@@ -15,8 +15,7 @@ using static FluentInjections.Internal.Configurators.ServiceConfigurator;
 
 namespace FluentInjections.Tests.Units.Configurator;
 
-public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixture> : ConfiguratorTests<TConfigurator, TContainer, TFixture>
-    where TConfigurator : class, IServiceConfigurator
+public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixture> : ConfiguratorTests<TConfigurator, TContainer, TFixture> where TConfigurator : class, IServiceConfigurator
     where TContainer : class
     where TFixture : class, IServiceConfiguratorFixture<TConfigurator, TContainer>, new()
 {
@@ -246,7 +245,7 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixtu
         Configurator.Register();
         BuildProvider();
         var configurator = Configurator as ServiceConfigurator;
-        var descriptor = configurator?.TryGetDescriptor(typeof(ITestService));
+        var descriptor = configurator?.TryGetDescriptor<ITestService>("MetadataTest");
         var metadata = GetMetadata<ITestService>("MetadataTest");
 
         descriptor.Should().NotBeNull();

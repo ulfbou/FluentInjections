@@ -10,12 +10,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentInjections.Tests.Utility.Fixtures;
 
-public interface IConfiguratorFixture<TConfigurator, TService>
+public interface IConfiguratorFixture<TConfigurator, TContainer>
     where TConfigurator : class, IConfigurator
-    where TService : class
+    where TContainer : class
 {
     TConfigurator Configurator { get; set; }
-    TService Services { get; set; }
+    TContainer Container { get; set; }
 
     void Setup();
     void Cleanup();

@@ -7,6 +7,7 @@ using FluentInjections.Internal.Descriptors;
 using FluentInjections.Validation;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using System;
 using System.Collections.Generic;
@@ -20,7 +21,7 @@ internal class NetCoreServiceConfigurator : ServiceConfigurator, IServiceConfigu
     private readonly IServiceCollection _services;
     internal IServiceCollection Builder => _services;
 
-    public NetCoreServiceConfigurator(IServiceCollection services) : base()
+    public NetCoreServiceConfigurator(IServiceCollection services, ILogger<NetCoreServiceConfigurator> logger) : base(logger)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
     }

@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentInjections.Tests.Internal.Utility.Fixtures;
 
-public class NetCoreServiceConfiguratorFixture :
+internal class NetCoreServiceConfiguratorFixture :
     ServiceConfiguratorFixture<NetCoreServiceConfigurator, ServiceCollection>
 {
     public NetCoreServiceConfiguratorFixture() : base() { }

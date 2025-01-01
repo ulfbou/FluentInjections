@@ -8,7 +8,7 @@ using FluentInjections.Internal.Configurators;
 
 namespace FluentInjections.Tests.Internal.Utility.Fixtures;
 
-public class AutofacMiddlewareConfiguratorFixture : MiddlewareConfiguratorFixture<AutofacMiddlewareConfigurator, ContainerBuilder>
+internal class AutofacMiddlewareConfiguratorFixture : MiddlewareConfiguratorFixture<AutofacMiddlewareConfigurator, ContainerBuilder>
 {
     public IContainer Container { get; private set; }
     public ILifetimeScope Scope { get; private set; }
@@ -16,7 +16,7 @@ public class AutofacMiddlewareConfiguratorFixture : MiddlewareConfiguratorFixtur
 
     public AutofacMiddlewareConfiguratorFixture() : base()
     {
-        Container = Services.Build();
+        Container = base.Container.Build();
         Scope = Container.BeginLifetimeScope();
         Provider = new AutofacServiceProvider(Scope);
     }
