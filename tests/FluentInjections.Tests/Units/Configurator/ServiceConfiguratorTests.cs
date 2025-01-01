@@ -15,27 +15,22 @@ using static FluentInjections.Internal.Configurators.ServiceConfigurator;
 
 namespace FluentInjections.Tests.Units.Configurator;
 
-public abstract class ServiceConfiguratorTests<TConfigurator, TService, TFixture> : ConfiguratorTests<TConfigurator, TService, TFixture>
+public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixture> : ConfiguratorTests<TConfigurator, TContainer, TFixture>
     where TConfigurator : class, IServiceConfigurator
-    where TService : class
-    where TFixture : class, IServiceConfiguratorFixture<TConfigurator, TService>, new()
+    where TContainer : class
+    where TFixture : class, IServiceConfiguratorFixture<TConfigurator, TContainer>, new()
 {
-    public ServiceConfiguratorTests() : base()
-    {
-        Services = Fixture.Services;
-        Configurator = Fixture.Configurator;
-    }
-
     private readonly Mock<ITestService> _mockService = new();
+
     protected abstract void BuildProvider();
+    protected abstract IReadOnlyDictionary<string, object> GetMetadata<TService>(string name) where TService : class;
 
     [Fact]
     public void Register_WithImplementationType_RegistersType()
     {
         // Arrange
         var binding = Configurator.Bind<ITestService>()
-                                  .To<TestService>()
-                                  as ServiceBinding<ITestService>;
+                                  .To<TestService>() as ServiceBinding<ITestService>;
 
         // Act
         Configurator.Register();
@@ -221,7 +216,8 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TService, TFixture
         using (var scope = Provider!.CreateScope())
         {
             var service1 = scope.ServiceProvider.GetService<ITestService>();
-            using (var newScope = Provider.CreateScope())
+
+            using (var newScope = Provider!.CreateScope())
             {
                 var service2 = newScope.ServiceProvider.GetService<ITestService>();
                 service1.Should().NotBeSameAs(service2);
@@ -251,7 +247,7 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TService, TFixture
         BuildProvider();
         var configurator = Configurator as ServiceConfigurator;
         var descriptor = configurator?.TryGetDescriptor(typeof(ITestService));
-        var metadata = Provider?.GetMetadata("MetadataTest", typeof(ITestService));
+        var metadata = GetMetadata<ITestService>("MetadataTest");
 
         descriptor.Should().NotBeNull();
         metadata.Should().ContainKey("name1").And.ContainValue("value1");

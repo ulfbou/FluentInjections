@@ -15,4 +15,10 @@ public sealed class NetCoreServiceConfiguratorTests : ServiceConfiguratorTests<N
 
         Provider = Configurator.BuildServiceProvider();
     }
+
+    protected override IReadOnlyDictionary<string, object> GetMetadata<TService>(string name)
+        where TService : class
+    {
+        return Provider?.GetMetadata<TService>(name) ?? new Dictionary<string, object>();
+    }
 }

@@ -227,7 +227,7 @@ public static class AutofacNamedServiceExtensions
     /// <param name="serviceType">The type of the service.</param>
     /// <param name="name">The name of the service.</param>
     /// <returns>The metadata of the named service.</returns>
-    private static IReadOnlyDictionary<string, object> GetMetadata(IComponentContext context, Type type, string name)
+    public static IReadOnlyDictionary<string, object> GetMetadata(this IComponentContext context, Type type, string name)
     {
         Guard.NotNull(context, nameof(context));
         Guard.NotNullOrEmpty(name, nameof(name));

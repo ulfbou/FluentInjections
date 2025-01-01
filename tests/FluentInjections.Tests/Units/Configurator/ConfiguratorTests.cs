@@ -6,13 +6,13 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentInjections.Tests.Units.Configurator;
 
-public abstract class ConfiguratorTests<TConfigurator, TService, TFixture>
+public abstract class ConfiguratorTests<TConfigurator, TContainer, TFixture>
     where TConfigurator : class, IConfigurator
-    where TService : class
-    where TFixture : class, IConfiguratorFixture<TConfigurator, TService>, new()
+    where TContainer : class
+    where TFixture : class, IConfiguratorFixture<TConfigurator, TContainer>, new()
 {
     protected TFixture Fixture { get; set; }
-    protected TService Services { get; set; }
+    protected TContainer Container { get; set; }
     protected TConfigurator Configurator { get; set; }
     protected IServiceProvider? Provider { get; set; }
 
@@ -21,7 +21,7 @@ public abstract class ConfiguratorTests<TConfigurator, TService, TFixture>
         Fixture = new TFixture();
         Fixture.Setup();
 
-        Services = Fixture.Services;
+        Container = Fixture.Services;
         Configurator = Fixture.Configurator;
     }
 

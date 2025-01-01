@@ -25,61 +25,6 @@ public class AutofacServiceConfigurator : ServiceConfigurator
     protected override void Register(ServiceBindingDescriptor descriptor)
     {
         _builder.Register(descriptor);
-        //IRegistrationBuilder<object, ConcreteReflectionActivatorData, SingleRegistrationStyle> registration = null!;
-
-        //if (descriptor.ImplementationType is not null)
-        //{
-        //    registration = Register(
-        //        _builder.RegisterType(descriptor.ImplementationType).As(descriptor.BindingType),
-        //        descriptor);
-        //}
-
-        //if (descriptor.Instance is not null)
-        //{
-        //    var instanceRegistration = _builder.RegisterInstance(descriptor.Instance!).As(descriptor.BindingType);
-
-        //    instanceRegistration = Register(instanceRegistration, descriptor);
-
-        //    if (descriptor.Configure is not null)
-        //    {
-        //        instanceRegistration.OnActivating(e => descriptor.Configure(e.Instance!));
-        //    }
-
-        //    return;
-        //}
-
-        //if (descriptor.Factory is not null)
-        //{
-        //    var factoryRegistration = _builder.Register(c => descriptor.Factory!(c.Resolve<IServiceProvider>())).As(descriptor.BindingType);
-
-        //    if (descriptor.Configure is not null)
-        //    {
-        //        factoryRegistration.OnActivating(e => descriptor.Configure(e.Instance!));
-        //    }
-
-        //    return;
-        //}
-
-        //if (registration is null)
-        //{
-        //    registration = Register(_builder.RegisterType(descriptor.BindingType).AsSelf(), descriptor);
-        //}
-
-        //if (descriptor.Parameters.Any())
-        //{
-        //    if (!registration.IsReflectionData())
-        //    {
-        //        throw new InvalidOperationException("Parameters are only supported for reflection-based registrations.");
-        //    }
-
-        //    var parameters = descriptor.Parameters.Select(parameter => new ResolvedParameter((pi, ctx) => pi.Name == parameter.Key, (pi, ctx) => parameter.Value)).ToList();
-        //    registration.WithParameters(parameters);
-        //}
-
-        //if (descriptor.Configure is not null)
-        //{
-        //    registration.OnActivating(e => descriptor.Configure(e.Instance!));
-        //}
     }
 
     private IRegistrationBuilder<TLimit, TActivatorData, TStyle> Register<TLimit, TActivatorData, TStyle>(

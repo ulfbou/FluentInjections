@@ -163,6 +163,11 @@ public static class NetCoreNamedServiceExtensions
         throw new InvalidOperationException($"No named service of type {typeof(TService).FullName} with name '{name}' was registered.");
     }
 
+    public static IReadOnlyDictionary<string, object> GetMetadata<TService>(this IServiceProvider provider, string name)
+        where TService : class
+    {
+        return provider.GetMetadata(name, typeof(TService));
+    }
 
     public static IReadOnlyDictionary<string, object> GetMetadata(this IServiceProvider provider, string name, Type serviceType)
     {
@@ -176,6 +181,6 @@ public static class NetCoreNamedServiceExtensions
             }
         }
 
-        throw new InvalidOperationException($"No metadata found for service of type {serviceType.FullName} with name '{name}'.");
+        return Enumerable.Empty<KeyValuePair<string, object>>().ToDictionary(kvp => kvp.Key, kvp => kvp.Value).AsReadOnly();
     }
 }

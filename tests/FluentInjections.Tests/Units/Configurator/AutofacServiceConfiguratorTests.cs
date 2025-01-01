@@ -1,8 +1,11 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Autofac;
+using Autofac.Extensions.DependencyInjection;
+
+using FluentInjections;
 using FluentInjections.Tests.Internal.Utility.Fixtures;
 using FluentInjections.Internal.Configurators;
-using Autofac;
-using Autofac.Extensions.DependencyInjection;
+
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentInjections.Tests.Units.Configurator;
 
@@ -23,8 +26,8 @@ public sealed class AutofacServiceConfiguratorTests : ServiceConfiguratorTests<A
             throw new InvalidOperationException("Container has already been built.");
         }
 
-        Services.Populate(ServiceCollection);
-        Container = Services.Build();
+        base.Container.Populate(ServiceCollection);
+        Container = base.Container.Build();
         Provider = new AutofacServiceProvider(Container);
     }
 
@@ -56,5 +59,20 @@ public sealed class AutofacServiceConfiguratorTests : ServiceConfiguratorTests<A
         }
 
         return Container.ResolveKeyed<T>(name);
+    }
+
+
+    protected override IReadOnlyDictionary<string, object> GetMetadata<TService>(string name)
+    {
+        if (Container is null)
+        {
+            throw new InvalidOperationException("Container has not been built. Ensure that BuildProvider is called prior to calling GetMetadata.");
+        }
+
+        var sp = Provider as AutofacServiceProvider ?? throw new InvalidOperationException("Provider is not an AutofacServiceProvider.");
+
+        IComponentContext context = sp.GetAutofacRoot() ?? throw new InvalidOperationException("Autofac root is not available.");
+
+        return context.GetMetadata<TService>(name);
     }
 }

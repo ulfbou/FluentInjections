@@ -170,8 +170,6 @@ public abstract class ServiceConfigurator : IServiceConfigurator, IDisposable
         existingDescriptor.Configure += newDescriptor.Configure;
     }
 
-
-
     protected abstract void Register(ServiceBindingDescriptor descriptor);
 
     internal class ServiceBinding<TService> : IServiceBinding<TService> where TService : notnull
