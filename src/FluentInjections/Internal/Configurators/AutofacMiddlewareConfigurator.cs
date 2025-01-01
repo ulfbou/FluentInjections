@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace FluentInjections.Internal.Configurators;
 
-public sealed class AutofacMiddlewareConfigurator : MiddlewareConfigurator<IApplicationBuilder>
+internal sealed class AutofacMiddlewareConfigurator : MiddlewareConfigurator<IApplicationBuilder>
 {
     private readonly ContainerBuilder _builder;
 

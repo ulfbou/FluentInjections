@@ -21,9 +21,9 @@ public class ServiceBindingDescriptor
     public Dictionary<string, object> Metadata { get; set; } = new();
     public Dictionary<string, object> Parameters { get; set; } = new();
     public Func<bool>? Condition { get; set; }
-    public ServiceConfigurator ServiceConfigurator { get; }
+    public IServiceConfigurator ServiceConfigurator { get; }
 
-    public ServiceBindingDescriptor(Type bindingType, ServiceConfigurator serviceConfigurator)
+    public ServiceBindingDescriptor(Type bindingType, IServiceConfigurator serviceConfigurator)
     {
         BindingType = bindingType ?? throw new ArgumentNullException(nameof(bindingType));
         ServiceConfigurator = serviceConfigurator ?? throw new ArgumentNullException(nameof(serviceConfigurator));
@@ -60,6 +60,6 @@ public class ServiceBindingDescriptor
     }
 }
 
-public class ServiceBindingDescriptor<TService>(ServiceConfigurator configurator)
+public class ServiceBindingDescriptor<TService>(IServiceConfigurator configurator)
     : ServiceBindingDescriptor(typeof(TService), configurator) where TService : notnull
 { }

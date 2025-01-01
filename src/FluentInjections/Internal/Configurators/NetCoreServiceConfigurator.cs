@@ -14,7 +14,7 @@ using System.Linq;
 
 namespace FluentInjections.Internal.Configurators;
 
-public class NetCoreServiceConfigurator : ServiceConfigurator, IServiceConfigurator
+internal class NetCoreServiceConfigurator : ServiceConfigurator, IServiceConfigurator
 {
     private readonly IDictionary<string, ServiceDescriptor> _keyedServiceDescriptors = new Dictionary<string, ServiceDescriptor>();
     private readonly IServiceCollection _services;

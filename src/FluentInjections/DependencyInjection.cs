@@ -123,7 +123,8 @@ internal static class DependencyInjection
                     var instance = GetInstance<IMiddlewareModule, IMiddlewareConfigurator>(type, sp);
                     if (instance != null)
                     {
-                        instance.Configure(new NetCoreMiddlewareConfigurator<IApplicationBuilder>(builder));
+                        var logger = LoggerUtility.CreateLogger<NetCoreMiddlewareConfigurator<IApplicationBuilder>>();
+                        instance.Configure(new NetCoreMiddlewareConfigurator<IApplicationBuilder>(builder, logger));
                         registry.Register<IMiddlewareConfigurator>(typeof(IMiddlewareModule), instance);
                     }
                 }

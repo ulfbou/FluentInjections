@@ -16,6 +16,7 @@ public class MiddlewareBindingDescriptor
 
     public Type MiddlewareType { get; }
     public object? Instance { get; set; }
+    public string? Name { get; set; }
     public int Priority { get; set; } = DefaultValues.Priority;
     public string Group { get; set; } = DefaultValues.Group;
     public string? RequiredEnvironment { get; set; }

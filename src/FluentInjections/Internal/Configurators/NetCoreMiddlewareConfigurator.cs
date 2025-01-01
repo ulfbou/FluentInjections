@@ -11,14 +11,16 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Builder;
 using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.Extensions.Logging;
 
 namespace FluentInjections.Internal.Configurators;
 
-public sealed class NetCoreMiddlewareConfigurator<TBuilder> : MiddlewareConfigurator<TBuilder>
+internal sealed class NetCoreMiddlewareConfigurator<TBuilder> : MiddlewareConfigurator<TBuilder>
 {
     private readonly TBuilder _app;
 
-    public NetCoreMiddlewareConfigurator(TBuilder app)
+    internal NetCoreMiddlewareConfigurator(TBuilder app, ILogger<NetCoreMiddlewareConfigurator<TBuilder>> logger)
+        : base(logger)
     {
         _app = app ?? throw new ArgumentNullException(nameof(app));
     }

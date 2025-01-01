@@ -12,7 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentInjections.Internal.Configurators;
 
-public class AutofacServiceConfigurator : ServiceConfigurator
+internal class AutofacServiceConfigurator : ServiceConfigurator
 {
     private readonly ContainerBuilder _builder;
     internal ContainerBuilder Builder => _builder;
