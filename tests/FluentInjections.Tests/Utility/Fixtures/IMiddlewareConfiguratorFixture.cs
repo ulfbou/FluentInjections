@@ -3,9 +3,8 @@
 
 namespace FluentInjections.Tests.Utility.Fixtures;
 
-public interface IMiddlewareConfiguratorFixture<TConfigurator, TService, TProvider> : IConfiguratorFixture<TConfigurator, TService>
+public interface IMiddlewareConfiguratorFixture<TConfigurator, TService> : IConfiguratorFixture<TConfigurator, TService>
     where TConfigurator : class, IMiddlewareConfigurator
     where TService : class
 {
-    TProvider Provider { get; set; }
 }

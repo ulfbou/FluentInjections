@@ -18,6 +18,7 @@ namespace FluentInjections;
 /// Represents a module that provides methods to configure services and middleware within the application using ASP.NET Core.
 /// </summary>
 internal sealed class FluentInjectionsNetCoreModule<TBuilder> : FluentInjectionsModule
+    where TBuilder : class
 {
     private readonly IServiceCollection _services;
     private readonly TBuilder _app;

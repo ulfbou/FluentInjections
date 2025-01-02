@@ -21,9 +21,24 @@ public abstract class ConfiguratorTests<TConfigurator, TContainer, TFixture>
         Fixture = new TFixture();
         Fixture.Setup();
 
-        Container = Fixture.Container;
+        Container = Fixture.DependencyBuilder;
         Configurator = Fixture.Configurator;
     }
+
+    [Fact]
+    public void SetConflictResolutionMode_ShouldThrowExceptionForInvalidMode()
+    {
+        // Arrange
+        var configurator = Configurator;
+
+        // Act
+        void action() => configurator.ConflictResolution = ((ConflictResolutionMode)int.MaxValue);
+
+        // Assert
+        Assert.Throws<ArgumentOutOfRangeException>(action);
+    }
+
+
 
     protected virtual T? GetService<T>() where T : class
     {

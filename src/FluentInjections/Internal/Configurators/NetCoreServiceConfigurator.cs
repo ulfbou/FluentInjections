@@ -19,7 +19,7 @@ internal class NetCoreServiceConfigurator : ServiceConfigurator, IServiceConfigu
 {
     private readonly IDictionary<string, ServiceDescriptor> _keyedServiceDescriptors = new Dictionary<string, ServiceDescriptor>();
     private readonly IServiceCollection _services;
-    internal IServiceCollection Builder => _services;
+    internal IServiceCollection DependencyBuilder => _services;
 
     public NetCoreServiceConfigurator(IServiceCollection services, ILogger<NetCoreServiceConfigurator> logger) : base(logger)
     {
@@ -29,38 +29,6 @@ internal class NetCoreServiceConfigurator : ServiceConfigurator, IServiceConfigu
     protected override void Register(ServiceBindingDescriptor bindingDescriptor)
     {
         _services.Register(bindingDescriptor);
-        //ServiceDescriptor? registration = null;
-
-        //if (bindingDescriptor.Instance is not null)
-        //{
-        //    registration = Register(new ServiceDescriptor(bindingDescriptor.BindingType, bindingDescriptor.Instance), bindingDescriptor);
-        //    AddServiceDescriptor(bindingDescriptor, registration);
-        //    return;
-        //}
-
-        //if (bindingDescriptor.Factory is not null)
-        //{
-        //    registration = new ServiceDescriptor(bindingDescriptor.BindingType, sp => bindingDescriptor.Factory!(sp), bindingDescriptor.Lifetime);
-        //    AddServiceDescriptor(bindingDescriptor, registration);
-        //    return;
-        //}
-
-        //if (bindingDescriptor.ImplementationType is not null)
-        //{
-        //    registration = new ServiceDescriptor(bindingDescriptor.BindingType, bindingDescriptor.ImplementationType, bindingDescriptor.Lifetime);
-        //}
-        //else
-        //{
-        //    registration = new ServiceDescriptor(bindingDescriptor.BindingType, bindingDescriptor.BindingType, bindingDescriptor.Lifetime);
-        //}
-
-        //if (bindingDescriptor.Parameters.Any())
-        //{
-        //    throw new InvalidOperationException("Parameters are only supported for reflection-based registrations.");
-        //}
-
-        //registration = Register(registration, bindingDescriptor);
-        //AddServiceDescriptor(bindingDescriptor, registration);
     }
 
     private ServiceDescriptor Register(ServiceDescriptor descriptor, ServiceBindingDescriptor bindingDescriptor)

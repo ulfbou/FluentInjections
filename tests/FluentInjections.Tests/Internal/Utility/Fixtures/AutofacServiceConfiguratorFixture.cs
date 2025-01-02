@@ -5,6 +5,7 @@ using Autofac;
 using Autofac.Extensions.DependencyInjection;
 
 using FluentInjections.Internal.Configurators;
+using FluentInjections.Internal.Utils;
 
 namespace FluentInjections.Tests.Internal.Utility.Fixtures;
 
@@ -14,6 +15,12 @@ internal class AutofacServiceConfiguratorFixture : ServiceConfiguratorFixture<Au
 
     public AutofacServiceConfiguratorFixture() : base()
     {
-        Container = base.Container.Build();
+        Container = base.DependencyBuilder.Build();
+    }
+
+    protected override AutofacServiceConfigurator Create()
+    {
+        var logger = LoggerUtility.CreateLogger<AutofacServiceConfigurator>();
+        return new(DependencyBuilder, logger);
     }
 }

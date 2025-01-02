@@ -15,7 +15,7 @@ public interface IConfiguratorFixture<TConfigurator, TContainer>
     where TContainer : class
 {
     TConfigurator Configurator { get; set; }
-    TContainer Container { get; set; }
+    TContainer DependencyBuilder { get; set; }
 
     void Setup();
     void Cleanup();

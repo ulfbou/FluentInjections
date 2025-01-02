@@ -7,7 +7,8 @@ using FluentInjections.Validation;
 
 namespace FluentInjections.Tests.Units.Configurator;
 
-internal sealed class InternalAutofacServiceConfiguratorTests : ServiceConfiguratorTests<AutofacServiceConfigurator, ContainerBuilder, AutofacServiceConfiguratorFixture>
+internal sealed class InternalAutofacServiceConfiguratorTests
+    : ServiceConfiguratorTests<AutofacServiceConfigurator, ContainerBuilder, AutofacServiceConfiguratorFixture>
 {
     private readonly InternalNetCoreServiceConfiguratorTests _internalTests = new InternalNetCoreServiceConfiguratorTests();
     private IContainer? _container;

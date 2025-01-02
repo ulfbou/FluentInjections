@@ -10,37 +10,53 @@ namespace FluentInjections.Internal.Configurators;
 /// </summary>
 internal abstract class Configurator<TBinding, TDescriptor> : IConfigurator<TBinding>, IDisposable where TBinding : IBinding
 {
-    protected readonly List<TDescriptor> _bindings = new();
+    protected readonly List<TDescriptor> _descriptors = new();
     protected readonly ILogger _logger;
-    internal IReadOnlyList<TDescriptor> Bindings => _bindings;
-    public ConflictResolutionMode ConflictResolution { get; set; }
 
-    internal Configurator(ILogger logger)
+    internal IReadOnlyList<TDescriptor> Descriptors => _descriptors.AsReadOnly();
+    internal ILogger Logger => _logger;
+
+    public ConflictResolutionMode ConflictResolution
     {
-        ConflictResolution = ConflictResolutionMode.WarnAndReplace;
+        get => _conflictResolution;
+        set
+        {
+            if (!Enum.IsDefined(typeof(ConflictResolutionMode), value))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The value must be a valid ConflictResolutionMode.");
+            }
+
+            _conflictResolution = value;
+        }
+    }
+    private ConflictResolutionMode _conflictResolution = ConflictResolutionMode.WarnAndReplace;
+
+    protected Configurator(ILogger logger)
+    {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public void Register()
     {
         ValidateBindings();
-
-        foreach (var binding in _bindings)
-        {
-            Register(binding);
-        }
+        _descriptors.ForEach(d => Register(d));
     }
 
-    /// <inheritdoc />
-    protected abstract void Register(TDescriptor binding);
+    /// <summary>
+    /// Registers a binding with the service collection.
+    /// </summary>
+    /// <param name="descriptor">The binding descriptor to register.</param>
+    protected abstract void Register(TDescriptor descriptor);
 
-    /// <inheritdoc />
-    protected abstract void ValidateBindings();
+    /// <summary>
+    /// Validates the bindings to ensure they are configured correctly.
+    /// </summary>
+    internal abstract void ValidateBindings();
 
-    /// <inheritdoc />
+    /// <inheritdoc/>
     public void Dispose()
     {
-        _bindings.Clear();
+        _descriptors.Clear();
     }
 }

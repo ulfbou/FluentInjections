@@ -2,65 +2,46 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Autofac;
-using Autofac.Core;
 
 using FluentInjections.Internal.Constants;
 using FluentInjections.Internal.Descriptors;
-using FluentInjections.Internal.Utils;
 using FluentInjections.Validation;
 
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using System.Diagnostics;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace FluentInjections.Internal.Configurators;
 
-internal abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurator
+internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding> : Configurator<TBinding, MiddlewareBindingDescriptor>, IMiddlewareConfigurator, IConfigurator
+    where TDependencyBuilder : class
+    where TBinding : IBinding
 {
-    protected readonly List<MiddlewareBindingDescriptor> _descriptors = new();
-    private readonly List<MiddlewareBinding> _bindings = new();
-    protected readonly ILogger _logger;
     protected ConflictResolutionMode _conflictResolution = ConflictResolutionMode.WarnAndReplace;
     protected object _middleware = default!;
     protected Type _middlewareType = default!;
+    protected readonly TDependencyBuilder _dependencyBuilder;
+    protected readonly List<MiddlewareBinding> _bindings = new();
 
-    public MiddlewareConfigurator(ILogger? logger = null)
+    protected MiddlewareConfigurator(TDependencyBuilder builder, ILogger logger) : base(logger)
     {
-        _logger = logger ?? LoggerUtility.CreateLogger<MiddlewareConfigurator<TBuilder>>();
+        _dependencyBuilder = builder ?? throw new ArgumentNullException(nameof(builder));
     }
 
-    internal IReadOnlyList<MiddlewareBindingDescriptor> MiddlewareBindings => _descriptors.AsReadOnly();
-
-    public ConflictResolutionMode ConflictResolution
-    {
-        get => _conflictResolution;
-        set
-        {
-            // Validate the conflict resolution mode.
-            if (!Enum.IsDefined(typeof(ConflictResolutionMode), value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), "Invalid conflict resolution mode.");
-            }
-
-            _conflictResolution = value;
-        }
-    }
+    internal IReadOnlyList<MiddlewareBindingDescriptor> MiddlewareDescriptors => _descriptors.AsReadOnly();
+    internal IReadOnlyList<MiddlewareBinding> Bindings => _bindings;
 
     public object Middleware => _middleware!;
     public Type MiddlewareType => _middlewareType;
 
-    public IMiddlewareBinding<TMiddleware>? GetMiddleware<TMiddleware>(MiddlewareBindingDescriptor? descriptor = null) where TMiddleware : class
+    public MiddlewareBindingDescriptor? GetMiddleware<TMiddleware>(MiddlewareBindingDescriptor? descriptor = null) where TMiddleware : class
     {
         var middleware = typeof(TMiddleware);
-        var predicate = descriptor is not null
-            ? (Func<MiddlewareBinding, bool>)(b => b.Descriptor.Equals(descriptor))
-            : b => b.Descriptor.MiddlewareType == middleware;
-        return _bindings.FirstOrDefault(predicate) as IMiddlewareBinding<TMiddleware>;
+        var predicate = descriptor is null ? (Func<MiddlewareBindingDescriptor, bool>)(d => d.MiddlewareType == middleware) :
+            (d => d.MiddlewareType == middleware && d.Name == descriptor.Name);
+        return _descriptors.FirstOrDefault(predicate);
     }
 
     public bool RemoveMiddleware<TMiddleware>(MiddlewareBindingDescriptor? descriptor = null) where TMiddleware : class
@@ -68,10 +49,11 @@ internal abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurat
         var middleware = typeof(TMiddleware);
         var binding = GetMiddleware<TMiddleware>(descriptor) as MiddlewareBinding;
         descriptor ??= binding?.Descriptor ?? throw new InvalidOperationException("The descriptor is null.");
+
         if (descriptor is not null || binding is not null)
         {
             if ((descriptor is null || _descriptors.Remove(descriptor)) &&
-                (binding is null || _bindings.Remove((binding as MiddlewareBinding)!)))
+                (binding is null || _bindings.Remove(binding)))
             {
                 Debug.WriteLine($"The middleware component of type {middleware.Name} was removed successfully.");
                 return true;
@@ -82,8 +64,9 @@ internal abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurat
 
     public IMiddlewareBinding<TMiddleware> UseMiddleware<TMiddleware>() where TMiddleware : class
     {
-        var descriptor = new MiddlewareBindingDescriptor(typeof(TMiddleware));
+        var descriptor = new MiddlewareBindingDescriptor(typeof(TMiddleware), this);
         var binding = new MiddlewareBinding<TMiddleware>(descriptor);
+
         _descriptors.Add(descriptor);
         _bindings.Add(binding);
         return binding;
@@ -93,36 +76,33 @@ internal abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurat
     {
         Guard.NotNullOrWhiteSpace(groupName, nameof(groupName));
         Guard.NotNull(configure, nameof(configure));
+
         var bindings = _bindings.Where(b => b.Descriptor.Group == groupName);
+
         foreach (var binding in bindings)
         {
             configure(binding);
         }
     }
 
-    public void ConfigureAll(Action<IMiddlewareBinding> configure)
+    public void ConfigureAll(Action<MiddlewareBindingDescriptor> configure)
     {
         Guard.NotNull(configure, nameof(configure));
-        foreach (var binding in _bindings)
+
+        foreach (var binding in _descriptors)
         {
             configure(binding);
         }
     }
 
-    public void Register()
-    {
-        ValidateBindings();
-        _descriptors.ForEach(d => Register(d));
-    }
-
-    internal void Register(Action<MiddlewareBindingDescriptor, HttpContext, TBuilder> register)
+    internal void Register(Action<MiddlewareBindingDescriptor, HttpContext> register)
     {
         ValidateBindings();
         _descriptors.ForEach(d => Register(d, register));
     }
 
     #region Validation
-    private void ValidateBindings()
+    internal override void ValidateBindings()
     {
         var duplicates = _descriptors.GroupBy(binding => new { binding.MiddlewareType, binding.Name })
                                      .Where(group => group.Count() > 1)
@@ -294,7 +274,8 @@ internal abstract class MiddlewareConfigurator<TBuilder> : IMiddlewareConfigurat
     }
     #endregion
 
-    protected abstract void Register(MiddlewareBindingDescriptor descriptor, Action<MiddlewareBindingDescriptor, HttpContext, TBuilder>? register = null);
+    internal abstract void Register(MiddlewareBindingDescriptor descriptor, Action<MiddlewareBindingDescriptor, HttpContext>? register = null);
+    IMiddlewareBinding<TMiddleware>? IMiddlewareConfigurator.GetMiddleware<TMiddleware>(MiddlewareBindingDescriptor? descriptor) => throw new NotImplementedException();
 
     internal class MiddlewareBinding : IMiddlewareBinding
     {

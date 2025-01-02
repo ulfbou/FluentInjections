@@ -18,12 +18,17 @@ namespace FluentInjections;
 /// </summary>
 internal sealed class FluentInjectionsAutofacModule : FluentInjectionsModule
 {
-    public FluentInjectionsAutofacModule(Assembly[] assemblies) : base(assemblies) { }
+    private readonly IContainer _container;
+
+    public FluentInjectionsAutofacModule(IContainer container, Assembly[] assemblies) : base(assemblies)
+    {
+        _container = container ?? throw new ArgumentNullException(nameof(container));
+    }
 
     protected override void Load(ContainerBuilder builder)
     {
         var serviceConfigurator = new AutofacServiceConfigurator(builder, LoggerUtility.CreateLogger<AutofacServiceConfigurator>());
-        var middlewareConfigurator = new AutofacMiddlewareConfigurator(builder, LoggerUtility.CreateLogger<AutofacMiddlewareConfigurator>());
+        var middlewareConfigurator = new AutofacMiddlewareConfigurator(_container, LoggerUtility.CreateLogger<AutofacMiddlewareConfigurator>());
 
         foreach (var assembly in _assemblies)
         {

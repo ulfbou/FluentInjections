@@ -2,50 +2,52 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Autofac;
-using Microsoft.AspNetCore.Builder;
+
 using FluentInjections.Internal.Descriptors;
+
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace FluentInjections.Internal.Configurators;
 
-internal sealed class AutofacMiddlewareConfigurator : MiddlewareConfigurator<IApplicationBuilder>
+internal sealed class AutofacMiddlewareConfigurator : MiddlewareConfigurator<ContainerBuilder, IMiddlewareBinding>
 {
-    private readonly ContainerBuilder _builder;
+    public AutofacMiddlewareConfigurator(ContainerBuilder container, ILogger<AutofacMiddlewareConfigurator> logger)
+        : base(container, logger)
+    { }
 
-    public AutofacMiddlewareConfigurator(ContainerBuilder builder, ILogger<AutofacMiddlewareConfigurator> logger)
-        : base(logger)
+    protected override void Register(MiddlewareBindingDescriptor descriptor) => Register(descriptor, null);
+
+    internal override void Register(MiddlewareBindingDescriptor descriptor, Action<MiddlewareBindingDescriptor, HttpContext>? register = null)
     {
-        _builder = builder ?? throw new ArgumentNullException(nameof(builder));
-    }
-
-    protected override void Register(MiddlewareBindingDescriptor descriptor, Action<MiddlewareBindingDescriptor, HttpContext, IApplicationBuilder>? register = null)
-    {
-        _builder.RegisterType(descriptor.MiddlewareType).As<IMiddleware>().InstancePerDependency();
-
-        _builder.RegisterBuildCallback(container =>
+        if (_dependencyBuilder is not ContainerBuilder builder)
         {
-            var app = container.Resolve<IApplicationBuilder>();
+            throw new InvalidOperationException("The provided builder is not supported.");
+        }
 
-            app.Use(async (HttpContext context, RequestDelegate next) =>
+        var builder = new ContainerBuilder();
+        var sp = scope.Resolve<IServiceProvider>();
+        builder.RegisterInstance(sp).As<IServiceProvider>().SingleInstance();
+        builder.RegisterInstance(sp).As<IServiceScopeFactory>().SingleInstance();
+
+        var container = builder.Build();
+        var middlewareInstance = container.Resolve(descriptor.MiddlewareType) as IMiddleware;
+
+        if (middlewareInstance != null)
+        {
+            scope.Resolve<IApplicationBuilder>().Use(async (context, next) =>
             {
-                if (descriptor.IsEnabled && (descriptor.Condition == null || descriptor.Condition.Invoke()))
+                if (descriptor.IsEnabled && (descriptor.Condition is null || descriptor.Condition.Invoke()))
                 {
                     if (register != null)
                     {
-                        register(descriptor, context, app);
+                        register(descriptor, context);
                     }
                     else
                     {
-                        var middlewareInstance = app.ApplicationServices.GetService(descriptor.MiddlewareType) as IMiddleware;
-                        if (middlewareInstance != null)
-                        {
-                            await middlewareInstance.InvokeAsync(context, next);
-                        }
-                        else
-                        {
-                            await next(context);
-                        }
+                        await middlewareInstance.InvokeAsync(context, next);
                     }
                 }
                 else
@@ -53,6 +55,6 @@ internal sealed class AutofacMiddlewareConfigurator : MiddlewareConfigurator<IAp
                     await next(context);
                 }
             });
-        });
+        }
     }
 }

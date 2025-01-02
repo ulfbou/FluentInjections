@@ -2,6 +2,7 @@
 using FluentInjections.Tests.Utilities;
 
 namespace FluentInjections.Tests.Units.Configurator;
+
 public class AutofacServiceConfiguratorTests
 {
     private readonly InternalAutofacServiceConfiguratorTests _internal = new InternalAutofacServiceConfiguratorTests();

@@ -15,31 +15,31 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentInjections.Internal.Configurators;
 
-internal sealed class NetCoreMiddlewareConfigurator<TBuilder> : MiddlewareConfigurator<TBuilder>
+internal sealed class NetCoreMiddlewareConfigurator<TDependencyBuilder> : MiddlewareConfigurator<TDependencyBuilder, IMiddlewareBinding>
+    where TDependencyBuilder : class
 {
-    private readonly TBuilder _app;
+    internal NetCoreMiddlewareConfigurator(TDependencyBuilder builder, ILogger<NetCoreMiddlewareConfigurator<TDependencyBuilder>> logger)
+        : base(builder, logger)
+    { }
 
-    internal NetCoreMiddlewareConfigurator(TBuilder app, ILogger<NetCoreMiddlewareConfigurator<TBuilder>> logger)
-        : base(logger)
-    {
-        _app = app ?? throw new ArgumentNullException(nameof(app));
-    }
+    protected override void Register(MiddlewareBindingDescriptor descriptor) => Register(descriptor, null);
 
-    protected override void Register(MiddlewareBindingDescriptor descriptor, Action<MiddlewareBindingDescriptor, HttpContext, TBuilder>? register = null)
+    internal override void Register(MiddlewareBindingDescriptor descriptor, Action<MiddlewareBindingDescriptor, HttpContext>? register = null)
     {
-        if (_app is not IApplicationBuilder builder)
+        if (_dependencyBuilder is not IApplicationBuilder builder)
         {
             throw new InvalidOperationException("The provided builder is not supported.");
         }
 
         var sp = builder.ApplicationServices;
+
         builder.Use(async (context, next) =>
         {
             if (descriptor.IsEnabled && (descriptor.Condition == null || descriptor.Condition.Invoke()))
             {
                 if (register != null)
                 {
-                    register(descriptor, context, _app);
+                    register(descriptor, context);
                 }
                 else
                 {

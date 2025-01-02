@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using FluentInjections.Internal.Configurators;
+using FluentInjections.Internal.Utils;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,4 +12,10 @@ internal class NetCoreServiceConfiguratorFixture :
     ServiceConfiguratorFixture<NetCoreServiceConfigurator, ServiceCollection>
 {
     public NetCoreServiceConfiguratorFixture() : base() { }
+
+    protected override NetCoreServiceConfigurator Create()
+    {
+        var logger = LoggerUtility.CreateLogger<NetCoreServiceConfigurator>();
+        return new NetCoreServiceConfigurator(new ServiceCollection(), logger);
+    }
 }

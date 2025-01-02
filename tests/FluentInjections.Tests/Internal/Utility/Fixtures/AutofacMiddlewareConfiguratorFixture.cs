@@ -5,6 +5,14 @@ using Autofac;
 using Autofac.Extensions.DependencyInjection;
 
 using FluentInjections.Internal.Configurators;
+using FluentInjections.Internal.Utils;
+
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Logging;
+
+using Moq;
+
+using System.Reflection.PortableExecutable;
 
 namespace FluentInjections.Tests.Internal.Utility.Fixtures;
 
@@ -16,8 +24,14 @@ internal class AutofacMiddlewareConfiguratorFixture : MiddlewareConfiguratorFixt
 
     public AutofacMiddlewareConfiguratorFixture() : base()
     {
-        Container = base.Container.Build();
+        Container = DependencyBuilder.Build();
         Scope = Container.BeginLifetimeScope();
         Provider = new AutofacServiceProvider(Scope);
+        Configurator = Create(); // Required since Configurator's call to Create returns a default value
+    }
+
+    protected override AutofacMiddlewareConfigurator Create()
+    {
+        return Container is null ? default! : new(Container, MockLogger.Object);
     }
 }

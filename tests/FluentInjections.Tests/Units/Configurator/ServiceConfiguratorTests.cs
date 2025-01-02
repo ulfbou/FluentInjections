@@ -3,10 +3,12 @@
 using FluentInjections.Extensions;
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Descriptors;
+using FluentInjections.Tests.Internal.Middlewares;
 using FluentInjections.Tests.Internal.Services;
 using FluentInjections.Tests.Internal.Utility.Fixtures;
 using FluentInjections.Tests.Utility.Fixtures;
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
@@ -15,7 +17,8 @@ using static FluentInjections.Internal.Configurators.ServiceConfigurator;
 
 namespace FluentInjections.Tests.Units.Configurator;
 
-public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixture> : ConfiguratorTests<TConfigurator, TContainer, TFixture> where TConfigurator : class, IServiceConfigurator
+public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixture> : ConfiguratorTests<TConfigurator, TContainer, TFixture>
+    where TConfigurator : class, IServiceConfigurator
     where TContainer : class
     where TFixture : class, IServiceConfiguratorFixture<TConfigurator, TContainer>, new()
 {

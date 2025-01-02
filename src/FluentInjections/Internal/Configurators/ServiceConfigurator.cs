@@ -25,15 +25,16 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
     public IServiceBinding<TService> Bind<TService>() where TService : notnull
     {
         var descriptor = new ServiceBindingDescriptor(typeof(TService), this);
-        var existingDescriptor = _bindings.FirstOrDefault(binding => binding.BindingType == descriptor.BindingType && binding.Name == descriptor.Name);
+        var existingDescriptor = _descriptors.FirstOrDefault(binding => binding.BindingType == descriptor.BindingType && binding.Name == descriptor.Name);
 
-        _bindings.Add(descriptor);
+        _descriptors.Add(descriptor);
         return new ServiceBinding<TService>(this, descriptor);
     }
 
-    protected override void ValidateBindings()
+    #region Validate Bindings
+    internal override void ValidateBindings()
     {
-        var duplicateGroups = _bindings.GroupBy(binding => new { binding.BindingType, binding.Name })
+        var duplicateGroups = _descriptors.GroupBy(binding => new { binding.BindingType, binding.Name })
                                        .Where(group => group.Count() > 1)
                                        .ToList();
 
@@ -88,7 +89,7 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
 
         // Keep the last binding and remove the rest
         var lastBinding = bindings.Last();
-        _bindings.RemoveAll(binding => binding.BindingType == lastBinding.BindingType && binding.Name == lastBinding.Name && binding != lastBinding);
+        _descriptors.RemoveAll(binding => binding.BindingType == lastBinding.BindingType && binding.Name == lastBinding.Name && binding != lastBinding);
     }
 
     private void MergeBindings(IGrouping<object, ServiceBindingDescriptor> group)
@@ -101,7 +102,7 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
         foreach (var binding in bindings.Skip(1))
         {
             MergeDescriptors(primaryBinding, binding);
-            _bindings.Remove(binding);
+            _descriptors.Remove(binding);
         }
     }
 
@@ -159,11 +160,12 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
             existingDescriptor.Metadata[metadata.Key] = metadata.Value;
         }
     }
+    #endregion
 
     // TryGetDescriptor
     internal ServiceBindingDescriptor? TryGetDescriptor<TService>(string? name = null)
     {
-        var descriptor = _bindings.FirstOrDefault(binding => binding.BindingType == typeof(TService) && binding.Name == name);
+        var descriptor = _descriptors.FirstOrDefault(binding => binding.BindingType == typeof(TService) && (name is null || binding.Name == name));
         return descriptor;
     }
 

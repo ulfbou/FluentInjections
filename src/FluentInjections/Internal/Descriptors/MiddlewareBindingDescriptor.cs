@@ -34,9 +34,12 @@ public class MiddlewareBindingDescriptor
     public Func<bool>? Condition { get; set; }
     public bool IsEnabled => Condition?.Invoke() ?? true;
 
-    internal MiddlewareBindingDescriptor(Type middlewareType)
+    public IMiddlewareConfigurator MiddlewareConfigurator { get; }
+
+    internal MiddlewareBindingDescriptor(Type middlewareType, IMiddlewareConfigurator middlewareConfigurator)
     {
         MiddlewareType = middlewareType ?? throw new ArgumentNullException(nameof(middlewareType));
+        MiddlewareConfigurator = middlewareConfigurator ?? throw new ArgumentNullException(nameof(middlewareConfigurator));
     }
 
     public MiddlewareBindingDescriptor AddDependency(Type dependency)

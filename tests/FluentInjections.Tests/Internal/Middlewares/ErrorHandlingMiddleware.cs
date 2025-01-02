@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace FluentInjections.Tests.Internal.Middlewares;
+
 internal class ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorHandlingMiddleware> logger) : BaseMiddleware(next, logger)
 {
     public override async Task Invoke(HttpContext context)

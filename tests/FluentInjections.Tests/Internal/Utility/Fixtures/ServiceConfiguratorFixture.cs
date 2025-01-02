@@ -5,11 +5,10 @@ using FluentInjections.Tests.Utility.Fixtures;
 
 namespace FluentInjections.Tests.Internal.Utility.Fixtures;
 
-public abstract class ServiceConfiguratorFixture<TConfigurator, TService> :
-    ConfiguratorFixture<TConfigurator, TService>,
-    IServiceConfiguratorFixture<TConfigurator, TService>
+public abstract class ServiceConfiguratorFixture<TConfigurator, TBuilder>
+    : ConfiguratorFixture<TConfigurator, TBuilder>, IServiceConfiguratorFixture<TConfigurator, TBuilder>
     where TConfigurator : class, IServiceConfigurator
-    where TService : class, new()
+    where TBuilder : class, new()
 {
     public ServiceConfiguratorFixture() : base() { }
 }

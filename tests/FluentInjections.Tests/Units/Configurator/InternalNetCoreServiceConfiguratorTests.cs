@@ -7,7 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentInjections.Tests.Units.Configurator;
 
-internal sealed class InternalNetCoreServiceConfiguratorTests : ServiceConfiguratorTests<NetCoreServiceConfigurator, ServiceCollection, NetCoreServiceConfiguratorFixture>
+internal sealed class InternalNetCoreServiceConfiguratorTests
+    : ServiceConfiguratorTests<NetCoreServiceConfigurator, ServiceCollection, NetCoreServiceConfiguratorFixture>
 {
     protected override void BuildProvider()
     {

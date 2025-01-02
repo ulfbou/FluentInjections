@@ -49,6 +49,7 @@ internal static class DependencyInjection
     }
 
     internal static void AddFluentInjections<TBuilder>(IServiceCollection services, TBuilder builder, params Assembly[]? assemblies)
+        where TBuilder : class
     {
         lock (LockObject)
         {
@@ -87,7 +88,7 @@ internal static class DependencyInjection
             }
 
             var targetAssemblies = assemblies?.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
-            builder.RegisterModule(new FluentInjectionsAutofacModule(targetAssemblies));
+            //builder.RegisterModule(new FluentInjectionsAutofacModule(targetAssemblies));
             var Container = builder.Build();
             ServiceProvider = new AutofacServiceProvider(Container);
             var serviceProviders = Services.Where(s => s.ServiceType == typeof(IServiceProvider)).ToList();
