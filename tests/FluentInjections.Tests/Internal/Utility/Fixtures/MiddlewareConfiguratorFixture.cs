@@ -10,17 +10,18 @@ using Moq;
 
 namespace FluentInjections.Tests.Internal.Utility.Fixtures;
 
-public abstract class MiddlewareConfiguratorFixture<TConfigurator, TService>
-    : ConfiguratorFixture<TConfigurator, TService>, IMiddlewareConfiguratorFixture<TConfigurator, TService>, IConfiguratorFixture<TConfigurator, TService>
+public abstract class MiddlewareConfiguratorFixture<TConfigurator, TBuilder>
+    : ConfiguratorFixture<TConfigurator, TBuilder>
+    , IMiddlewareConfiguratorFixture<TConfigurator, TBuilder>
+    , IConfiguratorFixture<TConfigurator, TBuilder>
     where TConfigurator : class, IMiddlewareConfigurator
-    where TService : class, new()
+    where TBuilder : class, new()
 {
-    // Mock logger
-    internal Mock<ILogger<AutofacMiddlewareConfigurator>> MockLogger { get; private set; }
+    internal Mock<ILogger<AutofacMiddlewareConfigurator>> MockLogger { get; set; }
 
     public MiddlewareConfiguratorFixture() : base()
     {
-        MockLogger = new Mock<ILogger<AutofacMiddlewareConfigurator>>();
+        MockLogger ??= new Mock<ILogger<AutofacMiddlewareConfigurator>>();
     }
 
     public override void Setup()

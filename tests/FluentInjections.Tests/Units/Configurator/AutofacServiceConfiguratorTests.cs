@@ -1,4 +1,8 @@
-﻿using FluentInjections;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using FluentInjections;
+using FluentInjections.Internal.Configurators;
 using FluentInjections.Tests.Utilities;
 
 namespace FluentInjections.Tests.Units.Configurator;
@@ -6,6 +10,11 @@ namespace FluentInjections.Tests.Units.Configurator;
 public class AutofacServiceConfiguratorTests
 {
     private readonly InternalAutofacServiceConfiguratorTests _internal = new InternalAutofacServiceConfiguratorTests();
+
+    public AutofacServiceConfiguratorTests()
+    {
+        _internal.Configurator = new AutofacServiceConfigurator(_internal.Fixture.DependencyBuilder, _internal.Fixture.LoggerMock.Object);
+    }
 
     [Fact]
     void Register_DuplicateRegistrations_UsesLatest()

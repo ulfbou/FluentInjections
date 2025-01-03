@@ -1,6 +1,10 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using FluentInjections.Internal.Descriptors;
+
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 namespace FluentInjections.Internal.Configurators;
@@ -13,8 +17,8 @@ internal abstract class Configurator<TBinding, TDescriptor> : IConfigurator<TBin
     protected readonly List<TDescriptor> _descriptors = new();
     protected readonly ILogger _logger;
 
-    internal IReadOnlyList<TDescriptor> Descriptors => _descriptors.AsReadOnly();
-    internal ILogger Logger => _logger;
+    protected internal IReadOnlyList<TDescriptor> Descriptors => _descriptors.AsReadOnly();
+    protected internal ILogger Logger => _logger;
 
     public ConflictResolutionMode ConflictResolution
     {
@@ -40,8 +44,16 @@ internal abstract class Configurator<TBinding, TDescriptor> : IConfigurator<TBin
     public void Register()
     {
         ValidateBindings();
-        _descriptors.ForEach(d => Register(d));
+        List<TDescriptor> orderedDescriptors = OrderBindingDescriptors();
+
+        orderedDescriptors.ForEach(d => Register(d));
     }
+
+    /// <summary>
+    /// Orders the binding descriptors.
+    /// </summary>
+    /// <returns>The ordered list of binding descriptors.</returns>
+    protected virtual List<TDescriptor> OrderBindingDescriptors() => _descriptors;
 
     /// <summary>
     /// Registers a binding with the service collection.
@@ -52,7 +64,7 @@ internal abstract class Configurator<TBinding, TDescriptor> : IConfigurator<TBin
     /// <summary>
     /// Validates the bindings to ensure they are configured correctly.
     /// </summary>
-    internal abstract void ValidateBindings();
+    protected internal abstract void ValidateBindings();
 
     /// <inheritdoc/>
     public void Dispose()

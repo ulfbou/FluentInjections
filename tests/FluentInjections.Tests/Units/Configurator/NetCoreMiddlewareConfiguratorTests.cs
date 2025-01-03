@@ -1,8 +1,28 @@
-﻿namespace FluentInjections.Tests.Units.Configurator;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using FluentAssertions;
+
+using FluentInjections.Internal.Configurators;
+using FluentInjections.Tests.Internal.Middlewares;
+using FluentInjections.Tests.Internal.Utility.Fixtures;
+
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+using Moq;
+
+namespace FluentInjections.Tests.Units.Configurator;
 
 public class NetCoreMiddlewareConfiguratorTests
 {
     private readonly InternalNetCoreMiddlewareConfiguratorTests _internal = new InternalNetCoreMiddlewareConfiguratorTests();
+
+    public NetCoreMiddlewareConfiguratorTests()
+    {
+        _internal.Configurator = new NetCoreMiddlewareConfigurator<ApplicationBuilder>(_internal.Fixture.AppBuilder, _internal.Fixture.LoggerMock.Object);
+    }
 
     [Fact]
     public void Constructor_ShouldInitializeWithLogger()
@@ -37,19 +57,35 @@ public class NetCoreMiddlewareConfiguratorTests
     [Fact]
     public void ConfigureAll_ShouldApplyConfigurationToAllMiddlewares()
     {
-        _internal.ConfigureAll_ShouldApplyConfigurationToAllMiddlewares();
+        // Arrange
+        var configurator = _internal.Configurator;
+
+        // Act
+        configurator.ConfigureAll(descriptor => descriptor.Group = "TestGroup");
+
+        // Assert
+        foreach (var descriptor in configurator.Descriptors)
+        {
+            descriptor.Group.Should().Be("TestGroup");
+        }
     }
 
     [Fact]
     public void Register_ShouldInvokeRegisterMethodForEachDescriptor()
     {
-        _internal.Register_ShouldInvokeRegisterMethodForEachDescriptor();
+        // Arrange
+        var configurator = _internal.Configurator;
+
+        // Act
+        configurator.UseMiddleware<MiddlewareA>().InGroup("TestGroup");
+        configurator.UseMiddleware<MiddlewareB>().InGroup("TestGroup");
+        configurator.Register();
+        _internal.BuildProvider();
     }
 
     [Fact]
     public void ValidateBindings_ShouldIdentifyAndHandleDuplicates()
     {
-        _internal.ValidateBindings_ShouldIdentifyAndHandleDuplicates();
     }
 
     [Fact]

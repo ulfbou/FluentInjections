@@ -3,6 +3,12 @@
 
 namespace FluentInjections.Validation;
 
+/// <summary>
+/// A static class that provides methods to guard against null, empty, whitespace, negative, and zero values.
+/// </summary>
+/// <remarks>
+/// This class should be used to validate method arguments.
+/// </remarks>
 public static class Guard
 {
     public static void NotNull<T>(T value, string name)

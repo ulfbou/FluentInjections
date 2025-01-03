@@ -1,4 +1,7 @@
-﻿using FluentAssertions;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using FluentAssertions;
 
 using FluentInjections.Extensions;
 using FluentInjections.Internal.Configurators;
@@ -24,7 +27,6 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixtu
 {
     private readonly Mock<ITestService> _mockService = new();
 
-    protected abstract void BuildProvider();
     protected abstract IReadOnlyDictionary<string, object> GetMetadata<TService>(string name) where TService : class;
 
     [Fact]

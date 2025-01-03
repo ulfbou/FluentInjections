@@ -3,6 +3,8 @@
 
 using Autofac;
 
+using FluentInjections.Internal.Configurators;
+using FluentInjections;
 using FluentInjections.Internal.Constants;
 using FluentInjections.Internal.Descriptors;
 using FluentInjections.Validation;
@@ -11,11 +13,15 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 using System.Diagnostics;
+using System.Reflection;
 using System.Text;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentInjections.Internal.Configurators;
 
-internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding> : Configurator<TBinding, MiddlewareBindingDescriptor>, IMiddlewareConfigurator, IConfigurator
+internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
+    : Configurator<TBinding, MiddlewareBindingDescriptor>, IMiddlewareConfigurator, IConfigurator
     where TDependencyBuilder : class
     where TBinding : IBinding
 {
@@ -24,11 +30,14 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding> : C
     protected Type _middlewareType = default!;
     protected readonly TDependencyBuilder _dependencyBuilder;
     protected readonly List<MiddlewareBinding> _bindings = new();
+    protected readonly List<Type> _registeredMiddlewareTypes = new();
 
     protected MiddlewareConfigurator(TDependencyBuilder builder, ILogger logger) : base(logger)
     {
         _dependencyBuilder = builder ?? throw new ArgumentNullException(nameof(builder));
     }
+
+    protected internal void ValidateBindingsInternal() => ValidateBindings();
 
     internal IReadOnlyList<MiddlewareBindingDescriptor> MiddlewareDescriptors => _descriptors.AsReadOnly();
     internal IReadOnlyList<MiddlewareBinding> Bindings => _bindings;
@@ -36,7 +45,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding> : C
     public object Middleware => _middleware!;
     public Type MiddlewareType => _middlewareType;
 
-    public MiddlewareBindingDescriptor? GetMiddleware<TMiddleware>(MiddlewareBindingDescriptor? descriptor = null) where TMiddleware : class
+    public MiddlewareBindingDescriptor? GetDescriptor<TMiddleware>(MiddlewareBindingDescriptor? descriptor = null) where TMiddleware : class
     {
         var middleware = typeof(TMiddleware);
         var predicate = descriptor is null ? (Func<MiddlewareBindingDescriptor, bool>)(d => d.MiddlewareType == middleware) :
@@ -47,7 +56,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding> : C
     public bool RemoveMiddleware<TMiddleware>(MiddlewareBindingDescriptor? descriptor = null) where TMiddleware : class
     {
         var middleware = typeof(TMiddleware);
-        var binding = GetMiddleware<TMiddleware>(descriptor) as MiddlewareBinding;
+        var binding = GetDescriptor<TMiddleware>(descriptor) as MiddlewareBinding;
         descriptor ??= binding?.Descriptor ?? throw new InvalidOperationException("The descriptor is null.");
 
         if (descriptor is not null || binding is not null)
@@ -95,14 +104,8 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding> : C
         }
     }
 
-    internal void Register(Action<MiddlewareBindingDescriptor, HttpContext> register)
-    {
-        ValidateBindings();
-        _descriptors.ForEach(d => Register(d, register));
-    }
-
     #region Validation
-    internal override void ValidateBindings()
+    protected internal override void ValidateBindings()
     {
         var duplicates = _descriptors.GroupBy(binding => new { binding.MiddlewareType, binding.Name })
                                      .Where(group => group.Count() > 1)
@@ -274,9 +277,131 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding> : C
     }
     #endregion
 
-    internal abstract void Register(MiddlewareBindingDescriptor descriptor, Action<MiddlewareBindingDescriptor, HttpContext>? register = null);
-    IMiddlewareBinding<TMiddleware>? IMiddlewareConfigurator.GetMiddleware<TMiddleware>(MiddlewareBindingDescriptor? descriptor) => throw new NotImplementedException();
+    internal abstract IApplicationBuilder GetApplication();
 
+    /// <summary>
+    /// Registers a binding with the service collection.
+    /// </summary>
+    /// <param name="register">The action to register the binding.</param>
+    /// <remarks>
+    /// This method is used internally to register bindings that require additional configuration.
+    /// </remarks>
+    internal void Register(Action<MiddlewareBindingDescriptor, HttpContext> register)
+    {
+        ValidateBindings();
+        List<MiddlewareBindingDescriptor> orderedDescriptors = OrderBindingDescriptors();
+
+        orderedDescriptors.ForEach(d => Register(d, register));
+    }
+
+    #region Middleware Registration
+    /// <summary>
+    /// Registers a binding with the service collection.
+    /// </summary>
+    /// <param name="descriptor">The binding descriptor to register.</param>
+    /// <param name="register">The action to register the binding.</param>
+    /// <remarks>
+    /// This method is used internally to register bindings that require additional configuration.
+    /// </remarks>
+    internal void Register(MiddlewareBindingDescriptor descriptor, Action<MiddlewareBindingDescriptor, HttpContext>? register)
+    {
+        Guard.NotNull(descriptor, nameof(descriptor));
+
+        var application = GetApplication();
+
+        if (descriptor.IsEnabled && (descriptor.Condition is null || descriptor.Condition.Invoke()))
+        {
+            _registeredMiddlewareTypes.Add(descriptor.MiddlewareType);
+
+            application.Use(async (HttpContext context, Func<Task> next) =>
+            {
+                try
+                {
+                    // Handle Timeout
+                    if (descriptor.Timeout.HasValue)
+                    {
+                        var timeoutToken = new CancellationTokenSource(descriptor.Timeout.Value).Token;
+                        await Task.Run(async () =>
+                        {
+                            await InvokeMiddlewareWithFallbackAndPolicy(descriptor, context, next);
+                        }, timeoutToken);
+                    }
+                    else
+                    {
+                        await InvokeMiddlewareWithFallbackAndPolicy(descriptor, context, next);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (descriptor.ErrorHandler != null)
+                    {
+                        await descriptor.ErrorHandler.Invoke(ex);
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+            });
+
+            Debug.WriteLine($"Registered middleware: {descriptor.MiddlewareType.FullName}, Priority: {descriptor.Priority}");
+        }
+    }
+
+    private async Task InvokeMiddlewareWithFallbackAndPolicy(MiddlewareBindingDescriptor descriptor, HttpContext context, Func<Task> next)
+    {
+        if (descriptor.ExecutionPolicy != null)
+        {
+            // Apply custom execution policy if specified
+            var policy = (IExecutionPolicy)descriptor.ExecutionPolicy;
+            await policy.ExecuteAsync(async () =>
+            {
+                await InvokeMiddleware(descriptor, context, next);
+            });
+        }
+        else
+        {
+            await InvokeMiddleware(descriptor, context, next);
+        }
+
+        if (descriptor.Fallback != null)
+        {
+            await descriptor.Fallback.Invoke(context);
+        }
+    }
+
+    protected async Task InvokeMiddleware(MiddlewareBindingDescriptor descriptor, HttpContext context, Func<Task> next)
+    {
+        var middlewareInstance = context.RequestServices.GetRequiredService(descriptor.MiddlewareType);
+        var (method, args) = await GetInvokeMethod(middlewareInstance, context, next);
+        method.Invoke(middlewareInstance, args);
+    }
+
+    protected async Task InvokeMiddleware(object middleware, HttpContext context, Func<Task> next)
+    {
+        var (method, args) = await GetInvokeMethod(middleware, context, next);
+        method.Invoke(middleware, args);
+    }
+
+    protected Task<(MethodInfo, object[])> GetInvokeMethod(object middleware, HttpContext context, Func<Task> next)
+    {
+        var method = middleware.GetType().GetMethod("InvokeAsync") ?? middleware.GetType().GetMethod("Invoke");
+
+        if (method is null)
+        {
+            throw new InvalidOperationException($"Middleware {middleware.GetType().FullName} does not have an Invoke or InvokeAsync method.");
+        }
+
+        var parameters = method.GetParameters();
+        var args = parameters.Length == 2
+            ? new object[] { context, next }
+            : new object[] { context };
+
+        return Task.FromResult((method, args));
+    }
+    #endregion
+
+    #region Middleware Binding
     internal class MiddlewareBinding : IMiddlewareBinding
     {
         public MiddlewareBindingDescriptor Descriptor { get; }
@@ -439,4 +564,5 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding> : C
             return this;
         }
     }
+    #endregion
 }

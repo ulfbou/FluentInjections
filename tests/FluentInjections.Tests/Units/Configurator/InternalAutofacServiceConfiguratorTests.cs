@@ -1,4 +1,7 @@
-﻿using Autofac;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using Autofac;
 using FluentInjections.Tests.Internal.Utility.Fixtures;
 using FluentInjections.Internal.Configurators;
 using Autofac.Extensions.DependencyInjection;
@@ -20,12 +23,12 @@ internal sealed class InternalAutofacServiceConfiguratorTests
         ServiceCollection = new ServiceCollection();
     }
 
-    protected override void BuildProvider()
+    internal override void BuildProvider()
     {
-        Guard.NotNull(Container, nameof(Container));
+        Guard.NotNull(DependencyBuilder, nameof(DependencyBuilder));
 
-        Container.Populate(ServiceCollection);
-        _container = Container.Build();
+        DependencyBuilder.Populate(ServiceCollection);
+        _container = DependencyBuilder.Build();
         _context = _container.Resolve<IComponentContext>();
         Provider = new AutofacServiceProvider(_container);
     }

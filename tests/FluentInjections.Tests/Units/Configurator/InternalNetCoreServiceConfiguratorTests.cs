@@ -1,4 +1,7 @@
-﻿using Autofac;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using FluentInjections.Tests.Internal.Utility.Fixtures;
 using FluentInjections.Internal.Configurators;
@@ -10,7 +13,7 @@ namespace FluentInjections.Tests.Units.Configurator;
 internal sealed class InternalNetCoreServiceConfiguratorTests
     : ServiceConfiguratorTests<NetCoreServiceConfigurator, ServiceCollection, NetCoreServiceConfiguratorFixture>
 {
-    protected override void BuildProvider()
+    internal override void BuildProvider()
     {
         if (Provider is not null)
         {

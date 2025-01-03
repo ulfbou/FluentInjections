@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using Microsoft.Extensions.DependencyInjection;
 using FluentInjections.Tests.Internal.Utility.Fixtures;
 using FluentInjections.Internal.Configurators;
 
@@ -7,6 +10,11 @@ namespace FluentInjections.Tests.Units.Configurator;
 public sealed class NetCoreServiceConfiguratorTests
 {
     private readonly InternalNetCoreServiceConfiguratorTests _internal = new();
+
+    public NetCoreServiceConfiguratorTests()
+    {
+        _internal.Configurator = new NetCoreServiceConfigurator(_internal.Fixture.DependencyBuilder, _internal.Fixture.LoggerMock.Object);
+    }
 
     [Fact]
     void Register_DuplicateRegistrations_UsesLatest()

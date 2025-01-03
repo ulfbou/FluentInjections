@@ -1,4 +1,6 @@
-﻿using FluentAssertions;
+﻿using Autofac;
+
+using FluentAssertions;
 
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Descriptors;
@@ -73,19 +75,28 @@ public abstract partial class MiddlewareConfiguratorTests<TConfigurator, TContai
     public void Register_ShouldInvokeRegisterMethodForEachDescriptor()
     {
         // Arrange
-        Mock<ILogger<TConfigurator>> loggerMock = new Mock<ILogger<TConfigurator>>();
-        var fixture = new TFixture();
-        Configurator.UseMiddleware<MiddlewareA>();
-        Configurator.UseMiddleware<MiddlewareB>();
+        var loggerMock = new Mock<ILogger<TConfigurator>>();
+        var fixture = Fixture;
+
+        var configurator = fixture.Configurator as MiddlewareConfigurator<ContainerBuilder, IMiddlewareBinding>;
+
+        configurator!.UseMiddleware<MiddlewareA>();
+        configurator.UseMiddleware<MiddlewareB>();
+
+        var registerMock = new Mock<Action<MiddlewareBindingDescriptor, HttpContext>>();
 
         // Act
-        Configurator.Register();
+        configurator.Register(registerMock.Object);
 
         // Assert
-        // Verify that the Register method was called for each descriptor
-        // This can be done with mocks or by checking internal state changes
-        // For example, using a mock logger to verify method calls
-        // loggerMock.Verify(l => l.LogInformation(It.IsAny<string>()), Times.AtLeast(2));
+        registerMock.Verify(r => r(It.IsAny<MiddlewareBindingDescriptor>(), It.IsAny<HttpContext>()), Times.Exactly(2));
+
+        var descriptors = configurator.MiddlewareDescriptors ?? new List<MiddlewareBindingDescriptor>();
+
+        foreach (var descriptor in descriptors)
+        {
+            registerMock.Verify(r => r(descriptor, It.IsAny<HttpContext>()), Times.Once);
+        }
     }
 
     [Fact]

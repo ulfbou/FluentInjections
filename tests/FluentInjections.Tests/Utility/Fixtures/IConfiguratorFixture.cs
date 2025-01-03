@@ -7,6 +7,9 @@ using FluentInjections.Internal.Configurators;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+using Moq;
 
 namespace FluentInjections.Tests.Utility.Fixtures;
 
@@ -16,6 +19,7 @@ public interface IConfiguratorFixture<TConfigurator, TContainer>
 {
     TConfigurator Configurator { get; set; }
     TContainer DependencyBuilder { get; set; }
+    Mock<ILogger<TConfigurator>> LoggerMock { get; }
 
     void Setup();
     void Cleanup();

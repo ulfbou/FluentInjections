@@ -8,6 +8,7 @@ using FluentInjections;
 using FluentInjections.Internal.Descriptors;
 using FluentInjections.Validation;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentInjections;
@@ -16,6 +17,7 @@ public static class NetCoreNamedServiceExtensions
 {
     internal static readonly Dictionary<string, Dictionary<Type, ServiceBindingDescriptor>> NamedServices = new();
 
+    // Register service binding descriptor
     internal static void Register(this IServiceCollection services, ServiceBindingDescriptor descriptor)
     {
         Guard.NotNull(services, nameof(services));
@@ -81,6 +83,11 @@ public static class NetCoreNamedServiceExtensions
         {
             throw new InvalidOperationException("ServiceBindingDescriptor must have an Instance, Factory, or ImplementationType defined.");
         }
+    }
+
+    // Register middleware binding descriptor
+    internal static void Register(this IApplicationBuilder app, MiddlewareBindingDescriptor descriptor)
+    {
     }
 
     public static TService? GetNamedService<TService>(this IServiceProvider provider, string name) where TService : notnull

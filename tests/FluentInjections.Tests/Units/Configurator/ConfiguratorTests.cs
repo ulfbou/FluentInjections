@@ -11,17 +11,17 @@ public abstract class ConfiguratorTests<TConfigurator, TContainer, TFixture>
     where TContainer : class
     where TFixture : class, IConfiguratorFixture<TConfigurator, TContainer>, new()
 {
-    protected TFixture Fixture { get; set; }
-    protected TContainer Container { get; set; }
-    protected TConfigurator Configurator { get; set; }
-    protected IServiceProvider? Provider { get; set; }
+    internal TFixture Fixture { get; set; }
+    internal TContainer DependencyBuilder { get; set; }
+    internal TConfigurator Configurator { get; set; }
+    internal IServiceProvider? Provider { get; set; }
 
     protected ConfiguratorTests()
     {
         Fixture = new TFixture();
         Fixture.Setup();
 
-        Container = Fixture.DependencyBuilder;
+        DependencyBuilder = Fixture.DependencyBuilder;
         Configurator = Fixture.Configurator;
     }
 
@@ -38,7 +38,7 @@ public abstract class ConfiguratorTests<TConfigurator, TContainer, TFixture>
         Assert.Throws<ArgumentOutOfRangeException>(action);
     }
 
-
+    internal abstract void BuildProvider();
 
     protected virtual T? GetService<T>() where T : class
     {

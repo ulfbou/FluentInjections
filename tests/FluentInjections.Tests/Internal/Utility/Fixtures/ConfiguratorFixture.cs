@@ -2,20 +2,27 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using FluentInjections.Internal.Utils;
+using FluentInjections.Tests.Utility.Fixtures;
+
+using Microsoft.Extensions.Logging;
+
+using Moq;
 
 using System.Configuration;
 
 namespace FluentInjections.Tests.Internal.Utility.Fixtures;
 
-public abstract class ConfiguratorFixture<TConfigurator, TBuilder>
+public abstract class ConfiguratorFixture<TConfigurator, TBuilder> : IConfiguratorFixture<TConfigurator, TBuilder>
     where TConfigurator : class, IConfigurator
     where TBuilder : class, new()
 {
     public TConfigurator Configurator { get; set; }
     public TBuilder DependencyBuilder { get; set; }
+    public Mock<ILogger<TConfigurator>> LoggerMock { get; }
 
     public ConfiguratorFixture()
     {
+        LoggerMock = new Mock<ILogger<TConfigurator>>();
         DependencyBuilder = new TBuilder();
         Configurator = Create();
     }

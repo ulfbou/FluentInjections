@@ -1,7 +1,17 @@
-﻿using Autofac;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using Autofac;
 
 using FluentInjections.Tests.Internal.Utility.Fixtures;
 using FluentInjections.Internal.Configurators;
+using FluentInjections.Tests.Internal.Configurators;
+using Microsoft.Extensions.DependencyInjection;
+using FluentInjections.Internal.Utils;
+using Moq;
+using Microsoft.Extensions.Logging;
+using FluentInjections.Tests.Internal.Middlewares;
+using Microsoft.AspNetCore.Builder;
 
 namespace FluentInjections.Tests.Units.Configurator;
 
@@ -10,6 +20,45 @@ internal sealed class InternalAutofacMiddlewareConfiguratorTests
 {
     private IContainer? _container;
     private IComponentContext? _context;
+
+    public InternalAutofacMiddlewareConfiguratorTests() : base()
+    {
+        DependencyBuilder = new ContainerBuilder();
+
+        DependencyBuilder.RegisterInstance(LoggerUtility.CreateLogger<AutofacMiddlewareConfigurator>())
+            .AsImplementedInterfaces()
+            .SingleInstance();
+        DependencyBuilder.RegisterInstance(Mock.Of<ILoggerFactory>())
+            .AsImplementedInterfaces()
+            .SingleInstance();
+
+        DependencyBuilder.RegisterType<TestMiddleware>()
+            .AsSelf()
+            .InstancePerDependency();
+
+        DependencyBuilder.RegisterType<TestMiddleware>()
+            .Named<TestMiddleware>("TestMiddleware")
+            .InstancePerDependency();
+
+        DependencyBuilder.RegisterType<AutofacMiddlewareConfigurator>()
+            .AsImplementedInterfaces()
+            .InstancePerDependency();
+
+        var appBuilder = new ApplicationBuilder(Mock.Of<IServiceProvider>());
+        DependencyBuilder.RegisterInstance(appBuilder)
+            .AsImplementedInterfaces()
+            .SingleInstance();
+    }
+
+    internal override void BuildProvider()
+    {
+        if (_container is not null)
+        {
+            throw new InvalidOperationException("ServiceProvider is already built. Ensure that BuildProvider is called only once.");
+        }
+
+        _context = _container!.BeginLifetimeScope();
+    }
 
     protected override T? GetService<T>() where T : class
     {

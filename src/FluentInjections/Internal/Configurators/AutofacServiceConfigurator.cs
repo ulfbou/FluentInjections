@@ -7,6 +7,7 @@ using Autofac.Core;
 
 using FluentInjections.Internal.Descriptors;
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -25,30 +26,5 @@ internal class AutofacServiceConfigurator : ServiceConfigurator
     protected override void Register(ServiceBindingDescriptor descriptor)
     {
         _builder.Register(descriptor);
-    }
-
-    private IRegistrationBuilder<TLimit, TActivatorData, TStyle> Register<TLimit, TActivatorData, TStyle>(
-        IRegistrationBuilder<TLimit, TActivatorData, TStyle> builder, ServiceBindingDescriptor descriptor)
-    {
-        // Handle SimpleActivatorData-based registrations here
-        if (descriptor.Lifetime == ServiceLifetime.Singleton)
-        {
-            builder = builder.SingleInstance();
-        }
-        else if (descriptor.Lifetime == ServiceLifetime.Scoped)
-        {
-            builder = builder.InstancePerLifetimeScope();
-        }
-        else
-        {
-            builder = builder.InstancePerDependency();
-        }
-
-        if (!string.IsNullOrEmpty(descriptor.Name))
-        {
-            builder = builder.Named(descriptor.Name!, descriptor.BindingType);
-        }
-
-        return builder;
     }
 }

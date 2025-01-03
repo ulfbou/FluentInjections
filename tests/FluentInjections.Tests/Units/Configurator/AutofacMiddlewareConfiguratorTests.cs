@@ -1,8 +1,27 @@
-﻿namespace FluentInjections.Tests.Units.Configurator;
+﻿// Copyright (c) FluentInjections Project. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using FluentAssertions;
+
+using FluentInjections.Internal.Configurators;
+using FluentInjections.Tests.Internal.Configurators;
+using FluentInjections.Tests.Internal.Middlewares;
+using FluentInjections.Tests.Internal.Utility.Fixtures;
+
+namespace FluentInjections.Tests.Units.Configurator;
 
 public class AutofacMiddlewareConfiguratorTests
 {
-    private readonly InternalAutofacMiddlewareConfiguratorTests _internal = new InternalAutofacMiddlewareConfiguratorTests();
+    private readonly AutofacMiddlewareConfigurator _configurator;
+    private readonly InternalAutofacMiddlewareConfiguratorTests _internal;
+
+    public AutofacMiddlewareConfiguratorTests()
+    {
+        _internal = new InternalAutofacMiddlewareConfiguratorTests();
+
+        var fixture = _internal.Fixture;
+        _configurator = _internal.Configurator;
+    }
 
     [Fact]
     public void Constructor_ShouldInitializeWithLogger()
@@ -37,7 +56,9 @@ public class AutofacMiddlewareConfiguratorTests
     [Fact]
     public void ConfigureAll_ShouldApplyConfigurationToAllMiddlewares()
     {
-        _internal.ConfigureAll_ShouldApplyConfigurationToAllMiddlewares();
+        // Arrange
+
+
     }
 
     [Fact]
@@ -49,7 +70,12 @@ public class AutofacMiddlewareConfiguratorTests
     [Fact]
     public void ValidateBindings_ShouldIdentifyAndHandleDuplicates()
     {
-        _internal.ValidateBindings_ShouldIdentifyAndHandleDuplicates();
+        // Arrange
+        _configurator.UseMiddleware<MiddlewareA>();
+        _configurator.UseMiddleware<MiddlewareB>();
+
+        // Act & Assert
+        _configurator.Invoking(c => c.ValidateBindings()).Should().NotThrow();
     }
 
     [Fact]

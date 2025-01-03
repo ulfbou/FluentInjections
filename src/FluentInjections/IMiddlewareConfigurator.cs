@@ -48,7 +48,7 @@ public interface IMiddlewareConfigurator : IConfigurator<IMiddlewareBinding>
     /// <typeparam name="TMiddleware">The type of the middleware to get.</typeparam>
     /// <param name="descriptor">Optional. The descriptor of the middleware to get.</param>
     /// <returns>A binding interface to configure the middleware.</returns>
-    IMiddlewareBinding<TMiddleware>? GetMiddleware<TMiddleware>(MiddlewareBindingDescriptor? descriptor = null) where TMiddleware : class;
+    MiddlewareBindingDescriptor? GetDescriptor<TMiddleware>(MiddlewareBindingDescriptor? descriptor = null) where TMiddleware : class;
 
     /// <summary>
     /// Applies a configuration action to all middleware in the specified group.
@@ -63,3 +63,8 @@ public interface IMiddlewareConfigurator : IConfigurator<IMiddlewareBinding>
     /// <param name="configure">The action to configure the middleware.</param>
     void ConfigureAll(Action<MiddlewareBindingDescriptor> configure);
 }
+
+public interface IMiddlewareConfigurator<TDependencyBuilder, TBinding> : IMiddlewareConfigurator, IConfigurator<IMiddlewareBinding>
+    where TDependencyBuilder : class
+    where TBinding : IBinding
+{ }

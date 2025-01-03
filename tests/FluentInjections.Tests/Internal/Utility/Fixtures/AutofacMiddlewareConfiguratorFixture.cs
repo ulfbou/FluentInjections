@@ -18,20 +18,15 @@ namespace FluentInjections.Tests.Internal.Utility.Fixtures;
 
 internal class AutofacMiddlewareConfiguratorFixture : MiddlewareConfiguratorFixture<AutofacMiddlewareConfigurator, ContainerBuilder>
 {
-    public IContainer Container { get; private set; }
-    public ILifetimeScope Scope { get; private set; }
-    public AutofacServiceProvider Provider { get; private set; }
-
     public AutofacMiddlewareConfiguratorFixture() : base()
     {
-        Container = DependencyBuilder.Build();
-        Scope = Container.BeginLifetimeScope();
-        Provider = new AutofacServiceProvider(Scope);
         Configurator = Create(); // Required since Configurator's call to Create returns a default value
     }
 
     protected override AutofacMiddlewareConfigurator Create()
     {
-        return Container is null ? default! : new(Container, MockLogger.Object);
+        MockLogger ??= new();
+        Configurator ??= new(DependencyBuilder, MockLogger.Object);
+        return Configurator;
     }
 }

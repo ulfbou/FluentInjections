@@ -32,11 +32,11 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
     }
 
     #region Validate Bindings
-    internal override void ValidateBindings()
+    protected internal override void ValidateBindings()
     {
         var duplicateGroups = _descriptors.GroupBy(binding => new { binding.BindingType, binding.Name })
-                                       .Where(group => group.Count() > 1)
-                                       .ToList();
+                                          .Where(group => group.Count() > 1)
+                                          .ToList();
 
         if (duplicateGroups.Any())
         {

@@ -2,9 +2,7 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System.Collections.Concurrent;
-using System.Linq;
 
-using FluentInjections;
 using FluentInjections.Validation;
 
 using Microsoft.Extensions.DependencyInjection;

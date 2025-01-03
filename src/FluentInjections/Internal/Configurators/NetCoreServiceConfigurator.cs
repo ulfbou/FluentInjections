@@ -6,6 +6,7 @@ using Autofac.Core;
 using FluentInjections.Internal.Descriptors;
 using FluentInjections.Validation;
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -31,48 +32,11 @@ internal class NetCoreServiceConfigurator : ServiceConfigurator, IServiceConfigu
         _services.Register(bindingDescriptor);
     }
 
-    private ServiceDescriptor Register(ServiceDescriptor descriptor, ServiceBindingDescriptor bindingDescriptor)
-    {
-        Guard.NotNull(descriptor, nameof(descriptor));
-        Guard.NotNull(bindingDescriptor, nameof(bindingDescriptor));
-
-        // Handle additional configurations if needed
-        if (descriptor.ImplementationType is not null)
-        {
-            bindingDescriptor.Configure?.Invoke(bindingDescriptor.ImplementationType!);
-        }
-
-        return descriptor;
-    }
-
-    private void AddServiceDescriptor(ServiceBindingDescriptor bindingDescriptor, ServiceDescriptor descriptor)
-    {
-        if (bindingDescriptor.Name is not null)
-        {
-            _keyedServiceDescriptors[bindingDescriptor.Name] = descriptor;
-        }
-        else
-        {
-            _services.Add(descriptor);
-        }
-    }
-
     internal IServiceProvider BuildServiceProvider()
     {
         var serviceProvider = _services.BuildServiceProvider();
         return new NetCoreServiceProvider(serviceProvider, _keyedServiceDescriptors);
     }
 
-    internal TService? GetKeyedService<TService>(IServiceProvider provider, string key) where TService : notnull
-    {
-        var customProvider = provider as NetCoreServiceProvider ?? throw new InvalidOperationException("Invalid service provider.");
-        return customProvider.GetKeyedService<TService>(key);
-    }
-
-    internal TService GetRequiredKeyedService<TService>(IServiceProvider provider, string key) where TService : notnull
-    {
-        var customProvider = provider as NetCoreServiceProvider ?? throw new InvalidOperationException("Invalid service provider.");
-        return customProvider.GetRequiredKeyedService<TService>(key)
-            ?? throw new InvalidOperationException($"Service '{key}' not found.");
-    }
+    internal IDictionary<string, ServiceDescriptor> GetKeyedServiceDescriptors() => _keyedServiceDescriptors;
 }

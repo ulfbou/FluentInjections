@@ -28,7 +28,7 @@ internal sealed class FluentInjectionsAutofacModule : FluentInjectionsModule
     protected override void Load(ContainerBuilder builder)
     {
         var serviceConfigurator = new AutofacServiceConfigurator(builder, LoggerUtility.CreateLogger<AutofacServiceConfigurator>());
-        var middlewareConfigurator = new AutofacMiddlewareConfigurator(_container, LoggerUtility.CreateLogger<AutofacMiddlewareConfigurator>());
+        var middlewareConfigurator = new AutofacMiddlewareConfigurator(builder, LoggerUtility.CreateLogger<AutofacMiddlewareConfigurator>());
 
         foreach (var assembly in _assemblies)
         {
