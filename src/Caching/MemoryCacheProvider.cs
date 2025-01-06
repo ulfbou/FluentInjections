@@ -39,7 +39,7 @@ internal class MemoryCacheProvider : Disposable, ICacheProvider, IDisposable
     }
 
     /// <inheritdoc />
-    public void Set<T>(string key, T value, CacheOptions options)
+    public void Set<T>(string key, T value, CacheOptions? options = null)
     {
         Guard.NotNullOrEmpty(key, nameof(key));
         Guard.NotNull(options, nameof(options));
@@ -51,8 +51,8 @@ internal class MemoryCacheProvider : Disposable, ICacheProvider, IDisposable
 
             _cache.Set(key, value, new MemoryCacheEntryOptions
             {
-                AbsoluteExpirationRelativeToNow = options.AbsoluteExpiration,
-                SlidingExpiration = options.SlidingExpiration,
+                AbsoluteExpirationRelativeToNow = options?.AbsoluteExpiration ?? DefaultValues.AbsoluteExpiration,
+                SlidingExpiration = options?.SlidingExpiration ?? DefaultValues.SlidingExpiration
             });
         }
     }

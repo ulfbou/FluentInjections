@@ -17,6 +17,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentInjections.Validation
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentInjections.Extensions", "src\Extensions\FluentInjections.Extensions.csproj", "{85064B4B-B626-4746-9377-850B73355B0C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentInjections.Caching", "src\Caching\FluentInjections.Caching.csproj", "{5E627047-F8A5-447E-9730-F734E4CEC77A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentInjections.Core", "src\Core\FluentInjections.Core.csproj", "{55CD9F10-1143-42CF-8BDD-56AB2A539A08}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -47,6 +51,14 @@ Global
 		{85064B4B-B626-4746-9377-850B73355B0C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{85064B4B-B626-4746-9377-850B73355B0C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{85064B4B-B626-4746-9377-850B73355B0C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5E627047-F8A5-447E-9730-F734E4CEC77A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E627047-F8A5-447E-9730-F734E4CEC77A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E627047-F8A5-447E-9730-F734E4CEC77A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E627047-F8A5-447E-9730-F734E4CEC77A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{55CD9F10-1143-42CF-8BDD-56AB2A539A08}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55CD9F10-1143-42CF-8BDD-56AB2A539A08}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55CD9F10-1143-42CF-8BDD-56AB2A539A08}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55CD9F10-1143-42CF-8BDD-56AB2A539A08}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -57,5 +69,7 @@ Global
 		{5F997638-9E1A-4B25-BCC0-5B4A37F150AC} = {4DCA8BF5-66CB-4FA9-AC4E-3A3733A0F5A7}
 		{6D3931CC-5BF4-42E8-9552-7860CE75AA70} = {4DCA8BF5-66CB-4FA9-AC4E-3A3733A0F5A7}
 		{85064B4B-B626-4746-9377-850B73355B0C} = {4DCA8BF5-66CB-4FA9-AC4E-3A3733A0F5A7}
+		{5E627047-F8A5-447E-9730-F734E4CEC77A} = {4DCA8BF5-66CB-4FA9-AC4E-3A3733A0F5A7}
+		{55CD9F10-1143-42CF-8BDD-56AB2A539A08} = {4DCA8BF5-66CB-4FA9-AC4E-3A3733A0F5A7}
 	EndGlobalSection
 EndGlobal
