@@ -18,10 +18,9 @@ public interface IConfiguratorFixture<TConfigurator, TServices, TProvider>
     where TServices : class, IServiceCollection
 {
     TServices Services { get; set; }
-    TConfigurator Configurator { get; set; }
     TProvider? Provider { get; set; }
-    Mock<ITestService> MockTestService { get; set; }
-
+    Mock<ITestService> TestServiceMock { get; set; }
+    Mock<ILogger<TConfigurator>> LoggerMock { get; set; }
     void Setup();
     void Cleanup();
 }

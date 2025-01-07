@@ -3,6 +3,7 @@
 
 using FluentAssertions.Common;
 
+using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Utils;
 using FluentInjections.Tests.Internal.Services;
 using FluentInjections.Tests.Utility.Fixtures;
@@ -21,27 +22,32 @@ internal abstract class ConfiguratorFixture<TConfigurator, TServices, TProvider>
     where TServices : class, IServiceCollection, new()
     where TProvider : class, IServiceProvider
 {
+    public Mock<ILogger<TConfigurator>> LoggerMock { get; set; }
     public TServices Services { get; set; }
-    public abstract TConfigurator Configurator { get; set; }
     public TProvider? Provider { get; set; }
-    public Mock<ITestService> MockTestService { get; set; }
+    public Mock<ITestService> TestServiceMock { get; set; }
 
     public ConfiguratorFixture()
     {
         Services = new TServices();
-        MockTestService = new Mock<ITestService>();
+        LoggerMock = new();
+        TestServiceMock = new Mock<ITestService>();
     }
 
     public virtual void Setup()
     {
         Cleanup();
         Services = new TServices();
+        LoggerMock = new();
+        TestServiceMock = new Mock<ITestService>();
     }
 
     public virtual void Cleanup()
     {
         Services?.Clear();
         Services = default!;
+        LoggerMock = default!;
+        TestServiceMock = default!;
     }
 
     public void Dispose()

@@ -13,6 +13,4 @@ public interface IServiceConfiguratorFixture<TConfigurator, TServices, TProvider
     where TConfigurator : class, IServiceConfigurator
     where TServices : class, IServiceCollection, new()
     where TProvider : class, IServiceProvider
-{
-    TProvider? Provider { get; set; }
-}
+{ }

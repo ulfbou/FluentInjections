@@ -2,45 +2,42 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using FluentInjections.Internal.Configurators;
+using FluentInjections.Tests.Internal.Configurators;
 using FluentInjections.Tests.Internal.Utility.Fixtures;
+using FluentInjections.Validation;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+using Moq;
 
 namespace FluentInjections.Tests.Units.Configurator;
 
-internal interface IInternalNetCoreServiceConfiguratorTests
-{
-    bool Equals(object? obj);
-    int GetHashCode();
-    string? ToString();
-}
-
 internal sealed class InternalNetCoreServiceConfiguratorTests
-    : ServiceConfiguratorTests<NetCoreServiceConfigurator, ServiceCollection, NetCoreServiceProvider, ServiceConfiguratorFixture>, IInternalNetCoreServiceConfiguratorTests
+    : ServiceConfiguratorTests<TestNetCoreServiceConfigurator, ServiceCollection, NetCoreServiceProvider, ServiceConfiguratorFixture>
 {
-    internal override NetCoreServiceConfigurator Configurator { get; set; }
+    public Mock<ILogger<TestNetCoreServiceConfigurator>> LoggerMock { get; set; }
+    internal override TestNetCoreServiceConfigurator Configurator { get; set; }
     internal override NetCoreServiceProvider? Provider { get; set; }
 
     public InternalNetCoreServiceConfiguratorTests() : base()
     {
-        Configurator = new NetCoreServiceConfigurator(Services, Fixture.LoggerMock.Object);
+        LoggerMock = new Mock<ILogger<TestNetCoreServiceConfigurator>>();
+        Configurator = new TestNetCoreServiceConfigurator(Services, LoggerMock.Object);
         Provider = Fixture.Provider;
     }
 
     internal override void BuildProvider()
     {
-        if (Provider is not null)
-        {
-            throw new InvalidOperationException("Provider already built");
-        }
+        Guard.Null(Provider, nameof(Provider));
 
         Provider = Configurator.BuildServiceProvider();
     }
 
-    protected override IReadOnlyDictionary<string, object> GetMetadata<TService>(string name)
+    protected override IReadOnlyDictionary<string, object?> GetMetadata<TService>(string name)
         where TService : class
     {
-        return Provider?.GetMetadata<TService>(name) ?? new Dictionary<string, object>();
+        return Provider?.GetMetadata<TService>(name) ?? new Dictionary<string, object?>().AsReadOnly();
     }
 
     public override bool Equals(object? obj) => base.Equals(obj);
@@ -49,4 +46,10 @@ internal sealed class InternalNetCoreServiceConfiguratorTests
     protected override T? GetService<T>() where T : class => base.GetService<T>();
     protected override T GetRequiredService<T>() => base.GetRequiredService<T>();
     protected override object? GetRequiredNamedService<T>(string name) => base.GetRequiredNamedService<T>(name);
+
+    protected override IReadOnlyDictionary<string, object?> GetMetadata<TService>()
+        where TService : class
+    {
+        return Provider?.GetMetadata<TService>() ?? new Dictionary<string, object?>().AsReadOnly();
+    }
 }

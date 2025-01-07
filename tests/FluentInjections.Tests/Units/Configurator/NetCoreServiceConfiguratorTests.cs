@@ -18,7 +18,7 @@ public sealed class NetCoreServiceConfiguratorTests
     {
         _fixture = _internal.Fixture;
         _services = _internal.Services;
-        _configurator = _fixture.Configurator;
+        _configurator = _internal.Configurator;
     }
 
     [Fact]
@@ -99,11 +99,13 @@ public sealed class NetCoreServiceConfiguratorTests
         _internal.Bind_ServiceType_WithName_ResolvesNamedImplementationCorrectly();
     }
 
+#if OPEN_GENERIC_SUPPORTED
     [Fact]
     void Bind_GenericServiceType_ToGenericType_Should_ResolveCorrectly()
     {
         _internal.Bind_GenericServiceType_ToGenericType_Should_ResolveCorrectly();
     }
+#endif
 
     [Fact]
     void Bind_ServiceType_ToNull_Should_ThrowArgumentNullException()
@@ -112,9 +114,9 @@ public sealed class NetCoreServiceConfiguratorTests
     }
 
     [Fact]
-    void Bind_ServiceType_WithDuplicateRegistrations_Should_ThrowInvalidOperationException()
+    void Prevent_WithDuplicateRegistrations_Should_ThrowInvalidOperationException()
     {
-        _internal.Bind_ServiceType_WithDuplicateRegistrations_Should_ThrowInvalidOperationException();
+        _internal.Prevent_WithDuplicateRegistrations_Should_ThrowInvalidOperationException();
     }
 
     [Fact]

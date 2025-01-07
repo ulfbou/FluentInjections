@@ -24,9 +24,8 @@ public abstract class ConfiguratorTests<TConfigurator, TServices, TProvider, TFi
     {
         Fixture = new();
         Services = Fixture.Services;
-        Configurator = Fixture.Configurator;
         Provider = Fixture.Provider;
-        MockTestService = Fixture.MockTestService;
+        MockTestService = Fixture.TestServiceMock;
     }
 
     [Fact]

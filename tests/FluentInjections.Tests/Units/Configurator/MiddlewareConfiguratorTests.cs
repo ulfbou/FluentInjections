@@ -17,10 +17,10 @@ using Moq;
 using System.Reflection;
 
 namespace FluentInjections.Tests.Units.Configurator;
-#if false
+
 public abstract partial class MiddlewareConfiguratorTests<TConfigurator, TServices, TProvider, TFixture>
     : ConfiguratorTests<TConfigurator, TServices, TProvider, TFixture>
-    where TConfigurator : class, IConfigurator
+    where TConfigurator : class, IMiddlewareConfigurator
     where TServices : class, IServiceCollection
     where TProvider : class, IServiceProvider
     where TFixture : class, IMiddlewareConfiguratorFixture, IConfiguratorFixture<TConfigurator, TServices, TProvider>, new()
@@ -80,10 +80,7 @@ public abstract partial class MiddlewareConfiguratorTests<TConfigurator, TServic
     public void Register_ShouldInvokeRegisterMethodForEachDescriptor()
     {
         // Arrange
-        var loggerMock = Fixture.LoggerMock;
-
-        var configurator = Fixture.Configurator as MiddlewareConfigurator<ApplicationBuilder, IMiddlewareBinding>;
-
+        var configurator = Configurator as MiddlewareConfigurator<TServices, IMiddlewareBinding>;
         configurator!.UseMiddleware<MiddlewareA>();
         configurator.UseMiddleware<MiddlewareB>();
 
@@ -133,4 +130,3 @@ public abstract partial class MiddlewareConfiguratorTests<TConfigurator, TServic
     {
     }
 }
-#endif

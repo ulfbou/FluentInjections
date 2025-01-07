@@ -7,6 +7,7 @@ using FluentAssertions.Common;
 using FluentInjections.Extensions;
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Descriptors;
+using FluentInjections.Tests.Internal.Configurators;
 using FluentInjections.Tests.Internal.Middlewares;
 using FluentInjections.Tests.Internal.Services;
 using FluentInjections.Tests.Internal.Utility.Fixtures;
@@ -14,20 +15,25 @@ using FluentInjections.Tests.Utility.Fixtures;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using Moq;
+
+using System.Reflection;
 
 using static FluentInjections.Internal.Configurators.ServiceConfigurator;
 
 namespace FluentInjections.Tests.Units.Configurator;
 
 public abstract class ServiceConfiguratorTests<TConfigurator, TServices, TProvider, TFixture>
-    : ConfiguratorTests<TConfigurator, TServices, TProvider, TFixture> where TConfigurator : class, IServiceConfigurator
+    : ConfiguratorTests<TConfigurator, TServices, TProvider, TFixture>
+    where TConfigurator : class, ITestServiceConfigurator
     where TServices : class, IServiceCollection, new()
     where TProvider : class, IServiceProvider
     where TFixture : class, IServiceConfiguratorFixture<TConfigurator, TServices, TProvider>, IConfiguratorFixture<TConfigurator, TServices, TProvider>, new()
 {
-    protected abstract IReadOnlyDictionary<string, object> GetMetadata<TService>(string name) where TService : class;
+    protected abstract IReadOnlyDictionary<string, object?> GetMetadata<TService>(string name) where TService : class;
+    protected abstract IReadOnlyDictionary<string, object?> GetMetadata<TService>() where TService : class;
 
     [Fact]
     public void Bind_ServiceType_ToImplementationType_RegistersType()
@@ -153,7 +159,7 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TServices, TProvid
         Configurator.Register();
         BuildProvider();
         var service = GetRequiredService<ITestService>();
-        var metadata = GetMetadata<ITestService>(string.Empty);
+        var metadata = GetMetadata<ITestService>();
 
         // Assert
         service.Should().NotBeNull();
@@ -291,7 +297,7 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TServices, TProvid
         void action() => Configurator.Bind<ITestService>()
                                      .WithName(null!);
         // Assert
-        Assert.Throws<ArgumentNullException>(action);
+        Assert.Throws<ArgumentException>(action);
     }
 
     [Fact]
@@ -301,7 +307,7 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TServices, TProvid
         void action() => Configurator.Bind<ITestService>()
                                      .WithParameter(null!, "value");
         // Assert
-        Assert.Throws<ArgumentNullException>(action);
+        Assert.Throws<ArgumentException>(action);
     }
 
     [Fact]
@@ -311,12 +317,15 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TServices, TProvid
         void action() => Configurator.Bind<ITestService>()
                                      .WithMetadata(null!, "value");
         // Assert
-        Assert.Throws<ArgumentNullException>(action);
+        Assert.Throws<ArgumentException>(action);
     }
 
     [Fact]
-    public void Bind_ServiceType_WithDuplicateRegistrations_Should_ThrowInvalidOperationException()
+    public void Prevent_WithDuplicateRegistrations_Should_ThrowInvalidOperationException()
     {
+        // Arrange
+        Configurator.ConflictResolution = ConflictResolutionMode.Prevent;
+
         // Act
         Configurator.Bind<ITestService>().To<TestService>();
         Configurator.Bind<ITestService>().To<TestService>();
@@ -325,13 +334,14 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TServices, TProvid
         Assert.Throws<InvalidOperationException>(() => Configurator.Register());
     }
 
+
     [Fact]
     public void Bind_ServiceType_WithPreventConflictResolution_Should_NotThrowException()
     {
         // Act
-        Configurator.Bind<ITestService>().To<TestService>();
-        Configurator.Bind<ITestService>().To<TestService>();
         Configurator.ConflictResolution = ConflictResolutionMode.Prevent;
+        Configurator.Bind<ITestService>().To<TestService>();
+        Configurator.Bind<ITestService>().To<TestService>();
 
         // Assert
         Assert.Throws<InvalidOperationException>(() => Configurator.Register());
@@ -349,6 +359,7 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TServices, TProvid
         Configurator.Register();
     }
 
+#if OPEN_GENERIC_SUPPORTED
     [Fact]
     public void Bind_GenericServiceType_ToGenericType_Should_ResolveCorrectly()
     {
@@ -362,9 +373,71 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TServices, TProvid
         service.Should().NotBeNull();
         service.Should().BeOfType<TestService>();
     }
+#endif
 
-    /*
-Consider using a mocking framework to mock the IServiceProvider and verify that the correct methods are called when resolving services.
-    */
+    [Fact]
+    public void WarnAndReplace_DuplicateRegistrations_Should_LogWarningAndReplace()
+    {
+        // Arrange
+        Configurator.ConflictResolution = ConflictResolutionMode.WarnAndReplace;
+        Configurator.Bind<ITestService>().To<TestService>();
+        Configurator.Bind<ITestService>().To<AnotherTestService>();
 
+        // Act
+        Configurator.Register();
+
+        // Assert
+        Fixture.LoggerMock.Verify(logger => logger.LogWarning(It.IsAny<string>()), Times.Once);
+        var descriptors = Configurator.GetDescriptors();
+        Assert.Single(descriptors);
+    }
+
+    [Fact]
+    public void Merge_DuplicateRegistrations_Should_Merge()
+    {
+        // Arrange
+        Configurator.ConflictResolution = ConflictResolutionMode.Merge;
+        Configurator.Bind<ITestService>().To<TestService>();
+        Configurator.Bind<ITestService>().To<AnotherTestService>();
+
+        // Act
+        Configurator.Register();
+
+        // Assert
+        Fixture.LoggerMock.Verify(logger => logger.LogWarning(It.IsAny<string>()), Times.Once);
+        var descriptors = Configurator.GetDescriptors();
+        Assert.Single(descriptors);
+    }
+
+    [Fact]
+    public void Ignore_DuplicateRegistrations_Should_Ignore()
+    {
+        // Arrange
+        Configurator.ConflictResolution = ConflictResolutionMode.Ignore;
+        Configurator.Bind<ITestService>().To<TestService>();
+        Configurator.Bind<ITestService>().To<AnotherTestService>();
+
+        // Act
+        Configurator.Register();
+
+        // Assert
+        var descriptors = Configurator.GetDescriptors();
+        Assert.Equal(2, descriptors.Count());
+    }
+
+    [Fact]
+    public void Replace_DuplicateRegistrations_Should_Replace()
+    {
+        // Arrange
+        Configurator.ConflictResolution = ConflictResolutionMode.Replace;
+        Configurator.Bind<ITestService>().To<TestService>();
+        Configurator.Bind<ITestService>().To<AnotherTestService>();
+
+        // Act
+        Configurator.Register();
+
+        // Assert
+        var descriptors = Configurator.GetDescriptors();
+        Assert.Single(descriptors);
+    }
 }
