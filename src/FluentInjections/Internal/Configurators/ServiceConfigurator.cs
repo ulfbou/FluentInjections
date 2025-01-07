@@ -22,13 +22,29 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
 
     // TODO: Handle open generic types
     /// <inheritdoc />
-    public IServiceBinding<TService> Bind<TService>() where TService : notnull
+    public IServiceBindingBuilder<TService> Bind<TService>() where TService : notnull
     {
         var descriptor = new ServiceBindingDescriptor(typeof(TService), this);
         var existingDescriptor = _descriptors.FirstOrDefault(binding => binding.BindingType == descriptor.BindingType && binding.Name == descriptor.Name);
 
         _descriptors.Add(descriptor);
-        return new ServiceBinding<TService>(this, descriptor);
+        return new ServiceBindingBuilder<TService>(this, descriptor);
+    }
+
+    /// <inheritdoc />
+    public IServiceBindingBuilder Bind(Type serviceType)
+    {
+        Guard.NotNull(serviceType, nameof(serviceType));
+
+        if (!serviceType.IsInterface && serviceType.IsAbstract)
+        {
+            throw new InvalidOperationException("Cannot bind abstract types to themselves.");
+        }
+
+        var descriptor = new ServiceBindingDescriptor(serviceType, this);
+        var existingDescriptor = _descriptors.FirstOrDefault(binding => binding.BindingType == descriptor.BindingType && binding.Name == descriptor.Name);
+        _descriptors.Add(descriptor);
+        return new ServiceBindingBuilder(this, descriptor);
     }
 
     #region Validate Bindings
@@ -68,6 +84,8 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
                     case ConflictResolutionMode.Merge:
                         _logger.LogWarning(message);
                         MergeBindings(group);
+                        break;
+                    case ConflictResolutionMode.Ignore:
                         break;
                     default:
                         throw new ArgumentOutOfRangeException("Invalid conflict resolution mode.");
@@ -169,7 +187,8 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
         return descriptor;
     }
 
-    internal class ServiceBinding<TService> : IServiceBinding<TService> where TService : notnull
+    #region Service Binding
+    internal class ServiceBindingBuilder : IServiceBindingBuilder
     {
         private readonly ServiceConfigurator _configurator;
         private readonly ServiceBindingDescriptor _descriptor;
@@ -177,22 +196,16 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
         public ServiceBindingDescriptor Descriptor => _descriptor;
         internal ServiceConfigurator Configurator => _configurator;
 
-        public ServiceBinding(ServiceConfigurator configurator, ServiceBindingDescriptor descriptor)
+        public ServiceBindingBuilder(ServiceConfigurator configurator, ServiceBindingDescriptor descriptor)
         {
             _configurator = configurator ?? throw new ArgumentNullException(nameof(configurator));
             _descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
         }
 
-        public IServiceBinding<TService> To<TImplementation>() where TImplementation : class, TService => To(typeof(TImplementation));
-
-        public IServiceBinding<TService> To(Type implementationType)
+        /// <inheritdoc/>
+        public IServiceBindingBuilder To(Type implementationType)
         {
             Guard.NotNull(implementationType, nameof(implementationType));
-
-            if (implementationType != Descriptor.BindingType && !implementationType.IsAssignableTo(Descriptor.BindingType))
-            {
-                throw new InvalidOperationException($"Type {implementationType.Name} is not assignable to {Descriptor.BindingType.Name}.");
-            }
 
             if (implementationType != Descriptor.BindingType && !implementationType.IsAssignableTo(Descriptor.BindingType))
             {
@@ -240,7 +253,7 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
             return this;
         }
 
-        public IServiceBinding<TService> AsSelf()
+        public IServiceBindingBuilder AsSelf()
         {
             if (Descriptor.BindingType.IsAbstract || Descriptor.BindingType.IsInterface)
             {
@@ -252,7 +265,7 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
             return this;
         }
 
-        public IServiceBinding<TService> WithInstance(TService instance)
+        public IServiceBindingBuilder WithInstance(object instance)
         {
             Guard.NotNull(instance, nameof(instance));
 
@@ -275,7 +288,7 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
             return this;
         }
 
-        public IServiceBinding<TService> WithFactory(Func<IServiceProvider, TService> factory)
+        public IServiceBindingBuilder WithFactory(Func<IServiceProvider, object> factory)
         {
             Guard.NotNull(factory, nameof(factory));
 
@@ -295,7 +308,7 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
             return this;
         }
 
-        public IServiceBinding<TService> WithName(string name)
+        public IServiceBindingBuilder WithName(string name)
         {
             Guard.NotNullOrEmpty(name, nameof(name));
 
@@ -304,7 +317,7 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
             return this;
         }
 
-        public IServiceBinding<TService> WithLifetime(ServiceLifetime lifetime)
+        public IServiceBindingBuilder WithLifetime(ServiceLifetime lifetime)
         {
             Guard.InRange<ServiceLifetime>(lifetime, nameof(lifetime));
 
@@ -313,31 +326,30 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
             return this;
         }
 
-        public IServiceBinding<TService> AsSingleton()
+        public IServiceBindingBuilder AsSingleton()
         {
             Descriptor.Lifetime = ServiceLifetime.Singleton;
             Debug.WriteLine($"Setting lifetime of service {Descriptor.BindingType.Name} to singleton.");
             return this;
         }
 
-        public IServiceBinding<TService> AsScoped()
+        public IServiceBindingBuilder AsScoped()
         {
             Descriptor.Lifetime = ServiceLifetime.Scoped;
             Debug.WriteLine($"Setting lifetime of service {Descriptor.BindingType.Name} to scoped.");
             return this;
         }
 
-        public IServiceBinding<TService> AsTransient()
+        public IServiceBindingBuilder AsTransient()
         {
             Descriptor.Lifetime = ServiceLifetime.Transient;
             Debug.WriteLine($"Setting lifetime of service {Descriptor.BindingType.Name} to transient, which is default.  ");
             return this;
         }
 
-        public IServiceBinding<TService> WithParameter(string name, object value)
+        public IServiceBindingBuilder WithParameter(string name, object? value)
         {
             Guard.NotNullOrEmpty(name, nameof(name));
-            Guard.NotNull(value, nameof(value));
 
             if (Descriptor.Instance is not null)
             {
@@ -354,11 +366,11 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
             return this;
         }
 
-        public IServiceBinding<TService> WithParameters(object parameters)
+        public IServiceBindingBuilder WithParameters(object parameters)
         {
             Guard.NotNull(parameters, nameof(parameters));
 
-            if (parameters is not IReadOnlyDictionary<string, object> dictionary)
+            if (parameters is not IReadOnlyDictionary<string, object?> dictionary)
             {
                 // convert object into dictionary
                 var properties = parameters?.GetType().GetProperties();
@@ -373,7 +385,7 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
             return WithParameters(dictionary);
         }
 
-        public IServiceBinding<TService> WithParameters(IReadOnlyDictionary<string, object> parameters)
+        public IServiceBindingBuilder WithParameters(IReadOnlyDictionary<string, object?> parameters)
         {
             Guard.NotNull(parameters, nameof(parameters));
 
@@ -391,7 +403,7 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
             return this;
         }
 
-        public IServiceBinding<TService> WithMetadata(string name, object value)
+        public IServiceBindingBuilder WithMetadata(string name, object? value)
         {
             Guard.NotNullOrEmpty(name, nameof(name));
             Guard.NotNull(value, nameof(value));
@@ -406,7 +418,100 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
             return this;
         }
 
-        public IServiceBinding<TService> Configure(Action<TService> configure)
+        /// <inheritdoc/>
+        public IServiceBindingBuilder Configure(Action<object> configure)
+        {
+            Guard.NotNull(configure, nameof(configure));
+
+            Descriptor.Configure = service => configure(service);
+            Debug.WriteLine($"Setting configuration for service {Descriptor.BindingType.Name}.");
+            return this;
+        }
+
+        internal ServiceBindingDescriptor GetDescriptor() => (_descriptor as ServiceBindingDescriptor)!;
+    }
+
+    internal class ServiceBindingBuilder<TService> : ServiceBindingBuilder, IServiceBindingBuilder<TService> where TService : notnull
+    {
+        public ServiceBindingBuilder(ServiceConfigurator configurator, ServiceBindingDescriptor descriptor) : base(configurator, descriptor) { }
+
+        /// <inheritdoc/>
+        public IServiceBindingBuilder<TService> To<TImplementation>() where TImplementation : class, TService
+        {
+            var implementationType = typeof(TImplementation);
+
+            // Shouldn't be necessary to check this, but just in case
+            if (implementationType.IsInterface)
+            {
+                throw new InvalidOperationException("Cannot bind interfaces to themselves.");
+            }
+
+            if (implementationType.IsAbstract)
+            {
+                throw new InvalidOperationException("Cannot bind abstract types to themselves.");
+            }
+
+            // Is the implementation type an illigal generic type?
+            if (implementationType.IsOpenGeneric())
+            {
+                throw new InvalidOperationException("Cannot bind open generic types to themselves.");
+            }
+
+            if (Descriptor.Instance is not null)
+            {
+                Debug.WriteLine("Warning: Instance is already set. Setting implementation type will override the instance.");
+                Descriptor.Instance = default;
+            }
+
+            if (Descriptor.Factory is not null)
+            {
+                Debug.WriteLine("Warning: Factory is already set. Setting implementation type will override the factory.");
+                Descriptor.Factory = default;
+            }
+
+            if (Descriptor.ImplementationType is not null)
+            {
+                Debug.WriteLine("Warning: Implementation type is already set. Setting implementation type will override the existing implementation type.");
+            }
+            else
+            {
+                Debug.WriteLine($"Binding service of type {Descriptor.BindingType.Name} to implementation {implementationType.Name}.");
+            }
+
+            Descriptor.ImplementationType = implementationType;
+            return this;
+        }
+
+        /// <inheritdoc/>
+        public IServiceBindingBuilder<TService> WithFactory(Func<IServiceProvider, TService> factory)
+        {
+            Guard.NotNull(factory, nameof(factory));
+
+            if (Descriptor.ImplementationType is not null)
+            {
+                Debug.WriteLine("Warning: Implementation type is already set. Setting factory will override the implementation type.");
+                Descriptor.ImplementationType = default;
+            }
+
+            if (Descriptor.Instance is not null)
+            {
+                Debug.WriteLine("Warning: Instance is already set. Setting factory will override the instance.");
+                Descriptor.Instance = default;
+            }
+
+            Descriptor.Factory = sp => factory(sp);
+            return this;
+        }
+
+        /// <inheritdoc/>
+        public IServiceBindingBuilder<TService> WithInstance(TService instance)
+        {
+            base.WithInstance(instance);
+            return this;
+        }
+
+        /// <inheritdoc/>
+        public IServiceBindingBuilder<TService> Configure(Action<TService> configure)
         {
             Guard.NotNull(configure, nameof(configure));
 
@@ -414,7 +519,6 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
             Debug.WriteLine($"Setting configuration for service {Descriptor.BindingType.Name}.");
             return this;
         }
-
-        internal ServiceBindingDescriptor<TService> GetDescriptor() => (_descriptor as ServiceBindingDescriptor<TService>)!;
     }
+    #endregion
 }

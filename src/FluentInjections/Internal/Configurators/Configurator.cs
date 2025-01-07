@@ -1,10 +1,6 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using FluentInjections.Internal.Descriptors;
-
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 namespace FluentInjections.Internal.Configurators;
@@ -12,7 +8,7 @@ namespace FluentInjections.Internal.Configurators;
 /// <summary>
 /// Represents a configurator that provides methods to bind and configure services within the application.
 /// </summary>
-internal abstract class Configurator<TBinding, TDescriptor> : IConfigurator<TBinding>, IDisposable where TBinding : IBinding
+internal abstract class Configurator<TBinding, TDescriptor> : IConfigurator<TBinding> where TBinding : IBinding
 {
     protected readonly List<TDescriptor> _descriptors = new();
     protected readonly ILogger _logger;
@@ -44,16 +40,11 @@ internal abstract class Configurator<TBinding, TDescriptor> : IConfigurator<TBin
     public void Register()
     {
         ValidateBindings();
+
         List<TDescriptor> orderedDescriptors = OrderBindingDescriptors();
 
         orderedDescriptors.ForEach(d => Register(d));
     }
-
-    /// <summary>
-    /// Orders the binding descriptors.
-    /// </summary>
-    /// <returns>The ordered list of binding descriptors.</returns>
-    protected virtual List<TDescriptor> OrderBindingDescriptors() => _descriptors;
 
     /// <summary>
     /// Registers a binding with the service collection.
@@ -65,6 +56,12 @@ internal abstract class Configurator<TBinding, TDescriptor> : IConfigurator<TBin
     /// Validates the bindings to ensure they are configured correctly.
     /// </summary>
     protected internal abstract void ValidateBindings();
+
+    /// <summary>
+    /// Orders the binding descriptors.
+    /// </summary>
+    /// <returns>The ordered list of binding descriptors.</returns>
+    protected virtual List<TDescriptor> OrderBindingDescriptors() => _descriptors;
 
     /// <inheritdoc/>
     public void Dispose()

@@ -17,5 +17,12 @@ public interface IServiceConfigurator : IConfigurator<IServiceBinding>
     /// Binds a service to the service collection.
     /// </summary>
     /// <returns>An interface for further configuring the service binding.</returns>
-    IServiceBinding<TService> Bind<TService>() where TService : notnull;
+    IServiceBindingBuilder<TService> Bind<TService>() where TService : notnull;
+
+    /// <summary>
+    /// Binds a service to the service collection.
+    /// </summary>
+    /// <param name="serviceType">The type of the service to bind.</param>
+    /// <returns>An interface for further configuring the service binding.</returns>
+    IServiceBindingBuilder Bind(Type serviceType);
 }
