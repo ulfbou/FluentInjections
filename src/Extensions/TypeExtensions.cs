@@ -127,6 +127,8 @@ public static class TypeExtensions
     /// <returns><see langword="true"/> if the cast was successful; otherwise, <see langword="false"/>.</returns>
     public static bool TryConvertTo<TTarget>(this object source, out TTarget result) where TTarget : class
     {
+        Guard.NotNull(source, nameof(source));
+
         result = default!;
 
         if (source is TTarget directCastResult)
@@ -184,7 +186,10 @@ public static class TypeExtensions
     /// <param name="type">The type to check.</param>
     /// <returns><see langword="true"/> if the type is nullable; otherwise, <see langword="false"/>.</returns>
     public static bool IsNullable(this Type type)
-        => Nullable.GetUnderlyingType(type) is not null;
+    {
+        Guard.NotNull(type, nameof(type));
+        return Nullable.GetUnderlyingType(type) is not null;
+    }
 
     /// <summary>
     /// Checks if a type is derived from a base type.
@@ -193,7 +198,9 @@ public static class TypeExtensions
     /// <param name="type">The type to check.</param>
     /// <returns><see langword="true"/> if the type is derived from the base type; otherwise, <see langword="false"/>.</returns>
     public static bool IsDerivedFrom<TBase>(this Type type)
-        => IsDerivedFrom(type, typeof(TBase));
+    {
+        return IsDerivedFrom(type, typeof(TBase));
+    }
 
     /// <summary>
     /// Checks if a type is derived from a base type.
@@ -202,15 +209,11 @@ public static class TypeExtensions
     /// <param name="baseType">The base type to check against.</param>
     /// <returns><see langword="true"/> if the type is derived from the base type; otherwise, <see langword="false"/>.</returns>
     public static bool IsDerivedFrom(this Type type, Type baseType)
-        => baseType.IsAssignableFrom(type) && type != baseType;
-
-    /// <summary>
-    /// Gets all interfaces implemented by a type.
-    /// </summary>
-    /// <param name="type">The type to get the interfaces for.</param>
-    /// <returns>An enumerable collection of interfaces implemented by the type.</returns>
-    public static IEnumerable<Type> GetAllInterfaces(this Type type)
-        => type.GetInterfaces();
+    {
+        Guard.NotNull(type, nameof(type));
+        Guard.NotNull(baseType, nameof(baseType));
+        return baseType.IsAssignableFrom(type) && type != baseType;
+    }
 
     /// <summary>
     /// Checks if a type implements an interface.
@@ -219,7 +222,10 @@ public static class TypeExtensions
     /// <param name="type">The type to check.</param>
     /// <returns><see langword="true"/> if the type implements the interface; otherwise, <see langword="false"/>.</returns>
     public static bool ImplementsInterface<TInterface>(this Type type)
-        => typeof(TInterface).IsAssignableFrom(type);
+    {
+        Guard.NotNull(type, nameof(type));
+        return typeof(TInterface).IsAssignableFrom(type);
+    }
 
     /// <summary>
     /// Checks if a type has an attribute.
@@ -228,7 +234,10 @@ public static class TypeExtensions
     /// <param name="type">The type to check.</param>
     /// <returns><see langword="true"/> if the type has the attribute; otherwise, <see langword="false"/>.</returns>
     public static bool HasAttribute<TAttribute>(this Type type) where TAttribute : Attribute
-        => type.GetCustomAttributes(typeof(TAttribute), inherit: true).Any();
+    {
+        Guard.NotNull(type, nameof(type));
+        return type.GetCustomAttributes(typeof(TAttribute), inherit: true).Any();
+    }
 
     /// <summary>
     /// Gets the full name of a type.
@@ -237,7 +246,10 @@ public static class TypeExtensions
     /// <returns>The full name of the type.</returns>
     /// <exception cref="ArgumentNullException">Thrown when the type is <see langword="null"/>.</exception>
     public static string GetFullName(this Type type)
-        => type?.FullName ?? throw new ArgumentNullException(nameof(type));
+    {
+        Guard.NotNull(type, nameof(type));
+        return type?.FullName ?? throw new ArgumentNullException(nameof(type));
+    }
 
     /// <summary>
     /// Gets the public instance methods of a type.
@@ -245,7 +257,10 @@ public static class TypeExtensions
     /// <param name="type">The type to get the methods for.</param>
     /// <returns>An enumerable collection of public instance methods of the type.</returns>
     public static IEnumerable<MethodInfo> GetPublicMethods(this Type type)
-        => type.GetMethods(BindingFlags.Public | BindingFlags.Instance);
+    {
+        Guard.NotNull(type, nameof(type));
+        return type.GetMethods(BindingFlags.Public | BindingFlags.Instance);
+    }
 
     /// <summary>
     /// Gets the public instance properties of a type.
@@ -253,7 +268,10 @@ public static class TypeExtensions
     /// <param name="type">The type to get the properties for.</param>
     /// <returns>An enumerable collection of public instance properties of the type.</returns>
     public static IEnumerable<PropertyInfo> GetPublicProperties(this Type type)
-        => type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+    {
+        Guard.NotNull(type, nameof(type));
+        return type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+    }
 
     /// <summary>
     /// Checks if a type has a default constructor.
@@ -261,7 +279,10 @@ public static class TypeExtensions
     /// <param name="type">The type to check.</param>
     /// <returns><see langword="true"/> if the type has a default constructor; otherwise, <see langword="false"/>.</returns>
     public static bool HasDefaultConstructor(this Type type)
-        => type.GetConstructor(Type.EmptyTypes) != null && (type.GetConstructor(Type.EmptyTypes)?.IsPublic ?? false);
+    {
+        Guard.NotNull(type, nameof(type));
+        return type.GetConstructor(Type.EmptyTypes) != null && (type.GetConstructor(Type.EmptyTypes)?.IsPublic ?? false);
+    }
 
     /// <summary>
     /// Checks if a type is a numeric type.
@@ -270,6 +291,8 @@ public static class TypeExtensions
     /// <returns><see langword="true"/> if the type is a numeric type; otherwise, <see langword="false"/>.</returns>
     public static bool IsNumericType(this Type type)
     {
+        Guard.NotNull(type, nameof(type));
+
         NumericTypes ??= new[]
         {
             typeof(byte), typeof(sbyte), typeof(short), typeof(ushort), typeof(int), typeof(uint), typeof(long), typeof(ulong), typeof(float), typeof(double), typeof(decimal)
@@ -284,7 +307,10 @@ public static class TypeExtensions
     /// <param name="type">The type to check.</param>
     /// <returns><see langword="true"/> if the type is a generic type; otherwise, <see langword="false"/>.</returns>
     public static bool IsGeneric<TType>(this Type type)
-        => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(TType);
+    {
+        Guard.NotNull(type, nameof(type));
+        return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(TType);
+    }
 
     /// <summary>
     /// Checks if a type is an open generic type definition.
@@ -293,6 +319,7 @@ public static class TypeExtensions
     /// <returns><see langword="true"/> if the type is an open generic type; otherwise, <see langword="false"/>.</returns>
     public static bool IsOpenGeneric(this Type type)
     {
+        Guard.NotNull(type, nameof(type));
         return type.IsGenericType && type.ContainsGenericParameters;
     }
 
@@ -303,6 +330,8 @@ public static class TypeExtensions
     /// <returns>An enumerable collection of base types of the type.</returns>
     public static IEnumerable<Type> GetBaseTypes(this Type type)
     {
+        Guard.NotNull(type, nameof(type));
+
         var currentType = type;
 
         while (currentType.BaseType != null)
