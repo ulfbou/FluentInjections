@@ -5,6 +5,7 @@ using FluentInjections.Validation;
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 
@@ -106,6 +107,11 @@ public static class TypeExtensions
         // Cache the result as false
         CacheCompatibility(sourceType, targetType, false);
         return false;
+    }
+
+    public static bool Implements<TInterface>(this Type type)
+    {
+        return type.ImplementsInterface<TInterface>();
     }
 
     private static void CacheCompatibility(Type sourceType, Type targetType, bool result)
@@ -216,7 +222,7 @@ public static class TypeExtensions
     }
 
     /// <summary>
-    /// Checks if a type implements an interface.
+    /// Checks if a type implements an interface, including interfaces with open generic type parameters.
     /// </summary>
     /// <typeparam name="TInterface">The interface to check for.</typeparam>
     /// <param name="type">The type to check.</param>
@@ -224,7 +230,47 @@ public static class TypeExtensions
     public static bool ImplementsInterface<TInterface>(this Type type)
     {
         Guard.NotNull(type, nameof(type));
-        return typeof(TInterface).IsAssignableFrom(type);
+        var interfaceType = typeof(TInterface);
+
+        if (interfaceType.IsGenericType)
+        {
+            if (interfaceType.IsGenericTypeDefinition)
+            {
+                return type.GetInterfaces()
+                    .Any(t => t.IsGenericType && t.GetGenericTypeDefinition() == interfaceType);
+            }
+
+            return type.GetInterfaces()
+                .Any(t => t.IsGenericType && t.GetGenericTypeDefinition() == interfaceType.GetGenericTypeDefinition());
+        }
+
+        return interfaceType.IsAssignableFrom(type);
+    }
+
+    /// <summary>
+    /// Checks if a type implements an interface, including interfaces with open generic type parameters.
+    /// </summary>
+    /// <param name="implementingType">The type to check.</param>
+    /// <param name="interfaceType">The interface to check for.</param>
+    /// <returns><see langword="true"/> if the type implements the interface; otherwise, <see langword="false"/>.</returns>
+    public static bool ImplementsInterface(this Type implementingType, Type interfaceType)
+    {
+        Guard.NotNull(implementingType, nameof(implementingType));
+        Guard.NotNull(interfaceType, nameof(interfaceType));
+
+        if (interfaceType.IsGenericType)
+        {
+            var interfaceTypeDefinition = interfaceType.IsGenericTypeDefinition ? interfaceType : interfaceType.GetGenericTypeDefinition();
+
+            var implementedInterfaces = implementingType.GetInterfaces()
+                .Where(t => t.IsGenericType && t.GetGenericTypeDefinition() == interfaceTypeDefinition);
+
+            Debug.WriteLine($"Checking generic type definition: {string.Join(", ", implementedInterfaces.Select(i => i.Name))}");
+
+            return implementedInterfaces.Any();
+        }
+
+        return interfaceType.IsAssignableFrom(implementingType);
     }
 
     /// <summary>
@@ -346,7 +392,11 @@ public static class TypeExtensions
     /// </summary>
     /// <param name="type">The type to get the generic arguments for.</param>
     /// <returns>An enumerable collection of generic arguments of the type.</returns>
-    public static IEnumerable<Type> GetGenericArguments(this Type type) => type.IsGenericType ? type.GetGenericArguments() : Type.EmptyTypes;
+    public static IEnumerable<Type> GetGenericArguments(this Type type)
+    {
+        Guard.NotNull(type, nameof(type));
+        return type.IsGenericType ? type.GetGenericArguments() : Type.EmptyTypes;
+    }
 
     /// <summary>
     /// Gets the method with the specified name and parameter types.
@@ -356,7 +406,11 @@ public static class TypeExtensions
     /// <param name="parameterTypes">The parameter types of the method to get.</param>
     /// <returns>The method with the specified name and parameter types, if found; otherwise, <see langword="null"/>.</returns>
     public static MethodInfo? GetMethod(this Type type, string methodName, params Type[] parameterTypes)
-        => type.GetMethod(methodName, parameterTypes);
+    {
+        Guard.NotNull(type, nameof(type));
+        Guard.NotNullOrEmpty(methodName, nameof(methodName));
+        return type.GetMethod(methodName, parameterTypes);
+    }
 
     /// <summary>
     /// Gets the property with the specified name.
@@ -365,7 +419,11 @@ public static class TypeExtensions
     /// <param name="propertyName">The name of the property to get.</param>
     /// <returns>The property with the specified name, if found; otherwise, <see langword="null"/>.</returns>
     public static PropertyInfo? GetProperty(this Type type, string propertyName)
-        => type.GetProperty(propertyName);
+    {
+        Guard.NotNull(type, nameof(type));
+        Guard.NotNullOrEmpty(propertyName, nameof(propertyName));
+        return type.GetProperty(propertyName);
+    }
 
     /// <summary>
     /// Gets the constructors of a type that has the specified parameter types.
@@ -374,8 +432,12 @@ public static class TypeExtensions
     /// <param name="parameters">The parameter types of the constructors to get.</param>
     /// <returns>An enumerable collection of constructors of the type that have the specified parameter types.</returns>
     public static IEnumerable<ConstructorInfo> GetConstructors(this Type type, params Type[] parameters)
-        => type.GetConstructors()
-               .Where(c => parameters.All(p => c.GetParameters().Select(pr => pr.ParameterType).Contains(p)));
+    {
+        Guard.NotNull(type, nameof(type));
+        Guard.NotNull(parameters, nameof(parameters));
+        return type.GetConstructors()
+                   .Where(c => parameters.All(p => c.GetParameters().Select(pr => pr.ParameterType).Contains(p)));
+    }
 
     /// <summary>
     /// Checks if a type is assignable to another type.
@@ -420,5 +482,72 @@ public static class TypeExtensions
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Tries to create an instance of a type from the specified arguments.
+    /// </summary>
+    /// <param name="type">The type to create an instance of.</param>
+    /// <param name="args">The arguments to pass to the constructor.</param>
+    /// <param name="instance">The created instance of the type, if successful; otherwise, <see langword="null"/>.</param>
+    /// <returns><see langword="true"/> if the instance was created successfully; otherwise, <see langword="false"/>.</returns>
+    public static bool TryGetGenericArguments(this Type type, out Type[] genericArguments)
+    {
+        if (type.IsGenericType)
+        {
+            try
+            {
+                genericArguments = type.GetGenericArguments();
+                return true;
+            }
+            catch (NotSupportedException ex)
+            {
+                Debug.WriteLine($"MakeGenericType is not supported on type {type.Name}: {ex.Message}");
+            }
+            catch (ArgumentException ex)
+            {
+                Debug.WriteLine($"Invalid arguments for type {type.Name}: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error creating generic type: {ex.Message}");
+            }
+        }
+        genericArguments = Array.Empty<Type>();
+        return false;
+    }
+
+    /// <summary>
+    /// Tries to create an instance of a generic type from the specified generic arguments.
+    /// </summary>
+    /// <param name="type">The type to create an instance of.</param>
+    /// <param name="genericArguments">The generic arguments to pass to the constructor.</param>
+    /// <param name="genericType">The created instance of the generic type, if successful; otherwise, <see langword="null"/>.</param>
+    /// <returns><see langword="true"/> if the instance was created successfully; otherwise, <see langword="false"/>.</returns>
+    public static bool TryMakeGenericType(this Type type, Type[] genericArguments, out Type genericType)
+    {
+        if (type.IsGenericTypeDefinition)
+        {
+            try
+            {
+                genericType = type.MakeGenericType(genericArguments);
+                return true;
+            }
+            catch (NotSupportedException ex)
+            {
+                Debug.WriteLine($"MakeGenericType is not supported on type {type.Name}: {ex.Message}");
+            }
+            catch (ArgumentException ex)
+            {
+                Debug.WriteLine($"Invalid arguments for type {type.Name}: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error creating generic type: {ex.Message}");
+            }
+        }
+
+        genericType = null!;
+        return false;
     }
 }

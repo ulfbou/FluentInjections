@@ -18,6 +18,21 @@ public static class Guard
     /// <param name="value">The value to check.</param>
     /// <param name="name">The name of the parameter.</param>
     /// <exception cref="ArgumentNullException">The value is <see langword="null"/>.</exception>
+    public static void Null<T>(T value, string name)
+    {
+        if (value is not null)
+        {
+            throw new ArgumentNullException(name, "Value must be null.");
+        }
+    }
+
+    /// <summary>
+    /// Throws an <see cref="ArgumentNullException"/> if the value is null.
+    /// </summary>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    /// <param name="value">The value to check.</param>
+    /// <param name="name">The name of the parameter.</param>
+    /// <exception cref="ArgumentNullException">The value is <see langword="null"/>.</exception>
     public static void NotNull<T>(T value, string name)
     {
         if (value is null)
@@ -25,7 +40,6 @@ public static class Guard
             throw new ArgumentNullException(name, "Value cannot be null.");
         }
     }
-
     /// <summary>
     /// Throws an <see cref="ArgumentException"/> if the value is <see langword="null"/> or empty.
     /// </summary>
