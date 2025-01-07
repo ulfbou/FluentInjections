@@ -1,21 +1,15 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using Autofac;
-using Autofac.Extensions.DependencyInjection;
-
+using FluentInjections.Extensions;
 using FluentInjections.Internal.Descriptors;
 using FluentInjections.Validation;
 
 using Microsoft.Extensions.DependencyInjection;
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 namespace FluentInjections.Internal.Configurators;
 
-public class NetCoreServiceProvider :
+public sealed class NetCoreServiceProvider :
     IServiceProvider,
     ISupportRequiredService,
     IKeyedServiceProvider,
@@ -24,9 +18,9 @@ public class NetCoreServiceProvider :
     IDisposable,
     IAsyncDisposable
 {
-    protected readonly IServiceProvider _provider;
-    protected readonly IDictionary<string, ServiceDescriptor> _keyedServiceDescriptors;
-    protected readonly IDictionary<string, Dictionary<Type, ServiceBindingDescriptor>> _namedServices;
+    private readonly IServiceProvider _provider;
+    private readonly IDictionary<string, ServiceDescriptor> _keyedServiceDescriptors;
+    private readonly IDictionary<string, Dictionary<Type, ServiceBindingDescriptor>> _namedServices;
 
     public NetCoreServiceProvider(IServiceProvider serviceProvider, IDictionary<string, ServiceDescriptor> keyedServiceDescriptors)
     {
@@ -42,6 +36,7 @@ public class NetCoreServiceProvider :
         _namedServices = namedServices ?? throw new ArgumentNullException(nameof(namedServices));
     }
 
+    /// <inheritdoc />
     public object? GetKeyedService(Type serviceType, object? serviceKey)
     {
         Guard.NotNull(serviceType, nameof(serviceType));
@@ -54,71 +49,104 @@ public class NetCoreServiceProvider :
 
             if (_namedServices.TryGetValue(name!, out var services) && services.TryGetValue(serviceType, out var descriptor))
             {
-                if (descriptor.Instance is not null)
-                {
-                    descriptor.Configure?.Invoke(descriptor.Instance);
-                    return descriptor.Instance;
-                }
-
-                if (descriptor.Factory is not null)
-                {
-                    var service = descriptor.Factory(_provider);
-                    descriptor.Configure?.Invoke(service);
-                    return service;
-                }
-
-                if (descriptor.ImplementationType is not null)
-                {
-                    object? service;
-
-                    if (descriptor.Parameters.Any())
-                    {
-                        var parameters = descriptor.Parameters.Values.ToArray();
-                        try
-                        {
-                            service = ActivatorUtilities.CreateInstance(_provider, descriptor.ImplementationType, parameters);
-                        }
-                        catch
-                        {
-                            return default;
-                        }
-                    }
-                    else
-                    {
-                        service = _provider.GetService(descriptor.ImplementationType);
-                    }
-
-                    //var instance = ActivatorUtilities.CreateInstance(provider, descriptor.ImplementationType, descriptor.Parameters.Values.ToArray());
-                    if (service is not null)
-                    {
-                        descriptor.Configure?.Invoke(service);
-                        return service;
-                    }
-                }
+                return GetServiceFromDescriptor(descriptor);
             }
         }
 
         return default;
     }
 
+    /// <inheritdoc />
     public object GetRequiredKeyedService(Type serviceType, object? serviceKey)
     {
         return GetKeyedService(serviceType, serviceKey) ?? throw new InvalidOperationException($"Service type '{serviceType.Name}' with service key '{serviceKey}' not found.");
     }
 
-    public object GetRequiredService(Type serviceType) => _provider.GetRequiredService(serviceType);
-    public object? GetService(Type serviceType) => _provider.GetService(serviceType);
-
-    public ValueTask DisposeAsync()
+    /// <inheritdoc />
+    public object GetRequiredService(Type serviceType)
     {
-        if (_provider is IAsyncDisposable asyncDisposable)
-        {
-            return asyncDisposable.DisposeAsync();
-        }
-        Dispose();
-        return default;
+        return ResolveService(serviceType) ?? throw new InvalidOperationException($"No service for type '{serviceType.Name}' has been registered.");
     }
 
+    /// <inheritdoc />
+    public object? GetService(Type serviceType)
+    {
+        return ResolveService(serviceType);
+    }
+
+    private object? ResolveService(Type serviceType)
+    {
+        var service = _provider.GetService(serviceType);
+
+        if (service is not null) return service;
+
+        if (serviceType.IsGenericType && !serviceType.IsConstructedGenericType)
+        {
+            var genericTypeDefinition = serviceType.GetGenericTypeDefinition();
+            var genericArguments = serviceType.GetGenericArguments();
+
+            foreach (var descriptor in _provider.GetServices<ServiceDescriptor>())
+            {
+                if (descriptor.ServiceType.IsGenericTypeDefinition && descriptor.ServiceType == genericTypeDefinition)
+                {
+                    if (descriptor.ImplementationType.TryMakeGenericType(genericArguments, out var closedType))
+                    {
+                        return _provider.GetService(closedType);
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private object? GetServiceFromDescriptor(ServiceBindingDescriptor descriptor)
+    {
+        if (descriptor.Instance is not null)
+        {
+            descriptor.Configure?.Invoke(descriptor.Instance);
+            return descriptor.Instance;
+        }
+
+        if (descriptor.Factory is not null)
+        {
+            var service = descriptor.Factory(_provider);
+            descriptor.Configure?.Invoke(service);
+            return service;
+        }
+
+        if (descriptor.ImplementationType is not null)
+        {
+            object? service;
+
+            if (descriptor.Parameters.Any())
+            {
+                var parameters = descriptor.Parameters.Values.ToArray();
+                try
+                {
+                    service = ActivatorUtilities.CreateInstance(_provider, descriptor.ImplementationType, parameters!);
+                }
+                catch
+                {
+                    return default;
+                }
+            }
+            else
+            {
+                service = _provider.GetService(descriptor.ImplementationType);
+            }
+
+            if (service is not null)
+            {
+                descriptor.Configure?.Invoke(service);
+                return service;
+            }
+        }
+
+        return null;
+    }
+
+    /// <inheritdoc />
     public bool IsKeyedService(Type serviceType, object? serviceKey)
     {
         Guard.NotNull(serviceType, nameof(serviceType));
@@ -137,8 +165,25 @@ public class NetCoreServiceProvider :
         return false;
     }
 
-    public bool IsService(Type serviceType) => throw new NotImplementedException();
+    /// <inheritdoc />
+    public bool IsService(Type serviceType)
+    {
+        Guard.NotNull(serviceType, nameof(serviceType));
+        return _provider.GetService(serviceType) != null;
+    }
 
+    /// <inheritdoc />
+    public ValueTask DisposeAsync()
+    {
+        if (_provider is IAsyncDisposable asyncDisposable)
+        {
+            return asyncDisposable.DisposeAsync();
+        }
+        Dispose();
+        return default;
+    }
+
+    /// <inheritdoc />
     public void Dispose()
     {
         if (_provider is IDisposable disposable)
@@ -146,47 +191,4 @@ public class NetCoreServiceProvider :
             disposable.Dispose();
         }
     }
-#if false
-    public object? GetKeyedService(string key, Type serviceType)
-    {
-        if (_keyedServiceDescriptors.TryGetValue(key, out var descriptor))
-        {
-            return descriptor switch
-            {
-                { ImplementationType: not null } => _serviceProvider.GetService(descriptor.ImplementationType),
-                { ImplementationFactory: not null } => descriptor.ImplementationFactory(_serviceProvider),
-                { ImplementationInstance: not null } => descriptor.ImplementationInstance,
-                _ => null
-            };
-        }
-
-        throw new InvalidOperationException($"No service registered with the key '{key}'");
-    }
-
-    public TService? GetKeyedService<TService>(string key) where TService : notnull
-    {
-        return (TService?)GetKeyedService(key, typeof(TService));
-    }
-
-    public TService GetRequiredKeyedService<TService>(string key) where TService : notnull
-    {
-        return GetKeyedService<TService>(key)
-            ?? throw new InvalidOperationException($"Service '{key}' not found.");
-    }
-
-    public object? GetKeyedService(Type serviceType, object? serviceKey)
-    {
-        if (serviceKey is string key)
-        {
-            return GetKeyedService(key, serviceType);
-        }
-        throw new InvalidOperationException("Service key must be a string.");
-    }
-
-    public object GetRequiredKeyedService(Type serviceType, object? serviceKey)
-    {
-        return GetKeyedService(serviceType, serviceKey)
-            ?? throw new InvalidOperationException($"Service '{serviceKey}' not found.");
-    }
-#endif
 }

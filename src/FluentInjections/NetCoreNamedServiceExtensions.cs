@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using FluentInjections;
+using FluentInjections.Extensions;
 using FluentInjections.Internal.Descriptors;
 using FluentInjections.Validation;
 
@@ -13,6 +14,7 @@ namespace FluentInjections;
 public static class NetCoreNamedServiceExtensions
 {
     internal static readonly Dictionary<string, Dictionary<Type, ServiceBindingDescriptor>> NamedServices = new();
+    internal static readonly Dictionary<Type, ServiceBindingDescriptor> UnnamedServices = new();
 
     // Register service binding descriptor
     internal static void Register(this IServiceCollection services, ServiceBindingDescriptor descriptor)
@@ -22,7 +24,11 @@ public static class NetCoreNamedServiceExtensions
 
         lock (NamedServices)
         {
-            if (!string.IsNullOrEmpty(descriptor.Name))
+            if (string.IsNullOrEmpty(descriptor.Name))
+            {
+                UnnamedServices[descriptor.BindingType] = descriptor;
+            }
+            else
             {
                 if (!NamedServices.ContainsKey(descriptor.Name))
                 {
@@ -85,6 +91,12 @@ public static class NetCoreNamedServiceExtensions
     // Register middleware binding descriptor
     internal static void Register(this IApplicationBuilder app, MiddlewareBindingDescriptor descriptor)
     {
+        Guard.NotNull(app, nameof(app));
+        Guard.NotNull(descriptor, nameof(descriptor));
+
+        lock (NamedServices)
+        {
+        }
     }
 
     public static TService? GetNamedService<TService>(this IServiceProvider provider, string name) where TService : notnull
@@ -130,7 +142,7 @@ public static class NetCoreNamedServiceExtensions
                         var parameters = descriptor.Parameters.Values.ToArray();
                         try
                         {
-                            service = ActivatorUtilities.CreateInstance(provider, descriptor.ImplementationType, parameters);
+                            service = ActivatorUtilities.CreateInstance(provider, descriptor.ImplementationType, parameters!);
                         }
                         catch
                         {
@@ -167,24 +179,56 @@ public static class NetCoreNamedServiceExtensions
         throw new InvalidOperationException($"No named service of type {typeof(TService).FullName} with name '{name}' was registered.");
     }
 
-    public static IReadOnlyDictionary<string, object> GetMetadata<TService>(this IServiceProvider provider, string name)
+    public static IReadOnlyDictionary<string, object?> GetMetadata<TService>(this IServiceProvider provider, string name)
         where TService : class
     {
         return provider.GetMetadata(name, typeof(TService));
     }
 
-    public static IReadOnlyDictionary<string, object> GetMetadata(this IServiceProvider provider, string name, Type serviceType)
+    public static IReadOnlyDictionary<string, object?> GetMetadata<TService>(this IServiceProvider provider)
+        where TService : class
+    {
+        return provider.GetMetadata(typeof(TService));
+    }
+
+    public static IReadOnlyDictionary<string, object?> GetMetadata(this IServiceProvider provider, string name, Type serviceType)
     {
         Guard.NotNullOrEmpty(name, nameof(name));
 
+        Dictionary<string, object?> namedMetadata = new Dictionary<string, object?>();
+        Dictionary<string, object?> unnamedMetadata = new Dictionary<string, object?>();
+
         lock (NamedServices)
         {
-            if (NamedServices.TryGetValue(name, out var services) && services.TryGetValue(serviceType, out var descriptor))
+            lock (UnnamedServices)
             {
-                return new Dictionary<string, object>(descriptor.Metadata);
+                if (NamedServices.TryGetValue(name, out var services) && services.TryGetValue(serviceType, out var descriptor) && descriptor.Metadata.Any())
+                {
+                    namedMetadata = descriptor.Metadata;
+                }
+
+                if (UnnamedServices.TryGetValue(serviceType, out var unnamedDescriptor))
+                {
+                    unnamedMetadata = unnamedDescriptor.Metadata;
+                }
+            }
+
+            return namedMetadata.Merge(unnamedMetadata).AsReadOnly();
+        }
+    }
+
+    public static IReadOnlyDictionary<string, object?> GetMetadata(this IServiceProvider provider, Type serviceType)
+    {
+        Guard.NotNull(serviceType, nameof(serviceType));
+
+        lock (UnnamedServices)
+        {
+            if (UnnamedServices.TryGetValue(serviceType, out var unnamedDescriptor))
+            {
+                return unnamedDescriptor.Metadata.AsReadOnly();
             }
         }
 
-        return Enumerable.Empty<KeyValuePair<string, object>>().ToDictionary(kvp => kvp.Key, kvp => kvp.Value).AsReadOnly();
+        return new Dictionary<string, object?>().AsReadOnly();
     }
 }

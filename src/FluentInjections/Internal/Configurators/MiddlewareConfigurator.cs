@@ -455,31 +455,65 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
 
     private async Task InvokeMiddlewareWithFallbackAndPolicy(MiddlewareBindingDescriptor descriptor, HttpContext context, Func<Task> next)
     {
-        if (descriptor.ExecutionPolicy != null)
+        try
         {
             // Apply custom execution policy if specified
-            var policy = (IExecutionPolicy)descriptor.ExecutionPolicy;
-            await policy.ExecuteAsync(async () =>
+            if (descriptor.ExecutionPolicy is IExecutionPolicy policy)
+            {
+                await policy.ExecuteAsync(async () =>
+                {
+                    await InvokeMiddleware(descriptor, context, next);
+                });
+            }
+            else
             {
                 await InvokeMiddleware(descriptor, context, next);
-            });
+            }
         }
-        else
+        catch (Exception ex)
         {
-            await InvokeMiddleware(descriptor, context, next);
-        }
+            if (descriptor.ErrorHandler is not null)
+            {
+                await descriptor.ErrorHandler.Invoke(ex);
+            }
+            else
+            {
+                throw;
+            }
 
-        if (descriptor.Fallback != null)
-        {
-            await descriptor.Fallback.Invoke(context);
+            // Execute fallback if specified
+            if (descriptor.Fallback is not null)
+            {
+                await descriptor.Fallback.Invoke(context);
+            }
         }
     }
 
     protected async Task InvokeMiddleware(MiddlewareBindingDescriptor descriptor, HttpContext context, Func<Task> next)
     {
-        var middlewareInstance = context.RequestServices.GetRequiredService(descriptor.MiddlewareType);
-        var (method, args) = await GetInvokeMethod(middlewareInstance, context, next);
-        method.Invoke(middlewareInstance, args);
+        object? middlewareInstance = null;
+        MethodInfo? method = null;
+        object[]? args = null;
+
+        try
+        {
+            middlewareInstance = context.RequestServices.GetRequiredService(descriptor.MiddlewareType);
+            (method, args) = await GetInvokeMethod(middlewareInstance, context, next);
+        }
+        catch
+        {
+            // Execute fallback if specified
+            if (descriptor.Fallback is not null)
+            {
+                await descriptor.Fallback.Invoke(context);
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        method?.Invoke(middlewareInstance, args);
     }
 
     protected async Task InvokeMiddleware(object middleware, HttpContext context, Func<Task> next)

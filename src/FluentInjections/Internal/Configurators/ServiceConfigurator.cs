@@ -207,9 +207,9 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
         {
             Guard.NotNull(implementationType, nameof(implementationType));
 
-            if (implementationType != Descriptor.BindingType && !implementationType.IsAssignableTo(Descriptor.BindingType))
+            if (implementationType != Descriptor.BindingType && !implementationType.ImplementsInterface(Descriptor.BindingType))
             {
-                throw new InvalidOperationException($"Type {implementationType.Name} is not assignable to {Descriptor.BindingType.Name}.");
+                throw new InvalidOperationException($"Type {implementationType.Name} does not implement type {Descriptor.BindingType.Name}.");
             }
 
             if (implementationType.IsInterface)
@@ -220,12 +220,6 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
             if (implementationType.IsAbstract)
             {
                 throw new InvalidOperationException("Cannot bind abstract types to themselves.");
-            }
-
-            // Is the implementation type an illigal generic type?
-            if (implementationType.IsOpenGeneric())
-            {
-                throw new InvalidOperationException("Cannot bind open generic types to themselves.");
             }
 
             if (Descriptor.Instance is not null)
@@ -240,6 +234,27 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
                 Descriptor.Factory = default;
             }
 
+            if (implementationType.IsGenericTypeDefinition)
+            {
+#if OPEN_GENERIC_SUPPORTED
+                if (!Descriptor.BindingType.TryGetGenericArguments(out var typeArguments) ||
+                    !implementationType.TryMakeGenericType(typeArguments, out var constructedType))
+                {
+                    throw new InvalidOperationException("Cannot bind open generic types without specifying type arguments.");
+                }
+                else
+                {
+                    Descriptor.ImplementationType = constructedType;
+                }
+#else
+                throw new NotSupportedException("Binding open generic types is not supported.");
+#endif
+            }
+            else
+            {
+                Descriptor.ImplementationType = implementationType;
+            }
+
             if (Descriptor.ImplementationType is not null)
             {
                 Debug.WriteLine("Warning: Implementation type is already set. Setting implementation type will override the existing implementation type.");
@@ -249,7 +264,6 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
                 Debug.WriteLine($"Binding service of type {Descriptor.BindingType.Name} to implementation {implementationType.Name}.");
             }
 
-            Descriptor.ImplementationType = implementationType;
             return this;
         }
 

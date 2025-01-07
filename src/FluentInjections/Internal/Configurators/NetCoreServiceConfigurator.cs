@@ -16,8 +16,8 @@ namespace FluentInjections.Internal.Configurators;
 
 internal class NetCoreServiceConfigurator : ServiceConfigurator, IServiceConfigurator
 {
-    private readonly IDictionary<string, ServiceDescriptor> _keyedServiceDescriptors = new Dictionary<string, ServiceDescriptor>();
-    private readonly IServiceCollection _services;
+    protected readonly IDictionary<string, ServiceDescriptor> _keyedServiceDescriptors = new Dictionary<string, ServiceDescriptor>();
+    protected readonly IServiceCollection _services;
     internal IServiceCollection DependencyBuilder => _services;
 
     public NetCoreServiceConfigurator(IServiceCollection services, ILogger<NetCoreServiceConfigurator> logger) : base(logger)

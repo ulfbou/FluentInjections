@@ -5,6 +5,8 @@ using FluentInjections.Internal.Constants;
 
 namespace FluentInjections.Internal.Descriptors;
 
+using Microsoft.AspNetCore.Http;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,7 +23,7 @@ public class MiddlewareBindingDescriptor
     public string Group { get; set; } = DefaultValues.Group;
     public string? RequiredEnvironment { get; set; }
     public object? ExecutionPolicy { get; set; }
-    public Func<object, Task>? Fallback { get; set; }
+    public Func<HttpContext, Task>? Fallback { get; set; }
     public object? Options { get; set; }
     public Type? OptionsType { get; set; }
     public Dictionary<string, object> Metadata { get; set; } = new();

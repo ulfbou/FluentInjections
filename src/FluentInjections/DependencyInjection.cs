@@ -61,13 +61,6 @@ internal static class DependencyInjection
 
             module.Load();
 
-            var serviceProviders = Services.Where(s => s.ServiceType == typeof(IServiceProvider));
-
-            foreach (var serviceProvider in serviceProviders)
-            {
-                Services.Remove(serviceProvider);
-            }
-
             Services.AddSingleton<IServiceProvider>(ServiceProvider);
             Services.AddSingleton(ServiceProvider);
 
