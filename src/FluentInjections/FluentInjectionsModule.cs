@@ -1,10 +1,6 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using Autofac;
-using Autofac.Core;
-using Autofac.Core.Registration;
-
 using FluentInjections;
 using FluentInjections.Internal.Configurators;
 
@@ -17,7 +13,7 @@ namespace FluentInjections;
 /// <summary>
 /// Represents a module that provides methods to configure services and middleware within the application.
 /// </summary>
-internal abstract class FluentInjectionsModule : Autofac.Module
+internal abstract class FluentInjectionsModule
 {
     protected readonly Assembly[] _assemblies;
 

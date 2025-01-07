@@ -14,5 +14,6 @@ public enum ConflictResolutionMode
     Replace,
     WarnAndReplace,
     Prevent,
-    Merge
+    Merge,
+    Ignore
 }

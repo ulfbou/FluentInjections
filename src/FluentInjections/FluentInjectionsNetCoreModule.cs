@@ -1,8 +1,6 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using Autofac;
-
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Utils;
 using FluentInjections.Validation;
@@ -17,13 +15,12 @@ namespace FluentInjections;
 /// <summary>
 /// Represents a module that provides methods to configure services and middleware within the application using ASP.NET Core.
 /// </summary>
-internal sealed class FluentInjectionsNetCoreModule<TBuilder> : FluentInjectionsModule
-    where TBuilder : class
+internal sealed class FluentInjectionsNetCoreModule : FluentInjectionsModule
 {
     private readonly IServiceCollection _services;
-    private readonly TBuilder _app;
+    private readonly Microsoft.AspNetCore.Builder.ApplicationBuilder _app;
 
-    public FluentInjectionsNetCoreModule(IServiceCollection services, TBuilder app, Assembly[] assemblies) : base(assemblies)
+    public FluentInjectionsNetCoreModule(IServiceCollection services, Microsoft.AspNetCore.Builder.ApplicationBuilder app, Assembly[] assemblies) : base(assemblies)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
         _app = app ?? throw new ArgumentNullException(nameof(app));
@@ -32,18 +29,16 @@ internal sealed class FluentInjectionsNetCoreModule<TBuilder> : FluentInjections
 
     private void ValidateBuilder()
     {
-        if (!typeof(IApplicationBuilder).IsAssignableFrom(typeof(TBuilder)))
+        if (!typeof(IApplicationBuilder).IsAssignableFrom(typeof(ApplicationBuilder)))
         {
             throw new InvalidOperationException($"The builder type must implement {nameof(IApplicationBuilder)}.");
         }
     }
 
-    protected override void Load(ContainerBuilder builder) => throw new NotImplementedException();
-
     internal void Load()
     {
         var serviceConfigurator = new NetCoreServiceConfigurator(_services, LoggerUtility.CreateLogger<NetCoreServiceConfigurator>());
-        var middlewareConfigurator = new NetCoreMiddlewareConfigurator<TBuilder>(_app, LoggerUtility.CreateLogger<NetCoreMiddlewareConfigurator<TBuilder>>());
+        var middlewareConfigurator = new NetCoreMiddlewareConfigurator(_app, LoggerUtility.CreateLogger<NetCoreMiddlewareConfigurator>());
 
         foreach (var assembly in _assemblies)
         {

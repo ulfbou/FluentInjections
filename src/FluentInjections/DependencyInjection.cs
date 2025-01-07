@@ -1,9 +1,6 @@
 // Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using Autofac;
-using Autofac.Extensions.DependencyInjection;
-
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Registries;
 using FluentInjections.Internal.Utils;
@@ -48,8 +45,7 @@ internal static class DependencyInjection
         }
     }
 
-    internal static void AddFluentInjections<TBuilder>(IServiceCollection services, TBuilder builder, params Assembly[]? assemblies)
-        where TBuilder : class
+    internal static void AddFluentInjections(IServiceCollection services, ApplicationBuilder builder, params Assembly[]? assemblies)
     {
         lock (LockObject)
         {
@@ -61,11 +57,12 @@ internal static class DependencyInjection
             Services = services;
             var targetAssemblies = assemblies?.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
 
-            var module = new FluentInjectionsNetCoreModule<TBuilder>(Services, builder, targetAssemblies);
+            var module = new FluentInjectionsNetCoreModule(Services, builder, targetAssemblies);
 
             module.Load();
 
-            var serviceProviders = Services.Where(s => s.ServiceType == typeof(IServiceProvider)).ToList();
+            var serviceProviders = Services.Where(s => s.ServiceType == typeof(IServiceProvider));
+
             foreach (var serviceProvider in serviceProviders)
             {
                 Services.Remove(serviceProvider);
@@ -74,32 +71,6 @@ internal static class DependencyInjection
             Services.AddSingleton<IServiceProvider>(ServiceProvider);
             Services.AddSingleton(ServiceProvider);
 
-            _initialized = true;
-        }
-    }
-
-    internal static void AddFluentInjections(ContainerBuilder builder, params Assembly[]? assemblies)
-    {
-        lock (LockObject)
-        {
-            if (_initialized)
-            {
-                throw new InvalidOperationException("FluentInjections has already been initialized.");
-            }
-
-            var targetAssemblies = assemblies?.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
-            //builder.RegisterModule(new FluentInjectionsAutofacModule(targetAssemblies));
-            var Container = builder.Build();
-            ServiceProvider = new AutofacServiceProvider(Container);
-            var serviceProviders = Services.Where(s => s.ServiceType == typeof(IServiceProvider)).ToList();
-
-            foreach (var serviceProvider in serviceProviders)
-            {
-                Services.Remove(serviceProvider);
-            }
-            Services.AddSingleton<IServiceProvider>(ServiceProvider);
-            Services.AddSingleton(ServiceProvider);
-            Services.AddSingleton<IContainer>(Container);
             _initialized = true;
         }
     }
@@ -124,8 +95,8 @@ internal static class DependencyInjection
                     var instance = GetInstance<IMiddlewareModule, IMiddlewareConfigurator>(type, sp);
                     if (instance != null)
                     {
-                        var logger = LoggerUtility.CreateLogger<NetCoreMiddlewareConfigurator<IApplicationBuilder>>();
-                        instance.Configure(new NetCoreMiddlewareConfigurator<IApplicationBuilder>(builder, logger));
+                        var logger = LoggerUtility.CreateLogger<NetCoreMiddlewareConfigurator>();
+                        instance.Configure(new NetCoreMiddlewareConfigurator(builder, logger));
                         registry.Register<IMiddlewareConfigurator>(typeof(IMiddlewareModule), instance);
                     }
                 }

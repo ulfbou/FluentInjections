@@ -11,7 +11,7 @@ namespace FluentInjections;
 /// <remarks>
 /// This interface should be implemented by classes that define component configurations.
 /// </remarks>
-public interface IConfigurator
+public interface IConfigurator : IDisposable
 {
     /// <summary>
     /// Registers a service binding with the service collection.

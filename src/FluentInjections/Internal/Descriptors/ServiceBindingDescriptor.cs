@@ -1,8 +1,6 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using Autofac.Builder;
-
 using FluentInjections.Internal.Configurators;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -18,8 +16,8 @@ public class ServiceBindingDescriptor
     public Func<IServiceProvider, object>? Factory { get; set; }
     public string? Name { get; set; }
     public Action<object>? Configure { get; set; }
-    public Dictionary<string, object> Metadata { get; set; } = new();
-    public Dictionary<string, object> Parameters { get; set; } = new();
+    public Dictionary<string, object?> Metadata { get; set; } = new();
+    public Dictionary<string, object?> Parameters { get; set; } = new();
     public Func<bool>? Condition { get; set; }
     public IServiceConfigurator ServiceConfigurator { get; }
 
