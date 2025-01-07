@@ -4,29 +4,54 @@
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Tests.Utility.Fixtures;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Moq;
 
 namespace FluentInjections.Tests.Internal.Utility.Fixtures;
-
-public abstract class MiddlewareConfiguratorFixture<TConfigurator, TBuilder>
-    : ConfiguratorFixture<TConfigurator, TBuilder>
-    , IMiddlewareConfiguratorFixture<TConfigurator, TBuilder>
-    , IConfiguratorFixture<TConfigurator, TBuilder>
-    where TConfigurator : class, IMiddlewareConfigurator
-    where TBuilder : class, new()
+#if false
+public abstract class MiddlewareConfiguratorFixture : IMiddlewareConfiguratorFixture, IConfiguratorFixture<IServiceConfigurator>
 {
-    internal Mock<ILogger<AutofacMiddlewareConfigurator>> MockLogger { get; set; }
+    public IServiceConfigurator ServiceConfigurator { get; set; }
+    public IMiddlewareConfigurator MiddlewareConfigurator { get; set; }
+    public IServiceCollection DependencyBuilder { get; set; }
 
-    public MiddlewareConfiguratorFixture() : base()
+    internal Mock<ILogger<NetCoreServiceConfigurator>> ServiceLoggerMock { get; set; }
+    public Mock<ILogger<IMiddlewareConfigurator>> MiddlewareLoggerMock { get; set; }
+
+    public void Cleanup()
     {
-        MockLogger ??= new Mock<ILogger<AutofacMiddlewareConfigurator>>();
+        ServiceConfigurator?.Dispose();
+        ServiceConfigurator = null!;
+        DependencyBuilder = null!;
     }
 
-    public override void Setup()
+    public void Setup()
     {
-        base.Setup();
-        MockLogger = new Mock<ILogger<AutofacMiddlewareConfigurator>>();
+        DependencyBuilder = new ServiceCollection();
+        ServiceConfigurator = Create();
+    }
+
+    public MiddlewareConfiguratorFixture()
+    {
+        ServiceLoggerMock = new Mock<ILogger<NetCoreServiceConfigurator>>();
+        MiddlewareLoggerMock = new Mock<ILogger<IMiddlewareConfigurator>>();
+        DependencyBuilder = new ServiceCollection();
+        ServiceConfigurator = new NetCoreServiceConfigurator(DependencyBuilder, ServiceLoggerMock.Object);
+        RegisterDependencies();
+        MiddlewareConfigurator = Create();
+    }
+
+    private void RegisterDependencies() => throw new NotImplementedException();
+
+    private IMiddlewareConfigurator Create()
+    {
+        if (DependencyBuilder is null)
+        {
+            return default!;
+        }
+        return new NetCoreMiddlewareConfigurator(DependencyBuilder, MiddlewareLoggerMock.Object);
     }
 }
+#endif

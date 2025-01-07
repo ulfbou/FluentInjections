@@ -1,9 +1,9 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using Autofac;
 
 using FluentInjections.Internal.Configurators;
+using FluentInjections.Tests.Internal.Services;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,13 +13,14 @@ using Moq;
 
 namespace FluentInjections.Tests.Utility.Fixtures;
 
-public interface IConfiguratorFixture<TConfigurator, TContainer>
+public interface IConfiguratorFixture<TConfigurator, TServices, TProvider>
     where TConfigurator : class, IConfigurator
-    where TContainer : class
+    where TServices : class, IServiceCollection
 {
+    TServices Services { get; set; }
     TConfigurator Configurator { get; set; }
-    TContainer DependencyBuilder { get; set; }
-    Mock<ILogger<TConfigurator>> LoggerMock { get; }
+    TProvider? Provider { get; set; }
+    Mock<ITestService> MockTestService { get; set; }
 
     void Setup();
     void Cleanup();

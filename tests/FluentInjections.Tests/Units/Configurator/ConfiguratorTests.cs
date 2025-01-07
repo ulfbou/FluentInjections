@@ -3,26 +3,30 @@
 using Xunit;
 using FluentInjections.Tests.Utility.Fixtures;
 using Microsoft.Extensions.DependencyInjection;
+using FluentInjections.Tests.Internal.Services;
+using Moq;
 
 namespace FluentInjections.Tests.Units.Configurator;
 
-public abstract class ConfiguratorTests<TConfigurator, TContainer, TFixture>
+public abstract class ConfiguratorTests<TConfigurator, TServices, TProvider, TFixture>
     where TConfigurator : class, IConfigurator
-    where TContainer : class
-    where TFixture : class, IConfiguratorFixture<TConfigurator, TContainer>, new()
+    where TServices : class, IServiceCollection
+    where TProvider : class, IServiceProvider
+    where TFixture : class, IConfiguratorFixture<TConfigurator, TServices, TProvider>, new()
 {
     internal TFixture Fixture { get; set; }
-    internal TContainer DependencyBuilder { get; set; }
-    internal TConfigurator Configurator { get; set; }
-    internal IServiceProvider? Provider { get; set; }
+    internal TServices Services { get; set; }
+    internal abstract TConfigurator Configurator { get; set; }
+    internal abstract TProvider? Provider { get; set; }
+    public Mock<ITestService> MockTestService { get; set; }
 
-    protected ConfiguratorTests()
+    public ConfiguratorTests()
     {
-        Fixture = new TFixture();
-        Fixture.Setup();
-
-        DependencyBuilder = Fixture.DependencyBuilder;
+        Fixture = new();
+        Services = Fixture.Services;
         Configurator = Fixture.Configurator;
+        Provider = Fixture.Provider;
+        MockTestService = Fixture.MockTestService;
     }
 
     [Fact]

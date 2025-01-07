@@ -3,19 +3,16 @@
 
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Utils;
+using FluentInjections.Tests.Utility.Fixtures;
 
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentInjections.Tests.Internal.Utility.Fixtures;
 
 internal class NetCoreServiceConfiguratorFixture :
-    ServiceConfiguratorFixture<NetCoreServiceConfigurator, ServiceCollection>
+    ServiceConfiguratorFixture,
+    IConfiguratorFixture<NetCoreServiceConfigurator, ServiceCollection, NetCoreServiceProvider>
+
 {
     public NetCoreServiceConfiguratorFixture() : base() { }
-
-    protected override NetCoreServiceConfigurator Create()
-    {
-        var logger = LoggerUtility.CreateLogger<NetCoreServiceConfigurator>();
-        return new NetCoreServiceConfigurator(new ServiceCollection(), logger);
-    }
 }

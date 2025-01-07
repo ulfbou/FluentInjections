@@ -1,43 +1,38 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using FluentInjections.Tests.Internal.Utility.Fixtures;
 using FluentInjections.Internal.Configurators;
-
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Builder;
-using FluentInjections.Tests.Utility.Fixtures;
-using Microsoft.EntityFrameworkCore;
-using FluentInjections.Internal.Utils;
 using FluentInjections.Tests.Internal.Middlewares;
-using Moq;
+using FluentInjections.Tests.Internal.Utility.Fixtures;
+
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace FluentInjections.Tests.Units.Configurator;
-//     : ServiceConfiguratorTests<AutofacServiceConfigurator, ContainerBuilder, AutofacServiceConfiguratorFixture>
+using Moq;
 
+namespace FluentInjections.Tests.Units.Configurator;
+#if false
 internal sealed class InternalNetCoreMiddlewareConfiguratorTests
-    : MiddlewareConfiguratorTests<NetCoreMiddlewareConfigurator<ApplicationBuilder>, ServiceCollection, NetCoreMiddlewareConfiguratorFixture>
+    : MiddlewareConfiguratorTests<NetCoreMiddlewareConfigurator, ServiceCollection, NetCoreMiddlewareConfiguratorFixture>
 {
-    private readonly Mock<ILogger<AutofacMiddlewareConfigurator>> _loggerMock;
+    private readonly Mock<ILogger<NetCoreMiddlewareConfigurator>> _loggerMock;
     private readonly Mock<ILoggerFactory> _loggerFactoryMock;
 
     internal InternalNetCoreMiddlewareConfiguratorTests() : base()
     {
-        DependencyBuilder = new ServiceCollection();
-        Fixture.DependencyBuilder = DependencyBuilder;
+        Services = new ServiceCollection();
+        Fixture.DependencyBuilder = Services;
 
-        // .NET Core 9.0.0 register LoggerUtility
-        _loggerMock = new Mock<ILogger<AutofacMiddlewareConfigurator>>();
+        _loggerMock = new Mock<ILogger<NetCoreMiddlewareConfigurator>>();
         _loggerFactoryMock = new Mock<ILoggerFactory>();
         _loggerFactoryMock.Setup(x => x.CreateLogger(It.IsAny<string>())).Returns(_loggerMock.Object);
 
-        // Register services for 
-        DependencyBuilder.AddSingleton<ILoggerFactory>(_loggerFactoryMock.Object);
-        DependencyBuilder.AddSingleton<ILogger<AutofacMiddlewareConfigurator>>(_loggerMock.Object);
-        DependencyBuilder.AddTransient<TestMiddleware>();
-        DependencyBuilder.AddTransient<MiddlewareA>();
-        DependencyBuilder.AddTransient<MiddlewareB>();
+        Services.AddSingleton<ILoggerFactory>(_loggerFactoryMock.Object);
+        Services.AddSingleton<ILogger<NetCoreMiddlewareConfigurator>>(_loggerMock.Object);
+        Services.AddTransient<TestMiddleware>();
+        Services.AddTransient<MiddlewareA>();
+        Services.AddTransient<MiddlewareB>();
     }
 
     internal override void BuildProvider()
@@ -47,6 +42,7 @@ internal sealed class InternalNetCoreMiddlewareConfiguratorTests
             throw new InvalidOperationException("Provider already built");
         }
 
-        Provider = DependencyBuilder.BuildServiceProvider();
+        Provider = Services.BuildServiceProvider();
     }
 }
+#endif

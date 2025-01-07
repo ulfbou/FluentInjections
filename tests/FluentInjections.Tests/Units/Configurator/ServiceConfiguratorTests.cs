@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using FluentAssertions;
+using FluentAssertions.Common;
 
 using FluentInjections.Extensions;
 using FluentInjections.Internal.Configurators;
@@ -20,21 +21,20 @@ using static FluentInjections.Internal.Configurators.ServiceConfigurator;
 
 namespace FluentInjections.Tests.Units.Configurator;
 
-public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixture> : ConfiguratorTests<TConfigurator, TContainer, TFixture>
-    where TConfigurator : class, IServiceConfigurator
-    where TContainer : class
-    where TFixture : class, IServiceConfiguratorFixture<TConfigurator, TContainer>, new()
+public abstract class ServiceConfiguratorTests<TConfigurator, TServices, TProvider, TFixture>
+    : ConfiguratorTests<TConfigurator, TServices, TProvider, TFixture> where TConfigurator : class, IServiceConfigurator
+    where TServices : class, IServiceCollection, new()
+    where TProvider : class, IServiceProvider
+    where TFixture : class, IServiceConfiguratorFixture<TConfigurator, TServices, TProvider>, IConfiguratorFixture<TConfigurator, TServices, TProvider>, new()
 {
-    private readonly Mock<ITestService> _mockService = new();
-
     protected abstract IReadOnlyDictionary<string, object> GetMetadata<TService>(string name) where TService : class;
 
     [Fact]
-    public void Register_WithImplementationType_RegistersType()
+    public void Bind_ServiceType_ToImplementationType_RegistersType()
     {
         // Arrange
         var binding = Configurator.Bind<ITestService>()
-                                  .To<TestService>() as ServiceBinding<ITestService>;
+                                  .To<TestService>() as ServiceBindingBuilder<ITestService>;
 
         // Act
         Configurator.Register();
@@ -47,11 +47,11 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixtu
     }
 
     [Fact]
-    public void Register_WithInstance_RegistersInstance()
+    public void Bind_ServiceType_WithInstance_ResolvesInstanceCorrectly()
     {
         // Arrange
         var binding = Configurator.Bind<ITestService>()
-                                  .WithInstance(_mockService.Object);
+                                  .WithInstance(MockTestService.Object);
 
         // Act
         Configurator.Register();
@@ -60,15 +60,15 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixtu
 
         // Assert
         service.Should().NotBeNull();
-        service.Should().BeSameAs(_mockService.Object);
+        service.Should().BeSameAs(MockTestService.Object);
     }
 
     [Fact]
-    public void Register_WithFactory_RegistersFactory()
+    public void Bind_ServiceType_WithFactory_ResolvesInstanceCorrectly()
     {
         // Arrange
         Configurator.Bind<ITestService>()
-                    .WithFactory(provider => _mockService.Object);
+                    .WithFactory(provider => MockTestService.Object);
 
         // Act
         Configurator.Register();
@@ -77,11 +77,11 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixtu
 
         // Assert
         service.Should().NotBeNull();
-        service.Should().BeSameAs(_mockService.Object);
+        service.Should().BeSameAs(MockTestService.Object);
     }
 
     [Fact]
-    public void Register_WithConfigure_CallsConfigure()
+    public void Bind_ServiceType_WithFactory_CallsConfigure_ResolvesInstanceWithPropertiesCorrectly()
     {
         // Arrange
         var mockService = new Mock<ITestService>();
@@ -102,14 +102,15 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixtu
     }
 
     [Fact]
-    public void Register_WithName_RegistersnameedTestService()
+    public void Bind_ServiceType_WithName_ResolvesNamedImplementationCorrectly()
     {
         // Arrange
-        var binding = Configurator.Bind<ITestService>()
-                                  .To<TestService>()
-                                  .WithName("name")
-                                  as ServiceBinding<ITestService>;
-        var descriptor = binding?.GetDescriptor();
+        Configurator.Bind<ITestService>()
+                    .To<TestService>()
+                    .WithName("name");
+        Configurator.Bind<ITestService>()
+                    .To<AnotherTestService>()
+                    .WithName("another");
 
         // Act
         Configurator.Register();
@@ -122,12 +123,12 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixtu
     }
 
     [Fact]
-    public void Register_WithNameAndFactory_RegistersnameedFactory()
+    public void Bind_ServiceType_WithNameAndFactory_ResolvesNamedInstanceCorrectly()
     {
         // Arrange
         Configurator.Bind<ITestService>()
                     .WithName("name")
-                    .WithFactory(provider => _mockService.Object);
+                    .WithFactory(provider => MockTestService.Object);
 
         // Act
         Configurator.Register();
@@ -136,11 +137,11 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixtu
 
         // Assert
         service.Should().NotBeNull();
-        service.Should().BeSameAs(_mockService.Object);
+        service.Should().BeSameAs(MockTestService.Object);
     }
 
     [Fact]
-    public void Register_WithMetadata_RegistersMetadata()
+    public void Bind_ServiceType_WithMetadata_ResolvesInstanceAndMetadataCorrectly()
     {
         // Arrange
         Configurator.Bind<ITestService>()
@@ -152,14 +153,17 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixtu
         Configurator.Register();
         BuildProvider();
         var service = GetRequiredService<ITestService>();
+        var metadata = GetMetadata<ITestService>(string.Empty);
 
         // Assert
         service.Should().NotBeNull();
         service.Should().BeOfType<TestService>();
+        metadata.Should().ContainKey("param1").And.ContainValue("value1");
+        metadata.Should().ContainKey("param2").And.ContainValue(42);
     }
 
     [Fact]
-    public void Register_MultipleImplementations_ResolvesCorrectly()
+    public void Bind_ServiceType_ToMultipleNamedImplementations_ResolvesCorrectly()
     {
         Configurator.Bind<ITestService>().To<TestService>().WithName("Service1");
         Configurator.Bind<ITestService>().To<AnotherTestService>().WithName("Service2");
@@ -178,7 +182,7 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixtu
     }
 
     [Fact]
-    public void Register_DuplicateRegistrations_UsesLatest()
+    public void Bind_ServiceType_ToDuplicateRegistrations_UsesLatest()
     {
         Configurator.Bind<ITestService>().To<TestService>();
         Configurator.Bind<ITestService>().To<AnotherTestService>();
@@ -193,7 +197,7 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixtu
     }
 
     [Fact]
-    public void Register_ScopedService_ReturnsSameInstanceWithinScope()
+    public void Bind_ServiceType_ScopedService_ReturnsSameInstanceWithinScope()
     {
         Configurator.Bind<ITestService>().To<TestService>().AsScoped();
 
@@ -210,7 +214,7 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixtu
     }
 
     [Fact]
-    public void Register_ScopedService_ReturnsDifferentInstancesWithNewScope()
+    public void Bind_ServiceType_ScopedService_ReturnsDifferentInstancesWithNewScope()
     {
         Configurator.Bind<ITestService>().To<TestService>().AsScoped();
 
@@ -230,7 +234,7 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixtu
     }
 
     [Fact]
-    public void Register_MergeDescriptors_MergesMetadataAndParameters()
+    public void Bind_ServiceType_MergeDescriptors_MergesMetadataAndParameters()
     {
         // Act
         Configurator.Bind<ITestService>()
@@ -259,4 +263,108 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TContainer, TFixtu
         descriptor!.Parameters.Should().ContainKey("param1").And.ContainValue("value1");
         descriptor.Parameters.Should().ContainKey("param2").And.ContainValue("value2");
     }
+
+    [Fact]
+    public void Bind_ServiceType_ToNull_Should_ThrowArgumentNullException()
+    {
+        // Act
+        void action() => Configurator.Bind<ITestService>()
+                                     .To(null!);
+        // Assert
+        Assert.Throws<ArgumentNullException>(action);
+    }
+
+    [Fact]
+    public void Bind_ServiceType_WithFactoryNull_Should_ThrowArgumentNullException()
+    {
+        // Act
+        void action() => Configurator.Bind<ITestService>()
+                                     .WithFactory(null!);
+        // Assert
+        Assert.Throws<ArgumentNullException>(action);
+    }
+
+    [Fact]
+    public void Bind_ServiceType_WithNameNull_Should_ThrowArgumentNullException()
+    {
+        // Act
+        void action() => Configurator.Bind<ITestService>()
+                                     .WithName(null!);
+        // Assert
+        Assert.Throws<ArgumentNullException>(action);
+    }
+
+    [Fact]
+    public void Bind_ServiceType_WithParameterKeyNull_Should_ThrowArgumentNullException()
+    {
+        // Act
+        void action() => Configurator.Bind<ITestService>()
+                                     .WithParameter(null!, "value");
+        // Assert
+        Assert.Throws<ArgumentNullException>(action);
+    }
+
+    [Fact]
+    public void Bind_ServiceType_WithParameterNull_Should_ThrowArgumentNullException()
+    {
+        // Act
+        void action() => Configurator.Bind<ITestService>()
+                                     .WithMetadata(null!, "value");
+        // Assert
+        Assert.Throws<ArgumentNullException>(action);
+    }
+
+    [Fact]
+    public void Bind_ServiceType_WithDuplicateRegistrations_Should_ThrowInvalidOperationException()
+    {
+        // Act
+        Configurator.Bind<ITestService>().To<TestService>();
+        Configurator.Bind<ITestService>().To<TestService>();
+
+        // Assert
+        Assert.Throws<InvalidOperationException>(() => Configurator.Register());
+    }
+
+    [Fact]
+    public void Bind_ServiceType_WithPreventConflictResolution_Should_NotThrowException()
+    {
+        // Act
+        Configurator.Bind<ITestService>().To<TestService>();
+        Configurator.Bind<ITestService>().To<TestService>();
+        Configurator.ConflictResolution = ConflictResolutionMode.Prevent;
+
+        // Assert
+        Assert.Throws<InvalidOperationException>(() => Configurator.Register());
+    }
+
+    [Fact]
+    public void Bind_ServiceType_WithIgnoreConflictResolution_Should_NotThrowException()
+    {
+        // Act
+        Configurator.Bind<ITestService>().To<TestService>();
+        Configurator.Bind<ITestService>().To<TestService>();
+        Configurator.ConflictResolution = ConflictResolutionMode.Ignore;
+
+        // Assert
+        Configurator.Register();
+    }
+
+    [Fact]
+    public void Bind_GenericServiceType_ToGenericType_Should_ResolveCorrectly()
+    {
+        // Act
+        Configurator.Bind(typeof(IGenericService<>)).To(typeof(GenericService<>));
+        Configurator.Register();
+        BuildProvider();
+        var service = GetRequiredService<IGenericService<int>>();
+
+        // Assert
+        service.Should().NotBeNull();
+        service.Should().BeOfType<TestService>();
+    }
+
+    /*
+Consider using a mocking framework to mock the IServiceProvider and verify that the correct methods are called when resolving services.
+    */
+
 }

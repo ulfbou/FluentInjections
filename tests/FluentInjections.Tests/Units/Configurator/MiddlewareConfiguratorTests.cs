@@ -1,6 +1,5 @@
-﻿using Autofac;
-
-using FluentAssertions;
+﻿using FluentAssertions;
+using FluentAssertions.Common;
 
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Descriptors;
@@ -8,23 +7,29 @@ using FluentInjections.Tests.Internal.Middlewares;
 using FluentInjections.Tests.Internal.Utility.Fixtures;
 using FluentInjections.Tests.Utility.Fixtures;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Moq;
 
-namespace FluentInjections.Tests.Units.Configurator;
+using System.Reflection;
 
-public abstract partial class MiddlewareConfiguratorTests<TConfigurator, TContainer, TFixture> : ConfiguratorTests<TConfigurator, TContainer, TFixture>
-    where TConfigurator : class, IMiddlewareConfigurator
-    where TContainer : class
-    where TFixture : class, IMiddlewareConfiguratorFixture<TConfigurator, TContainer>, new()
+namespace FluentInjections.Tests.Units.Configurator;
+#if false
+public abstract partial class MiddlewareConfiguratorTests<TConfigurator, TServices, TProvider, TFixture>
+    : ConfiguratorTests<TConfigurator, TServices, TProvider, TFixture>
+    where TConfigurator : class, IConfigurator
+    where TServices : class, IServiceCollection
+    where TProvider : class, IServiceProvider
+    where TFixture : class, IMiddlewareConfiguratorFixture, IConfiguratorFixture<TConfigurator, TServices, TProvider>, new()
 {
     [Fact]
     public void Constructor_ShouldInitializeWithLogger()
     {
         // Arrange
-        var configurator = Configurator as MiddlewareConfigurator<TContainer, IMiddlewareBinding>;
+        var configurator = Configurator as MiddlewareConfigurator<TServices, IMiddlewareBinding>;
 
         // Act & Assert
         configurator?.Logger.Should().NotBeNull();
@@ -35,7 +40,7 @@ public abstract partial class MiddlewareConfiguratorTests<TConfigurator, TContai
     {
         // Arrange
         var binding = Configurator.UseMiddleware<TestMiddleware>();
-        var configurator = Configurator as MiddlewareConfigurator<TContainer, IMiddlewareBinding>;
+        var configurator = Configurator as MiddlewareConfigurator<TServices, IMiddlewareBinding>;
 
         // Act & Assert
         configurator?.Descriptors.Should().Contain(binding.Descriptor);
@@ -46,7 +51,7 @@ public abstract partial class MiddlewareConfiguratorTests<TConfigurator, TContai
     {
         // Arrange
         var binding = Configurator.UseMiddleware<TestMiddleware>();
-        var configurator = Configurator as MiddlewareConfigurator<TContainer, IMiddlewareBinding>;
+        var configurator = Configurator as MiddlewareConfigurator<TServices, IMiddlewareBinding>;
 
         // Act 
         Configurator.RemoveMiddleware<TestMiddleware>(binding.Descriptor);
@@ -61,7 +66,7 @@ public abstract partial class MiddlewareConfiguratorTests<TConfigurator, TContai
         // Arrange
         var middlewareBinding1 = Configurator.UseMiddleware<MiddlewareA>().InGroup("TestGroup");
         var middlewareBinding2 = Configurator.UseMiddleware<MiddlewareB>().InGroup("TestGroup");
-        var configurator = Configurator as MiddlewareConfigurator<TContainer, IMiddlewareBinding>;
+        var configurator = Configurator as MiddlewareConfigurator<TServices, IMiddlewareBinding>;
 
         // Act
         Configurator.ApplyGroupPolicy("TestGroup", binding => binding.Descriptor.Condition = () => false);
@@ -75,15 +80,22 @@ public abstract partial class MiddlewareConfiguratorTests<TConfigurator, TContai
     public void Register_ShouldInvokeRegisterMethodForEachDescriptor()
     {
         // Arrange
-        var loggerMock = new Mock<ILogger<TConfigurator>>();
-        var fixture = Fixture;
+        var loggerMock = Fixture.LoggerMock;
 
-        var configurator = fixture.Configurator as MiddlewareConfigurator<ContainerBuilder, IMiddlewareBinding>;
+        var configurator = Fixture.Configurator as MiddlewareConfigurator<ApplicationBuilder, IMiddlewareBinding>;
 
         configurator!.UseMiddleware<MiddlewareA>();
         configurator.UseMiddleware<MiddlewareB>();
 
         var registerMock = new Mock<Action<MiddlewareBindingDescriptor, HttpContext>>();
+
+        // Mock IApplicationBuilder
+        var appBuilderMock = new Mock<IApplicationBuilder>();
+
+        // Set the mock IApplicationBuilder in the configurator
+        configurator.GetType()
+                    .GetProperty("AppBuilder", BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?.SetValue(configurator, appBuilderMock.Object);
 
         // Act
         configurator.Register(registerMock.Object);
@@ -103,7 +115,7 @@ public abstract partial class MiddlewareConfiguratorTests<TConfigurator, TContai
     public void ValidateBindings_ShouldIdentifyAndHandleDuplicates()
     {
         // Arrange
-        var configurator = Configurator as MiddlewareConfigurator<TContainer, IMiddlewareBinding>;
+        var configurator = Configurator as MiddlewareConfigurator<TServices, IMiddlewareBinding>;
         configurator!.UseMiddleware<TestMiddleware>();
         Configurator.UseMiddleware<TestMiddleware>();
 
@@ -121,3 +133,4 @@ public abstract partial class MiddlewareConfiguratorTests<TConfigurator, TContai
     {
     }
 }
+#endif

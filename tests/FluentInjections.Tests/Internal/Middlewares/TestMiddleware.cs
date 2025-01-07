@@ -7,14 +7,13 @@ using System.Diagnostics;
 
 namespace FluentInjections.Tests.Internal.Middlewares;
 
-internal class TestMiddlewareBase
+public interface ITestMiddleware
 {
-    protected readonly List<Type> _pipelineOrder;
-
-    public TestMiddlewareBase(List<Type> pipelineOrder)
-    {
-        _pipelineOrder = pipelineOrder;
-    }
+    Task InvokeAsync(HttpContext context, RequestDelegate next);
+}
+internal class TestMiddlewareBase(List<Type> pipelineOrder) : ITestMiddleware
+{
+    protected readonly List<Type> _pipelineOrder = pipelineOrder;
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
