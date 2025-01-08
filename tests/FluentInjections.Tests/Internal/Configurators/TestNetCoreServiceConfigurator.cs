@@ -9,11 +9,15 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentInjections.Tests.Internal.Configurators;
 
-internal sealed class TestNetCoreServiceConfigurator : NetCoreServiceConfigurator, ITestServiceConfigurator
+/// <summary>
+/// Represents a test service configurator that provides methods to configure services within the application.
+/// </summary>
+internal sealed class TestNetCoreServiceConfigurator : NetCoreServiceConfigurator, IServiceConfigurator, ITestServiceConfigurator
 {
-    public TestNetCoreServiceConfigurator(IServiceCollection services, ILogger<NetCoreServiceConfigurator> logger)
+    public TestNetCoreServiceConfigurator(IServiceCollection services, ILogger<TestNetCoreServiceConfigurator> logger)
         : base(services, logger)
     { }
 
+    /// <inheritdoc />
     public IEnumerable<ServiceBindingDescriptor> GetDescriptors() => Descriptors;
 }

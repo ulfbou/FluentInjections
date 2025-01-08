@@ -2,15 +2,35 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using FluentInjections.Internal.Configurators;
+using FluentInjections.Internal.Descriptors;
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace FluentInjections.Tests.Internal.Configurators;
 
-internal sealed class TestNetCoreMiddlewareConfigurator : NetCoreMiddlewareConfigurator
+/// <summary>
+/// Represents a test middleware configurator that provides methods to configure middleware within the application.
+/// </summary>
+internal sealed class TestNetCoreMiddlewareConfigurator : NetCoreMiddlewareConfigurator, IMiddlewareConfigurator, ITestMiddlewareConfigurator
 {
-    public TestNetCoreMiddlewareConfigurator(ApplicationBuilder appBuilder, ILogger<TestNetCoreMiddlewareConfigurator> logger) : base(appBuilder, logger) { }
-    internal void TestValidateBindings() => ValidateBindings();
+    public TestNetCoreMiddlewareConfigurator(
+        ApplicationBuilder appBuilder,
+        ILogger<TestNetCoreMiddlewareConfigurator> logger,
+        MiddlewareBindingDescriptor[]? descriptors = null)
+        : base(appBuilder, logger)
+    {
+        _descriptors.AddRange(descriptors ?? Array.Empty<MiddlewareBindingDescriptor>());
+    }
+
+    /// <inheritdoc />
+    public IEnumerable<MiddlewareBindingDescriptor> GetDescriptors() => OrderBindingDescriptors();
+
+    /// <inheritdoc />
+    public void RegisterWithAction(Action<MiddlewareBindingDescriptor, HttpContext> registerAction)
+    {
+        Register(registerAction);
+    }
 }

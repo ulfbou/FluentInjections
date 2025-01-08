@@ -12,6 +12,9 @@ using Moq;
 
 namespace FluentInjections.Tests.Internal.Utility.Fixtures;
 
+/// <summary>
+/// Represents a service configurator fixture that provides methods to configure services within the application.
+/// </summary>
 internal class ServiceConfiguratorFixture
     : ConfiguratorFixture<TestNetCoreServiceConfigurator, ServiceCollection, NetCoreServiceProvider>
     , IServiceConfiguratorFixture<TestNetCoreServiceConfigurator, ServiceCollection, NetCoreServiceProvider>

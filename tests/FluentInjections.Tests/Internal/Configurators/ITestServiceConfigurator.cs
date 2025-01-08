@@ -5,7 +5,7 @@ using FluentInjections.Internal.Descriptors;
 
 namespace FluentInjections.Tests.Internal.Configurators;
 
-public interface ITestServiceConfigurator : IServiceConfigurator
-{
-    IEnumerable<ServiceBindingDescriptor> GetDescriptors();
-}
+/// <summary>
+/// A marker interface that represents a test service configurator that provides methods to configure components within the application.
+/// </summary>
+public interface ITestServiceConfigurator : IServiceConfigurator, ITestConfigurator<ServiceBindingDescriptor, IServiceBinding> { }
