@@ -2,9 +2,21 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using FluentInjections.Internal.Configurators;
+using FluentInjections.Tests.Internal.Configurators;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+using Moq;
 
 namespace FluentInjections.Tests.Utility.Fixtures;
 
-public interface IMiddlewareConfiguratorFixture : IConfiguratorFixture<IServiceConfigurator, ServiceCollection, NetCoreServiceProvider> { }
+internal interface IMiddlewareConfiguratorFixture : IConfiguratorFixture<TestNetCoreMiddlewareConfigurator, ServiceCollection, NetCoreServiceProvider>
+{
+    IServiceConfigurator ServiceConfigurator { get; set; }
+    ITestMiddlewareConfigurator MiddlewareConfigurator { get; set; }
+    Mock<ILogger<TestNetCoreMiddlewareConfigurator>> MiddlewareLoggerMock { get; set; }
+    Mock<ILoggerFactory> LoggerFactoryMock { get; }
+    ApplicationBuilder AppBuilder { get; set; }
+}

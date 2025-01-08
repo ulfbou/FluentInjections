@@ -13,6 +13,9 @@ using Moq;
 
 namespace FluentInjections.Tests.Units.Configurator;
 
+/// <summary>
+/// Represents a class for testing <see cref="NetCoreServiceconfigurator"/> instances and <see cref="IServiceConfigurator"/> implementations.
+/// </summary>
 internal sealed class InternalNetCoreServiceConfiguratorTests
     : ServiceConfiguratorTests<TestNetCoreServiceConfigurator, ServiceCollection, NetCoreServiceProvider, ServiceConfiguratorFixture>
 {

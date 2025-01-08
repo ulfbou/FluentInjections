@@ -4,6 +4,7 @@
 using FluentAssertions;
 
 using FluentInjections.Internal.Configurators;
+using FluentInjections.Tests.Internal.Configurators;
 using FluentInjections.Tests.Internal.Middlewares;
 using FluentInjections.Tests.Internal.Utility.Fixtures;
 
@@ -15,14 +16,16 @@ using Moq;
 
 namespace FluentInjections.Tests.Units.Configurator;
 
-#if false
+/// <summary>
+/// Represents a test class for the <see cref="NetCoreMiddlewareConfigurator"/> class.
+/// </summary>
 public class NetCoreMiddlewareConfiguratorTests
 {
     private readonly InternalNetCoreMiddlewareConfiguratorTests _internal = new InternalNetCoreMiddlewareConfiguratorTests();
 
     public NetCoreMiddlewareConfiguratorTests()
     {
-        _internal.Configurator = new NetCoreMiddlewareConfigurator(_internal.Fixture.AppBuilder, _internal.Fixture.LoggerMock.Object);
+        _internal.Configurator = new TestNetCoreMiddlewareConfigurator(_internal.Fixture.AppBuilder, _internal.Fixture.LoggerMock.Object);
     }
 
     [Fact]
@@ -72,9 +75,9 @@ public class NetCoreMiddlewareConfiguratorTests
     }
 
     [Fact]
-    public void Register_ShouldInvokeRegisterMethodForEachDescriptor()
+    public async Task Register_ShouldInvokeRegisterMethodForEachDescriptor()
     {
-        _internal.Register_ShouldInvokeRegisterMethodForEachDescriptor();
+        await _internal.Register_ShouldInvokeRegisterMethodForEachDescriptorAsync();
     }
 
     [Fact]
@@ -89,9 +92,32 @@ public class NetCoreMiddlewareConfiguratorTests
     }
 
     [Fact]
-    public void MergeDescriptors_ShouldUpdatePropertiesCorrectly()
+    public void WarnAndReplace_DuplicateRegistrations_Should_LogWarningAndReplace()
     {
-        _internal.MergeDescriptors_ShouldUpdatePropertiesCorrectly();
+        _internal.WarnAndReplace_DuplicateRegistrations_Should_LogWarningAndReplace();
+    }
+
+    [Fact]
+    public void Merge_DuplicateRegistrations_Should_Merge()
+    {
+        _internal.Merge_DuplicateRegistrations_Should_Merge();
+    }
+
+    [Fact]
+    public void Replace_DuplicateRegistrations_Should_Replace()
+    {
+        _internal.Replace_DuplicateRegistrations_Should_Replace();
+    }
+
+    [Fact]
+    public void Prevent_DuplicateRegistrations_Should_ThrowInvalidOperationException()
+    {
+        _internal.Prevent_DuplicateRegistrations_Should_ThrowInvalidOperationException();
+    }
+
+    [Fact]
+    public void Ignore_DuplicateRegistrations_Should_Ignore()
+    {
+        _internal.Ignore_DuplicateRegistrations_Should_Ignore();
     }
 }
-#endif

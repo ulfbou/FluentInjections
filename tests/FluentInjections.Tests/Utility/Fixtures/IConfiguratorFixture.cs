@@ -21,6 +21,14 @@ public interface IConfiguratorFixture<TConfigurator, TServices, TProvider>
     TProvider? Provider { get; set; }
     Mock<ITestService> TestServiceMock { get; set; }
     Mock<ILogger<TConfigurator>> LoggerMock { get; set; }
+
+    /// <summary>
+    /// Sets up the fixture.
+    /// </summary>
     void Setup();
+
+    /// <summary>
+    /// Cleans up the fixture.
+    /// </summary>
     void Cleanup();
 }

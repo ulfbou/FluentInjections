@@ -7,6 +7,9 @@ using FluentInjections.Internal.Configurators;
 
 namespace FluentInjections.Tests.Units.Configurator;
 
+/// <summary>
+/// Represents a test class that contains unit tests for the <see cref="NetCoreServiceConfigurator"/> class.
+/// </summary>
 public sealed class NetCoreServiceConfiguratorTests
 {
     private readonly InternalNetCoreServiceConfiguratorTests _internal = new();

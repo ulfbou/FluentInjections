@@ -25,6 +25,9 @@ using static FluentInjections.Internal.Configurators.ServiceConfigurator;
 
 namespace FluentInjections.Tests.Units.Configurator;
 
+/// <summary>
+/// Represents a test class that contains unit tests for the <see cref="ServiceConfigurator"/> class.
+/// </summary>
 public abstract class ServiceConfiguratorTests<TConfigurator, TServices, TProvider, TFixture>
     : ConfiguratorTests<TConfigurator, TServices, TProvider, TFixture>
     where TConfigurator : class, ITestServiceConfigurator
