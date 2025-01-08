@@ -26,6 +26,13 @@ public interface IMiddlewareBinding<TMiddleware> : IMiddlewareBinding
     IMiddlewareBinding<TMiddleware> WithInstance(object instance);
 
     /// <summary>
+    /// Sets the name of the middleware.
+    /// </summary>
+    /// <param name="name">The name of the middleware.</param>
+    /// <returns>The middleware binding instance.</returns>
+    IMiddlewareBinding<TMiddleware> WithName(string name);
+
+    /// <summary>
     /// Sets the priority of the middleware.
     /// </summary>
     /// <param name="priority">The priority value.</param>

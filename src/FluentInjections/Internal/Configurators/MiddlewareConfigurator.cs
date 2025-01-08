@@ -105,17 +105,25 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
     #region Validation
     protected internal override void ValidateBindings()
     {
-        var duplicates = _descriptors.GroupBy(binding => new { binding.MiddlewareType, binding.Name })
-                                     .Where(group => group.Count() > 1)
-                                     .Select(group => group.Key);
+        foreach (var descriptor in _descriptors)
+        {
+            Debug.WriteLine($"Descriptor: {descriptor.MiddlewareType.Name}, Name: {descriptor.Name}");
+        }
+
+        var groups = _descriptors.GroupBy(binding => new { binding.MiddlewareType, binding.Name });
+        var duplicateGroups = groups.Where(group => group.Count() > 1);
+        var duplicates = duplicateGroups.Select(group => group.Key);
 
         if (duplicates.Any())
         {
             StringBuilder sb = new();
-            sb.AppendLine("Duplicate middleware bindings found:");
-
             foreach (var duplicate in duplicates)
             {
+                if (sb.Length == 0)
+                {
+                    sb.AppendLine("Duplicate middleware bindings found:");
+                }
+
                 var message = $"Duplicate middleware binding for type {duplicate.MiddlewareType.Name}";
 
                 if (duplicate.Name is not null)
@@ -138,6 +146,8 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
                     case ConflictResolutionMode.Merge:
                         _logger.LogWarning(message);
                         MergeBinding(duplicate);
+                        break;
+                    case ConflictResolutionMode.Ignore:
                         break;
                     default:
                         throw new ArgumentOutOfRangeException("Invalid conflict resolution mode.");
@@ -166,8 +176,8 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
     {
         var bindings = _descriptors.Where(binding => binding.MiddlewareType == duplicate.MiddlewareType && binding.Name == duplicate.Name).ToList();
         var primaryBinding = bindings.First();
-
-        foreach (var binding in bindings.Skip(1))
+        var list = bindings.Skip(1);
+        foreach (var binding in list)
         {
             MergeDescriptors(primaryBinding, binding);
             _descriptors.Remove(binding);
@@ -181,12 +191,12 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             existingDescriptor.Instance = newDescriptor.Instance;
         }
 
-        if (newDescriptor.Priority != DefaultValues.Priority)
+        if (newDescriptor.Priority > existingDescriptor.Priority || existingDescriptor.Priority == DefaultValues.Priority)
         {
             existingDescriptor.Priority = newDescriptor.Priority;
         }
 
-        if (newDescriptor.Group is not DefaultValues.Group)
+        if (newDescriptor.Group is not DefaultValues.Group || existingDescriptor.Group is null)
         {
             existingDescriptor.Group = newDescriptor.Group;
         }
@@ -422,18 +432,33 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             {
                 try
                 {
-                    // Handle Timeout
                     if (descriptor.Timeout.HasValue)
                     {
                         var timeoutToken = new CancellationTokenSource(descriptor.Timeout.Value).Token;
                         await Task.Run(async () =>
                         {
-                            await InvokeMiddlewareWithFallbackAndPolicy(descriptor, context, next);
+                            if (register is not null)
+                            {
+                                register(descriptor, context);
+                                await next();
+                            }
+                            else
+                            {
+                                await InvokeMiddlewareWithFallbackAndPolicy(descriptor, context, next);
+                            }
                         }, timeoutToken);
                     }
                     else
                     {
-                        await InvokeMiddlewareWithFallbackAndPolicy(descriptor, context, next);
+                        if (register is not null)
+                        {
+                            register(descriptor, context);
+                            await next();
+                        }
+                        else
+                        {
+                            await InvokeMiddlewareWithFallbackAndPolicy(descriptor, context, next);
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -559,6 +584,15 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             : base(descriptor)
         {
             Instance = instance!;
+        }
+
+        // WithName
+        public IMiddlewareBinding<TMiddleware> WithName(string name)
+        {
+            Guard.NotNullOrWhiteSpace(name, nameof(name));
+            Descriptor.Name = name;
+            Debug.WriteLine($"Named the middleware of type {Descriptor.MiddlewareType.Name} component {name}.");
+            return this;
         }
 
         public IMiddlewareBinding<TMiddleware> DependsOn<TOtherMiddleware>()

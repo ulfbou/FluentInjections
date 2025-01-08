@@ -33,7 +33,6 @@ public interface IMiddlewareConfigurator : IConfigurator<IMiddlewareBinding>
     /// <returns>A binding interface to configure the middleware.</returns>
     IMiddlewareBinding<TMiddleware> UseMiddleware<TMiddleware>() where TMiddleware : class;
 
-
     /// <summary>
     /// Removes a middleware of the specified type.
     /// </summary>

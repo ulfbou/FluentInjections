@@ -30,7 +30,7 @@ internal class NetCoreServiceConfigurator : ServiceConfigurator, IServiceConfigu
         _services.Register(bindingDescriptor);
     }
 
-    internal NetCoreServiceProvider BuildServiceProvider()
+    internal virtual NetCoreServiceProvider BuildServiceProvider()
     {
         var serviceProvider = _services.BuildServiceProvider();
         return new NetCoreServiceProvider(serviceProvider, NetCoreNamedServiceExtensions.NamedServices);

@@ -5,6 +5,8 @@ using FluentInjections.Internal.Constants;
 
 namespace FluentInjections.Internal.Descriptors;
 
+using FluentInjections.Validation;
+
 using Microsoft.AspNetCore.Http;
 
 using System;
@@ -12,6 +14,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
+/// <summary>
+/// Represents a middleware binding descriptor that provides methods to configure middleware within the application.
+/// </summary>
+/// <remarks>
+/// This class is used to specify middleware binding configurations.
+/// </remarks>
 public class MiddlewareBindingDescriptor
 {
     private readonly object _lock = new();
@@ -44,9 +52,14 @@ public class MiddlewareBindingDescriptor
         MiddlewareConfigurator = middlewareConfigurator ?? throw new ArgumentNullException(nameof(middlewareConfigurator));
     }
 
+    /// <summary>
+    /// Adds a dependency to the middleware binding descriptor.
+    /// </summary>
+    /// <param name="dependency">The dependency type to add.</param>
     public MiddlewareBindingDescriptor AddDependency(Type dependency)
     {
-        if (dependency == null) throw new ArgumentNullException(nameof(dependency));
+        Guard.NotNull(dependency, nameof(dependency));
+
         lock (_lock)
         {
             Dependencies.Add(dependency);
@@ -54,29 +67,65 @@ public class MiddlewareBindingDescriptor
         return this;
     }
 
+    /// <summary>
+    /// Adds a preceding middleware to the middleware binding descriptor.
+    /// </summary>
+    /// <param name="precedingMiddleware">The preceding middleware type to add.</param>
+    /// <returns>A reference to this instance after the operation has completed.</returns>
     public MiddlewareBindingDescriptor AddMetadata(string key, object value)
     {
-        if (string.IsNullOrWhiteSpace(key)) throw new ArgumentNullException(nameof(key));
-        if (value == null) throw new ArgumentNullException(nameof(value));
+        Guard.NotNull(key, nameof(key));
+        Guard.NotNull(value, nameof(value));
+
         lock (_lock)
         {
             Metadata[key] = value;
         }
+
         return this;
     }
 
-    public void Validate()
+    /// <summary>
+    /// Adds a succeeding middleware to the middleware binding descriptor.
+    /// </summary>
+    /// <param name="succedingMiddleware">The succeding middleware type to add.</param>
+    /// <returns>A reference to this instance after the operation has completed.</returns>
+    public MiddlewareBindingDescriptor AddPrecedingMiddleware(Type succedingMiddleware)
     {
-        if (MiddlewareType == null) throw new InvalidOperationException("MiddlewareType must be set.");
-        if (Dependencies.Distinct().Count() != Dependencies.Count)
-            throw new InvalidOperationException("Dependencies contain duplicates.");
+        Guard.NotNull(succedingMiddleware, nameof(succedingMiddleware));
+
+        lock (_lock)
+        {
+            PrecedingMiddleware.Add(succedingMiddleware);
+        }
+
+        return this;
     }
 
-    public override bool Equals(object? obj) =>
-        obj is MiddlewareBindingDescriptor other &&
-        MiddlewareType == other.MiddlewareType &&
-        Priority == other.Priority &&
-        Group == other.Group;
+    /// <summary>
+    /// Validates the middleware binding descriptor.
+    /// </summary>
+    public void Validate()
+    {
+        Guard.NotNull(MiddlewareType, nameof(MiddlewareType));
 
+        if (Dependencies.Distinct().Count() != Dependencies.Count)
+        {
+            throw new InvalidOperationException("Dependencies contain duplicates.");
+        }
+    }
+
+    /// <inheritdoc/>
+    public override bool Equals(object? obj)
+    {
+        Guard.NotNull(obj, nameof(obj));
+
+        return obj is MiddlewareBindingDescriptor other &&
+            MiddlewareType == other.MiddlewareType &&
+            Priority == other.Priority &&
+            Group == other.Group;
+    }
+
+    /// <inheritdoc/>
     public override int GetHashCode() => HashCode.Combine(MiddlewareType, Priority, Group);
 }
