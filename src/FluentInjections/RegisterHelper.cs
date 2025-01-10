@@ -11,7 +11,6 @@ internal static class RegisterHelper
     {
         Debug.WriteLine($"Registering module {moduleType.Name} with configurator {typeof(TConfigurator).Name}");
 
-        // Get the correct interface from the moduleType. Search for IConfigurableModule<T>
         var moduleInterface = moduleType.GetInterfaces().FirstOrDefault(i =>
             i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IConfigurableModule<>));
 
@@ -20,11 +19,9 @@ internal static class RegisterHelper
             throw new InvalidOperationException($"Module {moduleType.FullName} does not implement IConfigurableModule<T>.");
         }
 
-        //Get the T from IConfigurableModule<T>
         var moduleConfiguratorType = moduleInterface.GetGenericArguments().First();
 
-        //Check if the ModuleConfigurator is assignable from TConfigurator
-        if (!moduleConfiguratorType.IsAssignableFrom(typeof(TConfigurator))) // Swapped order for correct assignability check
+        if (!moduleConfiguratorType.IsAssignableFrom(typeof(TConfigurator)))
         {
             throw new InvalidOperationException($"Configurator of type {typeof(TConfigurator).FullName} is not compatible with module {moduleType.FullName} which requires {moduleConfiguratorType.FullName}.");
         }
@@ -39,7 +36,6 @@ internal static class RegisterHelper
 
         Debug.WriteLine($"Registering module {moduleType.Name} with configurator {moduleConfiguratorType.Name}");
 
-        // Now invoke the Configure method using the provided configurator instance
-        configureMethod.Invoke(instance, new object[] { configurator }); // Use the provided configurator
+        configureMethod.Invoke(instance, new object[] { configurator });
     }
 }

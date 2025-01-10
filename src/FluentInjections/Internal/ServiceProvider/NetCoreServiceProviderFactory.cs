@@ -2,7 +2,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 
-namespace FluentInjections;
+namespace FluentInjections.Internal.ServiceProvider;
 
 internal sealed class FluentInjectionsServiceProviderFactory : IServiceProviderFactory<IServiceCollection>
 {

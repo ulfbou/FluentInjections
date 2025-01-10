@@ -49,6 +49,12 @@ public sealed class NetCoreServiceConfiguratorTests
     }
 
     [Fact]
+    public void Bind_ServiceType_SingletonService_ReturnsSameInstance()
+    {
+        _internal.Bind_ServiceType_SingletonService_ReturnsSameInstance();
+    }
+
+    [Fact]
     void Register_ScopedService_ReturnsDifferentInstancesWithNewScope()
     {
         _internal.Bind_ServiceType_ScopedService_ReturnsDifferentInstancesWithNewScope();

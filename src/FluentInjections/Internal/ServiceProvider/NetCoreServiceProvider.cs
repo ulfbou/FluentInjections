@@ -7,7 +7,7 @@ using FluentInjections.Validation;
 
 using Microsoft.Extensions.DependencyInjection;
 
-namespace FluentInjections.Internal.Configurators;
+namespace FluentInjections.Internal.ServiceProvider;
 
 public sealed class NetCoreServiceProvider :
     IServiceProvider,

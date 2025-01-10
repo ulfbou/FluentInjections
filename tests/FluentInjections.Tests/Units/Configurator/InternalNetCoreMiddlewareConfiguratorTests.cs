@@ -3,6 +3,7 @@
 
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Descriptors;
+using FluentInjections.Internal.ServiceProvider;
 using FluentInjections.Tests.Internal.Configurators;
 using FluentInjections.Tests.Internal.Middlewares;
 using FluentInjections.Tests.Internal.Utility.Fixtures;

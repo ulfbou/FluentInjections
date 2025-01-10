@@ -205,6 +205,21 @@ public abstract class ServiceConfiguratorTests<TConfigurator, TServices, TProvid
         service.Should().BeOfType<AnotherTestService>();
     }
 
+    // Singleton tests
+    [Fact]
+    public void Bind_ServiceType_SingletonService_ReturnsSameInstance()
+    {
+        // Act
+        Configurator.Bind<ITestService>().To<TestService>().AsSingleton();
+        Configurator.Register();
+        BuildProvider();
+        var service1 = GetRequiredService<ITestService>();
+        var service2 = GetRequiredService<ITestService>();
+
+        // Assert
+        service1.Should().BeSameAs(service2);
+    }
+
     [Fact]
     public void Bind_ServiceType_ScopedService_ReturnsSameInstanceWithinScope()
     {

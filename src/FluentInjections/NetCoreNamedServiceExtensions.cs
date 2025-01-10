@@ -5,6 +5,7 @@ using FluentInjections;
 using FluentInjections.Extensions;
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Descriptors;
+using FluentInjections.Internal.ServiceProvider;
 using FluentInjections.Internal.Utils;
 using FluentInjections.Validation;
 
@@ -76,7 +77,7 @@ public static class NetCoreNamedExtensions
     /// <summary>
     /// Configures the host builder to use FluentInjections as the service provider.
     /// </summary>
-    public static IHostBuilder UseFluentInjectionsServiceProvider(this IHostBuilder hostBuilder)
+    public static ConfigureHostBuilder AddFluentInjectionsServiceProvider(this ConfigureHostBuilder hostBuilder)
     {
         lock (LockObject)
         {
