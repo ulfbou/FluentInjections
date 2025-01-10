@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentInjections.Extensions
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentInjections.Caching", "src\Caching\FluentInjections.Caching.csproj", "{5E583D24-A015-421D-A8F2-FD91E8EC652B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tenants", "src\Tenants\Tenants.csproj", "{FB93F3B3-F320-43FA-8476-BD3D2A1E3F0A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -53,6 +55,10 @@ Global
 		{5E583D24-A015-421D-A8F2-FD91E8EC652B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5E583D24-A015-421D-A8F2-FD91E8EC652B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5E583D24-A015-421D-A8F2-FD91E8EC652B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FB93F3B3-F320-43FA-8476-BD3D2A1E3F0A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB93F3B3-F320-43FA-8476-BD3D2A1E3F0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB93F3B3-F320-43FA-8476-BD3D2A1E3F0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB93F3B3-F320-43FA-8476-BD3D2A1E3F0A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

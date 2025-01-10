@@ -22,6 +22,11 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
         Services = new ServiceCollection();
     }
 
+    internal ServiceConfigurator(IServiceCollection services, ILogger logger) : base(logger)
+    {
+        Services = services ?? throw new ArgumentNullException(nameof(services));
+    }
+
     // TODO: Handle open generic types
     /// <inheritdoc />
     public IServiceBindingBuilder<TService> Bind<TService>() where TService : notnull

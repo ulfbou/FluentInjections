@@ -4,7 +4,6 @@
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Utils;
 
-using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
 using System.Reflection;
@@ -14,11 +13,11 @@ namespace FluentInjections;
 /// <summary>
 /// Represents a module that provides methods to configure middleware with .Net Core. 
 /// </summary>
-internal sealed class FluentInjectionsNetCoreModule : FluentInjectionsModule
+internal sealed class FluentInjectionsNetCoreServiceModule : FluentInjectionsModule
 {
     private readonly IServiceCollection _services;
 
-    public FluentInjectionsNetCoreModule(IServiceCollection services, Assembly[] assemblies) : base(assemblies)
+    public FluentInjectionsNetCoreServiceModule(IServiceCollection services, Assembly[] assemblies) : base(assemblies)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
     }
@@ -33,14 +32,5 @@ internal sealed class FluentInjectionsNetCoreModule : FluentInjectionsModule
         }
 
         serviceConfigurator.Register();
-
-        var middlewareConfigurator = DependencyInjection.MiddlewareConfigurator as NetCoreMiddlewareConfigurator;
-
-        foreach (var assembly in _assemblies)
-        {
-            RegisterModules<IMiddlewareConfigurator, IMiddlewareModule>(assembly, middlewareConfigurator);
-        }
-
-        // Register happens in app.UseFluentInjections
     }
 }

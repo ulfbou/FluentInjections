@@ -18,8 +18,14 @@ internal class NetCoreServiceConfigurator : ServiceConfigurator, IServiceConfigu
 {
     protected readonly IDictionary<string, ServiceDescriptor> _keyedServiceDescriptors = new Dictionary<string, ServiceDescriptor>();
     protected readonly IServiceCollection _services;
+    protected IServiceProvider? _provider;
 
     public override IServiceCollection Services => _services;
+    public IServiceProvider Provider
+    {
+        get => _provider ?? throw new InvalidOperationException("The service provider has not been initialized.");
+        protected set => _provider = value;
+    }
 
     public NetCoreServiceConfigurator(IServiceCollection services, ILogger<NetCoreServiceConfigurator> logger) : base(logger)
     {
@@ -31,10 +37,10 @@ internal class NetCoreServiceConfigurator : ServiceConfigurator, IServiceConfigu
         _services.Register(bindingDescriptor);
     }
 
-    internal virtual NetCoreServiceProvider BuildServiceProvider(IServiceCollection services)
+    internal virtual NetCoreServiceProvider BuildServiceProvider(IServiceCollection? services = null)
     {
-        var innerProvider = services.BuildServiceProvider();
-        return new NetCoreServiceProvider(innerProvider, NetCoreNamedServiceExtensions.NamedServices);
+        var innerProvider = (services ?? _services).BuildServiceProvider();
+        return new NetCoreServiceProvider(innerProvider, NetCoreNamedExtensions.NamedServices);
     }
 
     internal IDictionary<string, ServiceDescriptor> GetKeyedServiceDescriptors() => _keyedServiceDescriptors;

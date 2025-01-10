@@ -1,8 +1,7 @@
-﻿namespace Tenants.Services
+﻿namespace Tenants.Services;
+
+public interface ITenantService
 {
-    internal interface ITenantService
-    {
-        string? GetTenant();
-        void SetTenant(string host);
-    }
+    string? GetTenant();
+    void SetTenant(string host);
 }

@@ -16,7 +16,7 @@ public class TenantMiddleware : IMiddleware
 
     public Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
-        _logger.LogInformation("Tenant middleware invoked.");
+        _logger.LogInformation($"Tenant middleware invoked. Setting Tenant to {context.Request.Host.Host}");
         _tenantService.SetTenant(context.Request.Host.Host);
         return next(context);
     }

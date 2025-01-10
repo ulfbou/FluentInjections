@@ -6,9 +6,6 @@ namespace FluentInjections;
 /// <summary>
 /// Represents a conflict resolution mode that determines how conflicts are resolved when binding components.
 /// </summary>
-/// <remarks>
-/// This enumeration is used to specify how conflicts are resolved when binding components.
-/// </remarks>
 public enum ConflictResolutionMode
 {
     Replace,

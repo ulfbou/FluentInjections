@@ -8,7 +8,6 @@ using FluentInjections.Validation;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using Moq;
@@ -20,11 +19,13 @@ namespace FluentInjections;
 internal static class DependencyInjection
 {
     internal static readonly object LockObject = new object();
-    internal static IServiceCollection Services { get; private set; } = new ServiceCollection();
-    internal static IServiceProvider ServiceProvider { get; private set; }
-    internal static Mock<ILogger> MockLogger { get; private set; }
-    internal static NetCoreServiceConfigurator ServiceConfigurator { get; private set; }
-    internal static NetCoreMiddlewareConfigurator MiddlewareConfigurator { get; private set; }
+    internal static IServiceCollection Services { get; set; } = new ServiceCollection();
+    public static Assembly[] TargetAssemblies { get; set; }
+    internal static IServiceProvider ServiceProvider { get; set; }
+    internal static Mock<ILogger> MockLogger { get; set; }
+    internal static NetCoreServiceConfigurator ServiceConfigurator { get; set; }
+    public static IApplicationBuilder AppBuilder { get; set; }
+    internal static NetCoreMiddlewareConfigurator MiddlewareConfigurator { get; set; }
     internal static IModuleRegistry ModuleRegistry
     {
         get
@@ -38,13 +39,16 @@ internal static class DependencyInjection
         }
     }
 
-    public static FluentInjectionsNetCoreModule Module { get; private set; }
+    public static FluentInjectionsNetCoreServiceModule ServiceModule { get; set; }
+    public static FluentInjectionsNetCoreMiddlewareModule MiddlewareModule { get; set; }
 
     private static bool _initializedDependencies;
     private static bool _initiailizedMiddleware;
     private static IModuleRegistry? _moduleRegistry;
 
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
     static DependencyInjection()
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
     {
         lock (LockObject)
         {
@@ -73,10 +77,10 @@ internal static class DependencyInjection
             }
 
             Services = services;
-            var TargetAssemblies = assemblies?.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
-            Module = new FluentInjectionsNetCoreModule(Services, TargetAssemblies);
+            TargetAssemblies = assemblies?.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
+            ServiceModule = new FluentInjectionsNetCoreServiceModule(Services, TargetAssemblies);
 
-            Module.Load();
+            ServiceModule.Load();
 
             _initializedDependencies = true;
         }
@@ -96,11 +100,15 @@ internal static class DependencyInjection
                 return;
             }
 
+            AppBuilder = builder;
             MiddlewareConfigurator = new NetCoreMiddlewareConfigurator(
                 builder,
                 builder.ApplicationServices,
                 LoggerUtility.CreateLogger<NetCoreMiddlewareConfigurator>(),
                 MiddlewareConfigurator);
+            MiddlewareModule = new FluentInjectionsNetCoreMiddlewareModule(builder, assemblies ?? TargetAssemblies);
+
+            MiddlewareModule.Load();
 
             _initiailizedMiddleware = true;
         }

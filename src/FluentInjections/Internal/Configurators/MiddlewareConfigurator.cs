@@ -21,7 +21,7 @@ namespace FluentInjections.Internal.Configurators;
 
 internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
     : Configurator<TBinding, MiddlewareBindingDescriptor>, IMiddlewareConfigurator, IConfigurator
-    where TDependencyBuilder : class, IApplicationBuilder
+    where TDependencyBuilder : class
     where TBinding : IBinding
 {
     protected ConflictResolutionMode _conflictResolution = ConflictResolutionMode.WarnAndReplace;
@@ -32,7 +32,8 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
     protected readonly List<Type> _registeredMiddlewareTypes = new();
 
     protected IServiceProvider Provider { get; set; }
-    public IApplicationBuilder Application => _dependencyBuilder;
+    public IApplicationBuilder Application => _dependencyBuilder as IApplicationBuilder
+        ?? throw new InvalidOperationException("The dependency builder is not an application builder.");
 
     protected MiddlewareConfigurator(TDependencyBuilder builder, IServiceProvider provider, ILogger logger) : base(logger)
     {
@@ -433,7 +434,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
         {
             _registeredMiddlewareTypes.Add(descriptor.MiddlewareType);
 
-            application.Use(async (HttpContext context, Func<Task> next) =>
+            application.Use(async (HttpContext context, RequestDelegate next) =>
             {
                 try
                 {
@@ -445,7 +446,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
                             if (register is not null)
                             {
                                 register(descriptor, context);
-                                await next();
+                                await next(context);
                             }
                             else
                             {
@@ -458,7 +459,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
                         if (register is not null)
                         {
                             register(descriptor, context);
-                            await next();
+                            await next(context);
                         }
                         else
                         {
@@ -487,7 +488,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
         }
     }
 
-    private async Task InvokeMiddlewareWithFallbackAndPolicy(MiddlewareBindingDescriptor descriptor, HttpContext context, Func<Task> next)
+    private async Task InvokeMiddlewareWithFallbackAndPolicy(MiddlewareBindingDescriptor descriptor, HttpContext context, RequestDelegate next)
     {
         try
         {
@@ -524,7 +525,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
         }
     }
 
-    protected async Task InvokeMiddleware(MiddlewareBindingDescriptor descriptor, HttpContext context, Func<Task> next)
+    protected async Task InvokeMiddleware(MiddlewareBindingDescriptor descriptor, HttpContext context, RequestDelegate next)
     {
         object? middlewareInstance = null;
         MethodInfo? method = null;
@@ -532,8 +533,6 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
 
         try
         {
-            var services = context.RequestServices;
-            Debug.WriteLine($"Request Services type: {services.GetType().FullName}");
             middlewareInstance = context.RequestServices.GetRequiredService(descriptor.MiddlewareType);
             (method, args) = await GetInvokeMethod(middlewareInstance, context, next);
         }
@@ -552,13 +551,13 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
         method?.Invoke(middlewareInstance, args);
     }
 
-    protected async Task InvokeMiddleware(object middleware, HttpContext context, Func<Task> next)
+    protected async Task InvokeMiddleware(object middleware, HttpContext context, RequestDelegate next)
     {
         var (method, args) = await GetInvokeMethod(middleware, context, next);
         method.Invoke(middleware, args);
     }
 
-    protected Task<(MethodInfo, object[])> GetInvokeMethod(object middleware, HttpContext context, Func<Task> next)
+    protected Task<(MethodInfo, object[])> GetInvokeMethod(object middleware, HttpContext context, RequestDelegate next)
     {
         var method = middleware.GetType().GetMethod("InvokeAsync") ?? middleware.GetType().GetMethod("Invoke");
 
@@ -708,8 +707,8 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
 
             Guard.NotNull(middleware, nameof(instance));
 
-            Instance = middleware;
-            Debug.WriteLine($"Set the instance of the middleware component to {middleware.GetType().Name}.");
+            Instance = middleware!;
+            Debug.WriteLine($"Set the instance of the middleware component to {middleware!.GetType().Name}.");
             return this;
         }
 

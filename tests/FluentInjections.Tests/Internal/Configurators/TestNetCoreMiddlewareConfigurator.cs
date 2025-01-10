@@ -20,7 +20,7 @@ internal sealed class TestNetCoreMiddlewareConfigurator : NetCoreMiddlewareConfi
         ApplicationBuilder appBuilder,
         ILogger<TestNetCoreMiddlewareConfigurator> logger,
         MiddlewareBindingDescriptor[]? descriptors = null)
-        : base(appBuilder, logger)
+        : base(appBuilder, appBuilder.ApplicationServices, logger)
     {
         _descriptors.AddRange(descriptors ?? Array.Empty<MiddlewareBindingDescriptor>());
     }

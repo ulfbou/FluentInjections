@@ -25,23 +25,48 @@ To add FluentInjections to your service collection in a .NET 9 application, use 
 
 ```csharp
 using FluentInjections;
-using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
+
+using Microsoft.AspNetCore.Builder;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add FluentInjections to the service collection
-builder.Services.AddFluentInjections<IApplicationBuilder>(Assembly.GetExecutingAssembly());
+builder.Services.AddFluentInjections(typeof(GreetingServiceModule).Assembly);
 
-var app = builder.Build();
+internal class GreetingServiceModule : Module<IServiceConfigurator>
+{
+    public override void Configure(IServiceConfigurator configurator)
+    {
+        configurator.Bind<IGreetingService>()
+                    .To<GreetingService>()
+                    .WithName("GreetingService");
+    }
+}
 
-// Use FluentInjections in the application pipeline
-app.UseFluentInjections(Assembly.GetExecutingAssembly());
+public interface IGreetingService
+{
+    Task<string> WriteGreeting();
+    void SetName(string name);
+    void SetAge(int age);
+}
 
-app.MapGet("/", () => "Hello World!");
+internal class GreetingService : IGreetingService
+{
+    private string? _name;
+    private int _age;
 
-app.Run();
+    public void SetAge(int age) => _age = age;
+    public void SetName(string name) => _name = name;
+
+    public Task<string> WriteGreeting()
+    {
+        var name = _name!;
+        var age = _age;
+        return Task.FromResult($"Hello, {name}! You are almost {age} billion years old.");
+    }
+}
 ```
+
+This example demonstrates how to use FluentInjections to register a service module (`GreetingServiceModule`) that binds an `IGreetingService` interface to a `GreetingService` implementation with the specific name "GreetingService". The `GreetingService` class provides methods to set the name and age of the person to greet and generate a greeting message.
 
 ### Using FluentInjections in the Application Pipeline
 
@@ -49,19 +74,53 @@ To use FluentInjections in your application pipeline, call the `UseFluentInjecti
 
 ```csharp
 using FluentInjections;
+
 using Microsoft.AspNetCore.Builder;
-using System.Reflection;
+using Microsoft.AspNetCore.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
+/* Register services as shown in the previous example */
+
 var app = builder.Build();
 
-// Use FluentInjections in the application pipeline
-app.UseFluentInjections(Assembly.GetExecutingAssembly());
+app.UseFluentInjections(typeof(GreetingMiddlewareModule).Assembly);
 
-app.MapGet("/", () => "Hello World!");
+app.MapGet("/greet", async (context) =>
+{
+    var greetingService = app.Services.GetNamedRequiredService<IGreetingService>("GreetingService");
+    var greeting = await greetingService.WriteGreeting();
+    await context.Response.WriteAsync(greeting);
+});
 
 app.Run();
+
+/* Define the GreetingServiceModule, IGreetingService and GreetingService as shown in the previous example */
+
+internal class GreetingMiddlewareModule : Module<IMiddlewareConfigurator>
+{
+    public override void Configure(IMiddlewareConfigurator configurator)
+    {
+        configurator.UseMiddleware<GreetingMiddleware>();
+    }
+}
+
+internal class GreetingMiddleware : IMiddleware
+{
+    private readonly IGreetingService _service;
+
+    public GreetingMiddleware(IGreetingService service)
+    {
+        _service = service;
+    }
+
+    public async Task InvokeAsync(HttpContext context, RequestDelegate next)
+    {
+        _service.SetName("World");
+        _service.SetAge(14);
+        await next(context);
+    }
+}
 ```
 
 ### Example: Complex Injections with Fluent API
@@ -74,18 +133,18 @@ Create a new class `MyServiceModule.cs` to define a service module:
 
 ```csharp
 using FluentInjections;
-using Microsoft.Extensions.DependencyInjection;
 
-public class MyServiceModule : IServiceModule
+using Microsoft.AspNetCore.Http;
+
+public class MyServiceModule : Module<IServiceConfigurator>
 {
-    public void ConfigureServices(IServiceConfigurator serviceConfigurator)
+    public override void Configure(IServiceConfigurator configurator)
     {
-        serviceConfigurator.Bind<IMyService>()
-            .To<MyService>()
-            .AsSingleton()
-            .WithParameters(new { Param1 = "value1", Param2 = 42 })
-            .Configure(service => service.Initialize())
-            .Register();
+        configurator.Bind<IMyService>()
+                    .To<MyService>()
+                    .Configure(service => service.Initialize())
+                    .AsSingleton()
+                    .WithParameters(new { Param1 = "value1", Param2 = 42 });
     }
 }
 
@@ -106,15 +165,8 @@ public class MyService : IMyService
         _param2 = param2;
     }
 
-    public void DoSomething()
-    {
-        // Implementation
-    }
-
-    public void Initialize()
-    {
-        // Initialization logic
-    }
+    public void DoSomething() {/* Implementation */ }
+    public void Initialize() {/* Implementation */ }
 }
 ```
 
@@ -124,40 +176,96 @@ Create a new class `MyMiddlewareModule.cs` to define a middleware module:
 
 ```csharp
 using FluentInjections;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using System.Threading.Tasks;
 
-public class MyMiddlewareModule : IMiddlewareModule<IApplicationBuilder>
+using Microsoft.AspNetCore.Http;
+
+public class MyMiddlewareModule : Module<IMiddlewareConfigurator>
 {
-    public void ConfigureMiddleware(IMiddlewareConfigurator<IApplicationBuilder> middlewareConfigurator)
+    public override void Configure(IMiddlewareConfigurator middlewareConfigurator)
     {
         middlewareConfigurator.UseMiddleware<MyMiddleware>()
-            .WithPriority(1)
-            .WithExecutionPolicy(policy => policy.RetryCount = 3)
-            .WithMetadata(new { Description = "Sample Middleware" })
-            .InGroup("Group1")
-            .When(() => DateTime.Now.DayOfWeek == DayOfWeek.Monday)
-            .Register();
+                              .WithPriority(1)
+                              .WithExecutionPolicy<IRetryPolicy>(policy => policy.RetryCount = 3)
+                              .WithMetadata("Description", "Sample Middleware")
+                              .InGroup("Group1")
+                              .When(() => DateTime.Now.DayOfWeek == DayOfWeek.Monday);
+        middlewareConfigurator.Register();
     }
+}
+
+public interface IRetryPolicy : IExecutionPolicy
+{
+    int RetryCount { get; set; }
 }
 
 public class MyMiddleware
 {
     private readonly RequestDelegate _next;
+    private readonly IRetryPolicy _policy;
 
-    public MyMiddleware(RequestDelegate next)
+    public MyMiddleware(RequestDelegate next, IRetryPolicy policy)
     {
         _next = next;
+        _policy = policy;
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
-        // Middleware logic
+        /* Middleware logic */
         await _next(context);
     }
 }
 ```
+
+#### Code Breakdown
+
+The provided code showcases two separate modules responsible for registering a custom middleware (`MyMiddleware`) and configuring its behavior:
+
+##### 1. MyServiceModule
+
+**Purpose:** Binds `MyMiddleware` to the `IHttpContextAccessor` service within the dependency injection container.
+
+**Explanation:**
+- `using FluentInjections;` imports the FluentInjections library.
+- `using Microsoft.AspNetCore.Http;` provides access to the `IHttpContextAccessor` service.
+- `public class MyServiceModule : Module<IServiceConfigurator>` inherits from the `Module<IServiceConfigurator>` class, defining a configuration module for services.
+- `public override void Configure(IServiceConfigurator serviceConfigurator)` overrides the main configuration method.
+- `serviceConfigurator.Bind<MyMiddleware>()` binds `MyMiddleware` to the `IHttpContextAccessor` service.
+- `.AsSingleton()` sets the lifetime of the middleware instance to singleton, meaning a single instance will be shared across the application.
+- `serviceConfigurator.Register();` registers the service configuration with the dependency injection container.
+
+##### 2. MyMiddlewareModule
+
+**Purpose:** Configures the behavior of `MyMiddleware` during the ASP.NET Core pipeline.
+
+**Explanation:**
+- `public class MyMiddlewareModule : Module<IMiddlewareConfigurator>` inherits from the `Module<IMiddlewareConfigurator>` class, defining a configuration module for middleware.
+- `public override void Configure(IMiddlewareConfigurator middlewareConfigurator)` overrides the main configuration method.
+- `middlewareConfigurator.UseMiddleware<MyMiddleware>()` specifies the middleware to be registered.
+- `.WithPriority(1)` sets the execution priority of the middleware within the pipeline (lower numbers execute first).
+- `.WithExecutionPolicy<IRetryPolicy>(policy => policy.RetryCount = 3)` configures a retry policy for the middleware. This example sets the retry count to 3 for failed requests.
+- `.WithMetadata("Description", "Sample Middleware")` adds a description metadata to the middleware.
+- `.InGroup("Group1")` assigns the middleware to a specific group (optional for future organization).
+- `.When(() => DateTime.Now.DayOfWeek == DayOfWeek.Monday)` conditions the middleware execution only on Mondays.
+
+##### MyMiddleware Class
+
+**Purpose:** Processes HTTP requests and can leverage the injected `IHttpContextAccessor` for access to request/response context.
+
+**Explanation:**
+- `public interface IRetryPolicy : IExecutionPolicy` defines a basic interface for a retry policy (implementation not shown here).
+- `public class MyMiddleware` represents the custom middleware.
+- `private readonly RequestDelegate _next;` injects the next delegate in the middleware pipeline.
+- `private readonly IRetryPolicy _policy;` injects the configured retry policy (optional, depends on your use case).
+- `public MyMiddleware(RequestDelegate next, IRetryPolicy policy)` constructs the middleware with dependencies.
+- `public async Task InvokeAsync(HttpContext context)` defines the asynchronous method that executes the middleware logic.
+- `await _next(context);` calls the next delegate in the pipeline, allowing processing to continue.
+
+##### Additional Notes
+
+- The actual implementation of the retry logic would likely involve retrying the request within `InvokeAsync` based on the configured retry policy.
+- Consider implementing additional middleware behavior specific to your application's needs.
+- FluentInjections provides more features for dependency injection configuration. Refer to the library's documentation for details.
 
 ### Full Range of Configurators and Binding Interfaces
 
@@ -165,45 +273,60 @@ public class MyMiddleware
 
 The `ServiceConfigurator` provides various methods to bind services with different configurations:
 
-- `Bind<TService>().To<TImplementation>()`: Binds a service to an implementation.
-- `Bind<TService>().To(Type implementationType)`: Binds a service to an implementation type.
-- `Bind<TService>().AsSelf()`: Binds a service as itself. 
-- `AsSingleton()`, `AsScoped()`, `AsTransient()`: Sets the service lifetime.
-- `WithLifetime(ServiceLifetime)`: Sets a custom service lifetime.
-- `WithInstance(TService)`: Binds a service to a specific singleton instance.
-- `WithFactory(Func<IServiceProvider, TService>)`: Binds a service using a factory.
-- `WithParameters(object)`: Binds a service with specific parameters.
-- `WithParameters(IReadOnlyDictionary<string, object> parameters)`: Binds a service with specific, named parameters.
-- `WithName(string)`: Binds a service with a name.
-- `Configure(Action<TService>)`: Configures the service after creation.
-- `ConfigureOptions<TOptions>(Action<TOptions>)`: Configures options for the service.
-- `ConfigureOptions<TOptions>(Action<TService, TOptions> configure)`: Configures the service with options after creation. 
-- `Register()`: Registers the service to the container. 
+- `Bind(Type serviceType)`: Binds a service to an implementation.
+- `Bind<TService>()`: Binds a service to an implementation with type safe inference.
+
+By using Bind(Type serviceType), you can bind a service to an implementation with the following methods:
+
+- `To(Type implementationType)`: Binds a service to an implementation.
+- `AsSelf()`: Binds a service as itself. Must be a concrete type.
+- `AsSingleton()`, `AsScoped()`, `AsTransient()`: Sets the service lifetime. 
+- `WithLifetime(ServiceLifetime lifetime)`: Sets a custom service lifetime.
+- `WithFactory(Func<IServiceProvider, object> factory)`: Binds a service using a factory.
+- `WithName(string name)`: Binds a service with a name.
+- `WithParameter(string key, object? value)`: Binds a service implementation type with a specific parameter.
+- `WithParameters(object parameters)`: Binds a service implementation type with specific parameters.
+- `WithParameters(IReadOnlyDictionary<string, object?> parameters)`: Binds a service implementation type with specific, named parameters.
+- `WithInstance(object instance)`: Binds a service to a specific singleton instance.
+- `WithMetadata(string name, object? value)`: Attaches metadata to the service, which can be used for additional configuration. Use `GetMetadata` in `IServiceProvider`.
+- `Configure(Action<object> configure)`: Configures the service after creation.
+
+By using Bind<TService>(), you can also bind a service to an implementation with the following methods:
+
+- `To<TImplementation>() where TImplementation : class, TService`: Binds a service to an type safe implementation.
+- `WithFactory(Func<IServiceProvider, TService> factory)`: Binds a service using a factory.
+- `WithInstance(TService instance)`: Binds a service to a specific singleton instance of type TService.
+- `Configure(Action<TService> configure)`: Configures a type safe service after creation with a lambda expression.
 
 #### MiddlewareConfigurator
 
-The `MiddlewareConfigurator` provides methods to configure middleware with various options:
+The `MiddlewareConfigurator` provides methods to configure middleware with various options. It has the following methods:
 
-- `UseMiddleware<TMiddleware>()`: Registers middleware.
-- `WithPriority(int)`, `WithPriority(Func<int>)`: Sets the middleware priority.
-- `WithExecutionPolicy<T>(Action<T>)`: Sets the execution policy for the middleware.
-- `WithMetadata<TMetadata>(TMetadata)`: Attaches metadata to the middleware.
-- `WithFallback(Func<TMiddleware, Task>)`: Sets a fallback for the middleware.
-- `WithOptions<TOptions>(TOptions)`: Sets options for the middleware.
-- `WithTag(string)`: Tags the middleware.
-- `When(Func<bool>)`, `When<TContext>(Func<TContext, bool>)`: Sets a condition for the middleware.
-- `InGroup(string)`: Groups middleware together.
-- `DependsOn<TOtherMiddleware>()`, `Precedes<TPrecedingMiddleware>()`, `Follows<TFollowingMiddleware>()`: Sets dependencies for the middleware.
-- `Disable()`, `Enable()`: Enables or disables the middleware.
-- `RequireEnvironment(string)`: Sets the required environment for the middleware.
-- `WithTimeout(TimeSpan)`: Sets a timeout for the middleware.
-- `OnError(Func<Exception, Task>)`: Sets an error handler for the middleware.
+- `UseMiddleware(Type middlewareType)`: Registers middleware.
+- `UseMiddleware<TMiddleware>()`: Registers middleware
 
-## Best Practices
+By using `UseMiddleware(Type middlewareType)` or `UseMiddleware<TMiddleware>()`, you can register middleware with the following methods:
 
-- **Assembly Scanning**: Ensure that all necessary assemblies are included in the scanning process to avoid missing any service or middleware modules.
-- **Parameter Injection**: Use the `WithParameters` method to inject parameters into services as needed.
-- **Modular Design**: Organize your services and middleware into modules to maintain a clean and maintainable codebase.
+- `Instance { get; }`: Gets the middleware instance.
+- `WithInstance(object instance)`: Sets the middleware instance.
+- `WithName(string name)`: Sets the middleware name.
+- `WithPriority(int priority)`: Sets the middleware priority.
+- `WithPriority(Func<int> priority)`: Sets the middleware priority using a function.
+- `WithPriority<TContext>(Func<TContext, int> priority)`: Sets the middleware priority using a function with context.
+- `WithExecutionPolicy<TPolicy>(Action<TPolicy> value) where TPolicy : class`: Sets the execution policy for the middleware.
+- `WithExecutionPolicy<TPolicy>(TPolicy policy) where TPolicy : class`: Sets the execution policy for the middleware.
+- `WithMetadata(string name, object value)`: Attaches metadata to the middleware.
+- `WithFallback(Func<object, Task> fallback)`: Sets a fallback for the middleware.
+- `WithOptions<TOptions>(TOptions options) where TOptions : class`: Sets options for the middleware.
+- `WithTag(string tag)`: Tags the middleware.
+- `When(Func<bool> func)`: Sets a condition for the middleware.
+- `When<TContext>(Func<TContext, bool> func)`: Sets a condition for the middleware.
+- `InGroup(string group)`: Groups middleware together.
+- `DependsOn<TOtherMiddleware>()`: Sets dependencies for the middleware.
+- `Precedes<TPrecedingMiddleware>()`: Sets dependencies for the middleware.
+- `Follows<TFollowingMiddleware>()`: Sets dependencies for the middleware.
+- `WithTimeout(TimeSpan timeout)`: Sets a timeout for the middleware.
+- `OnError(Func<Exception, Task> errorHandler)`: Sets an error handler for the middleware.
 
 ## Contributing
 

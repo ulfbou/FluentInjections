@@ -87,6 +87,7 @@ public sealed class NetCoreServiceProvider :
 
             foreach (var descriptor in _provider.GetServices<ServiceDescriptor>())
             {
+                if (descriptor.ImplementationType is null) continue;
                 if (descriptor.ServiceType.IsGenericTypeDefinition && descriptor.ServiceType == genericTypeDefinition)
                 {
                     if (descriptor.ImplementationType.TryMakeGenericType(genericArguments, out var closedType))

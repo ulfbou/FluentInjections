@@ -3,19 +3,36 @@
 
 using FluentInjections;
 using FluentInjections.Extensions;
+using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Descriptors;
+using FluentInjections.Internal.Utils;
 using FluentInjections.Validation;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
+using System.Diagnostics;
 using System.Reflection;
 
 namespace FluentInjections;
 
-public static class NetCoreNamedServiceExtensions
+public static class NetCoreNamedExtensions
 {
+    internal static object LockObject = new();
+    internal static readonly Dictionary<string, Dictionary<Type, ServiceBindingDescriptor>> NamedServices = new();
+    internal static readonly Dictionary<Type, ServiceBindingDescriptor> UnnamedServices = new();
+
+    internal static IServiceCollection? Services { get; set; }
+    internal static Assembly[]? TargetAssemblies { get; set; }
+    internal static NetCoreServiceConfigurator? ServiceConfigurator { get; set; }
+    internal static NetCoreMiddlewareConfigurator? MiddlewareConfigurator { get; set; }
+    internal static IApplicationBuilder? AppBuilder { get; set; }
+    internal static NetCoreServiceProvider? ServiceProvider { get; set; }
+    public static IHostBuilder? Host { get; set; }
+
+    #region Module Discovery
     /// <summary>
     /// Adds FluentInjections to the service collection by scanning the specified assemblies for <see cref="IModule{IServiceConfigurator}"/> implementations.
     /// </summary>
@@ -25,31 +42,153 @@ public static class NetCoreNamedServiceExtensions
     /// <exception cref="InvalidOperationException">Thrown if FluentInjections has already been initialized.</exception>
     public static IServiceCollection AddFluentInjections(this IServiceCollection services, params Assembly[]? assemblies)
     {
-        DependencyInjection.AddFluentInjections(services, assemblies);
-        return services;
+        lock (LockObject)
+        {
+            if (Services is not null)
+            {
+                Debug.WriteLine("FluentInjections has already been configured.");
+                return services;
+            }
+
+            Debug.WriteLine("Configuring FluentInjections services.");
+
+            Services = services;
+            TargetAssemblies = assemblies?.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
+            var logger = LoggerUtility.CreateLogger<NetCoreServiceConfigurator>();
+            ServiceConfigurator = new NetCoreServiceConfigurator(services, logger);
+
+
+            var modules = GetModules<IServiceConfigurator>(TargetAssemblies);
+            var count = modules.Count();
+
+            // Register service modules with PLINQ
+            foreach (var module in modules)
+            {
+                RegisterHelper.RegisterModule<IServiceConfigurator>(module.Module, typeof(IServiceModule), ServiceConfigurator);
+            }
+
+            ServiceConfigurator.Register();
+
+            return services;
+        }
     }
 
     /// <summary>
-    /// Adds FluentInjections to the service collection by scanning the specified assemblies for <see cref="IModule{IServiceConfigurator}"/> implementations.
+    /// Configures the host builder to use FluentInjections as the service provider.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="assemblies">Assemblies to scan for FluentInjections.</param>
-    /// <returns>The service collection.</returns>
-    /// <exception cref="InvalidOperationException">Thrown if FluentInjections has already been initialized.</exception>
+    public static IHostBuilder UseFluentInjectionsServiceProvider(this IHostBuilder hostBuilder)
+    {
+        lock (LockObject)
+        {
+            if (ServiceConfigurator is not null)
+            {
+                hostBuilder.ConfigureServices((context, services) =>
+                    {
+                        services.AddSingleton<NetCoreServiceConfigurator>(ServiceConfigurator);
+                    });
+            }
 
+            hostBuilder.UseServiceProviderFactory(new FluentInjectionsServiceProviderFactory());
+
+            return hostBuilder;
+        }
+    }
+
+    public static WebApplicationBuilder AddFluentInjections(this WebApplicationBuilder builder, params Assembly[]? assemblies)
+    {
+        lock (LockObject)
+        {
+            if (ServiceConfigurator is null)
+            {
+                throw new InvalidOperationException("FluentInjections has not been configured. Ensure that AddFluentInjections has been called before calling UseFluentInjections.");
+            }
+
+            Debug.WriteLine("Configuring FluentInjections services.");
+
+            Services = builder.Services;
+            TargetAssemblies = assemblies?.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
+            var logger = LoggerUtility.CreateLogger<NetCoreServiceConfigurator>();
+            ServiceConfigurator = new NetCoreServiceConfigurator(builder.Services, logger);
+            var modules = GetModules<IServiceConfigurator>(TargetAssemblies);
+
+            // Register service modules with PLINQ
+            foreach (var module in modules)
+            {
+                RegisterHelper.RegisterModule<IServiceConfigurator>(module.Module, typeof(IServiceModule), ServiceConfigurator);
+            }
+
+            ServiceConfigurator.Register();
+
+            Host = builder.Host;
+
+            Host.UseServiceProviderFactory(new FluentInjectionsServiceProviderFactory());
+
+            return builder;
+        }
+    }
 
     /// <summary>
     /// Adds FluentInjections to the service collection by scanning the specified assemblies for <see cref="IModule{IMiddlewareConfigurator}"/> implementations.
+    /// </summary>
+    /// <param name="application">The application builder.</param>
     public static IApplicationBuilder UseFluentInjections(this IApplicationBuilder app, params Assembly[]? assemblies)
     {
-        DependencyInjection.UseFluentInjections(app, assemblies);
-        return app;
+        lock (LockObject)
+        {
+            if (ServiceConfigurator is null)
+            {
+                throw new InvalidOperationException("FluentInjections has not been configured. Ensure that AddFluentInjections has been called before calling UseFluentInjections.");
+            }
+
+            Debug.WriteLine("Configuring FluentInjections middleware");
+
+            AppBuilder = app;
+            TargetAssemblies = assemblies?.Length > 0 ? assemblies : TargetAssemblies ?? AppDomain.CurrentDomain.GetAssemblies();
+            ServiceProvider = ServiceConfigurator.BuildServiceProvider(Services);
+            app.ApplicationServices = ServiceProvider;
+            MiddlewareConfigurator = new NetCoreMiddlewareConfigurator(app, ServiceProvider, LoggerUtility.CreateLogger<NetCoreMiddlewareConfigurator>());
+
+            // Register middleware modules with PLINQ
+            var modules = GetModules<IMiddlewareConfigurator>(TargetAssemblies);
+
+            foreach (var module in modules)
+            {
+                RegisterHelper.RegisterModule<IMiddlewareConfigurator>(module.Module, typeof(IMiddlewareModule), MiddlewareConfigurator);
+            }
+
+            MiddlewareConfigurator.Register();
+
+            return app;
+        }
     }
 
-    #region Register
-    internal static readonly Dictionary<string, Dictionary<Type, ServiceBindingDescriptor>> NamedServices = new();
-    internal static readonly Dictionary<Type, ServiceBindingDescriptor> UnnamedServices = new();
+    private static IEnumerable<ModuleType> GetModules<TConfigurator>(Assembly[] targetAssemblies)
+        where TConfigurator : class, IConfigurator
+    {
+        return targetAssemblies.SelectMany(a => a.GetTypes().Where(t => !t.IsAbstract && !t.IsInterface && t.IsPublic))
+            .Where(t => t.GetInterfaces().Any(i =>
+                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IConfigurableModule<>) &&
+                i.GetGenericArguments()[0] == typeof(TConfigurator)))
+            .Select(t =>
+            {
+                var matchingInterface = t.GetInterfaces().FirstOrDefault(i =>
+                    i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IConfigurableModule<>) &&
+                    i.GetGenericArguments()[0] == typeof(TConfigurator));
 
+                if (matchingInterface == null)
+                {
+                    // Log a warning or throw a more specific exception if this is unexpected.
+                    // For now, we'll just skip this type.
+                    Debug.WriteLine($"Warning: Type {t.FullName} implements IConfigurableModule but not with the expected TConfigurator type.");
+                    throw new InvalidOperationException($"Module {t.FullName} does not implement IModule<{typeof(TConfigurator).FullName}>.");
+                }
+
+                return new ModuleType(t, matchingInterface);
+            });
+    }
+    #endregion
+
+    #region Register
     // Register service binding descriptor
     internal static void Register(this IServiceCollection services, ServiceBindingDescriptor descriptor)
     {
@@ -95,30 +234,27 @@ public static class NetCoreNamedServiceExtensions
                 return service;
             }, descriptor.Lifetime));
         }
-        else if (descriptor.ImplementationType is not null)
+        else if (descriptor.ImplementationType is null)
         {
-            if (descriptor.Parameters.Any())
+            throw new InvalidOperationException("ServiceBindingDescriptor must have an Instance, Factory, or ImplementationType defined.");
+        }
+        else if (descriptor.Parameters is null || descriptor.Parameters.Count == 0)
+        {
+            if (descriptor.BindingType != descriptor.ImplementationType && !services.Any(sd => sd.ServiceType == descriptor.BindingType))
             {
-                services.Add(new ServiceDescriptor(descriptor.BindingType, provider =>
-                {
-                    var service = ActivatorUtilities.CreateInstance(provider, descriptor.ImplementationType, descriptor.Parameters.Values.ToArray());
-                    descriptor.Configure?.Invoke(service);
-                    return service;
-                }, descriptor.Lifetime));
+                services.Add(new ServiceDescriptor(descriptor.BindingType, descriptor.ImplementationType!, descriptor.Lifetime));
             }
-            else
-            {
-                if (descriptor.BindingType != descriptor.ImplementationType && !services.Any(sd => sd.ServiceType == descriptor.BindingType))
-                {
-                    services.Add(new ServiceDescriptor(descriptor.BindingType, descriptor.ImplementationType, descriptor.Lifetime));
-                }
 
-                services.Add(new ServiceDescriptor(descriptor.ImplementationType, descriptor.ImplementationType, descriptor.Lifetime));
-            }
+            services.Add(new ServiceDescriptor(descriptor.ImplementationType, descriptor.ImplementationType, descriptor.Lifetime));
         }
         else
         {
-            throw new InvalidOperationException("ServiceBindingDescriptor must have an Instance, Factory, or ImplementationType defined.");
+            services.Add(new ServiceDescriptor(descriptor.BindingType, provider =>
+            {
+                var service = ActivatorUtilities.CreateInstance(provider, descriptor.ImplementationType, descriptor.Parameters.Values.ToArray().Where(p => p is not null));
+                descriptor.Configure?.Invoke(service);
+                return service;
+            }, descriptor.Lifetime));
         }
     }
     #endregion
