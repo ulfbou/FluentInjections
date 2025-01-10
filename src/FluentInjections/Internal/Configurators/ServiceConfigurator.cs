@@ -1,8 +1,6 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using Autofac.Core;
-
 using FluentInjections.Extensions;
 using FluentInjections.Internal.Descriptors;
 using FluentInjections.Internal.Utils;
@@ -18,7 +16,11 @@ namespace FluentInjections.Internal.Configurators;
 
 internal abstract class ServiceConfigurator : Configurator<IServiceBinding, ServiceBindingDescriptor>, IServiceConfigurator
 {
-    internal ServiceConfigurator(ILogger logger) : base(logger) { }
+    public virtual IServiceCollection Services { get; }
+    internal ServiceConfigurator(ILogger logger) : base(logger)
+    {
+        Services = new ServiceCollection();
+    }
 
     // TODO: Handle open generic types
     /// <inheritdoc />
@@ -443,6 +445,7 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
         }
 
         internal ServiceBindingDescriptor GetDescriptor() => (_descriptor as ServiceBindingDescriptor)!;
+        public IServiceBindingBuilder Configure<TService>(Action<TService> configure) => throw new NotImplementedException();
     }
 
     internal class ServiceBindingBuilder<TService> : ServiceBindingBuilder, IServiceBindingBuilder<TService> where TService : notnull

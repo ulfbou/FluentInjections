@@ -8,11 +8,45 @@ using FluentInjections.Validation;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+using System.Reflection;
 
 namespace FluentInjections;
 
 public static class NetCoreNamedServiceExtensions
 {
+    /// <summary>
+    /// Adds FluentInjections to the service collection by scanning the specified assemblies for <see cref="IModule{IServiceConfigurator}"/> implementations.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="assemblies">Assemblies to scan for FluentInjections.</param>
+    /// <returns>The service collection.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if FluentInjections has already been initialized.</exception>
+    public static IServiceCollection AddFluentInjections(this IServiceCollection services, params Assembly[]? assemblies)
+    {
+        DependencyInjection.AddFluentInjections(services, assemblies);
+        return services;
+    }
+
+    /// <summary>
+    /// Adds FluentInjections to the service collection by scanning the specified assemblies for <see cref="IModule{IServiceConfigurator}"/> implementations.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="assemblies">Assemblies to scan for FluentInjections.</param>
+    /// <returns>The service collection.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if FluentInjections has already been initialized.</exception>
+
+
+    /// <summary>
+    /// Adds FluentInjections to the service collection by scanning the specified assemblies for <see cref="IModule{IMiddlewareConfigurator}"/> implementations.
+    public static IApplicationBuilder UseFluentInjections(this IApplicationBuilder app, params Assembly[]? assemblies)
+    {
+        DependencyInjection.UseFluentInjections(app, assemblies);
+        return app;
+    }
+
+    #region Register
     internal static readonly Dictionary<string, Dictionary<Type, ServiceBindingDescriptor>> NamedServices = new();
     internal static readonly Dictionary<Type, ServiceBindingDescriptor> UnnamedServices = new();
 
@@ -87,17 +121,7 @@ public static class NetCoreNamedServiceExtensions
             throw new InvalidOperationException("ServiceBindingDescriptor must have an Instance, Factory, or ImplementationType defined.");
         }
     }
-
-    // Register middleware binding descriptor
-    internal static void Register(this IApplicationBuilder app, MiddlewareBindingDescriptor descriptor)
-    {
-        Guard.NotNull(app, nameof(app));
-        Guard.NotNull(descriptor, nameof(descriptor));
-
-        lock (NamedServices)
-        {
-        }
-    }
+    #endregion
 
     public static TService? GetNamedService<TService>(this IServiceProvider provider, string name) where TService : notnull
     {

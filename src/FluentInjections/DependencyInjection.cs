@@ -4,9 +4,11 @@
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Registries;
 using FluentInjections.Internal.Utils;
+using FluentInjections.Validation;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using Moq;
@@ -21,8 +23,26 @@ internal static class DependencyInjection
     internal static IServiceCollection Services { get; private set; } = new ServiceCollection();
     internal static IServiceProvider ServiceProvider { get; private set; }
     internal static Mock<ILogger> MockLogger { get; private set; }
+    internal static NetCoreServiceConfigurator ServiceConfigurator { get; private set; }
+    internal static NetCoreMiddlewareConfigurator MiddlewareConfigurator { get; private set; }
+    internal static IModuleRegistry ModuleRegistry
+    {
+        get
+        {
+            if (_moduleRegistry is null)
+            {
+                _moduleRegistry = new ModuleRegistry(Services);
+            }
 
-    private static bool _initialized;
+            return _moduleRegistry;
+        }
+    }
+
+    public static FluentInjectionsNetCoreModule Module { get; private set; }
+
+    private static bool _initializedDependencies;
+    private static bool _initiailizedMiddleware;
+    private static IModuleRegistry? _moduleRegistry;
 
     static DependencyInjection()
     {
@@ -30,41 +50,35 @@ internal static class DependencyInjection
         {
             ServiceProvider = default!;
             MockLogger = new Mock<ILogger>();
-            _initialized = false;
+            ServiceConfigurator = new NetCoreServiceConfigurator(Services, LoggerUtility.CreateLogger<NetCoreServiceConfigurator>());
+            _initializedDependencies = false;
         }
     }
 
-    internal static void Initialize()
+    /// <summary>
+    /// Adds FluentInjections to the service collection by scanning the specified assemblies for <see cref="IModule{TConfigurator}"/> implementations.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="assemblies">Assemblies to scan for FluentInjections.</param>
+    /// <exception cref="InvalidOperationException">Thrown if FluentInjections has already been initialized.</exception>
+    internal static void AddFluentInjections(IServiceCollection services, params Assembly[]? assemblies)
     {
-        lock (LockObject)
-        {
-            Services = new ServiceCollection();
-            ServiceProvider = default!;
-            MockLogger = new Mock<ILogger>();
-            _initialized = false;
-        }
-    }
+        Guard.NotNull(services, nameof(services));
 
-    internal static void AddFluentInjections(IServiceCollection services, ApplicationBuilder builder, params Assembly[]? assemblies)
-    {
         lock (LockObject)
         {
-            if (_initialized)
+            if (_initializedDependencies)
             {
                 throw new InvalidOperationException("FluentInjections has already been initialized.");
             }
 
             Services = services;
-            var targetAssemblies = assemblies?.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
+            var TargetAssemblies = assemblies?.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
+            Module = new FluentInjectionsNetCoreModule(Services, TargetAssemblies);
 
-            var module = new FluentInjectionsNetCoreModule(Services, builder, targetAssemblies);
+            Module.Load();
 
-            module.Load();
-
-            Services.AddSingleton<IServiceProvider>(ServiceProvider);
-            Services.AddSingleton(ServiceProvider);
-
-            _initialized = true;
+            _initializedDependencies = true;
         }
     }
 
@@ -72,53 +86,23 @@ internal static class DependencyInjection
     {
         lock (LockObject)
         {
-            if (!_initialized)
+            if (!_initializedDependencies)
             {
                 throw new InvalidOperationException("FluentInjections has not been initialized. Call AddFluentInjections first.");
             }
 
-            var targetAssemblies = assemblies?.Length > 0 ? assemblies : AppDomain.CurrentDomain.GetAssemblies();
-            var sp = builder.ApplicationServices;
-            var registry = sp.GetService<IModuleRegistry>() ?? new ModuleRegistry(Services);
-
-            foreach (var assembly in targetAssemblies)
+            if (_initiailizedMiddleware)
             {
-                foreach (var type in assembly.GetTypes().Where(type => typeof(IMiddlewareModule).IsAssignableFrom(type) && !type.IsAbstract))
-                {
-                    var instance = GetInstance<IMiddlewareModule, IMiddlewareConfigurator>(type, sp);
-                    if (instance != null)
-                    {
-                        var logger = LoggerUtility.CreateLogger<NetCoreMiddlewareConfigurator>();
-                        instance.Configure(new NetCoreMiddlewareConfigurator(builder, logger));
-                        registry.Register<IMiddlewareConfigurator>(typeof(IMiddlewareModule), instance);
-                    }
-                }
+                return;
             }
-        }
-    }
 
-    internal static IConfigurableModule<TConfigurator>? GetInstance<TModule, TConfigurator>(Type type, IServiceProvider? sp = null)
-        where TModule : IConfigurableModule<TConfigurator>
-        where TConfigurator : IConfigurator
-    {
-        if (!typeof(TModule).IsAssignableFrom(type)) return null;
+            MiddlewareConfigurator = new NetCoreMiddlewareConfigurator(
+                builder,
+                builder.ApplicationServices,
+                LoggerUtility.CreateLogger<NetCoreMiddlewareConfigurator>(),
+                MiddlewareConfigurator);
 
-        var instance = sp?.GetService(type) as IConfigurableModule<TConfigurator>;
-        if (instance != null)
-        {
-            return instance;
-        }
-
-        try
-        {
-            instance = Activator.CreateInstance(type) as IConfigurableModule<TConfigurator>;
-            return instance;
-        }
-        catch (Exception ex)
-        {
-            var logger = sp?.GetService<ILogger>();
-            logger?.LogError(ex, $"Could not create an instance of {type.Name}.");
-            return null;
+            _initiailizedMiddleware = true;
         }
     }
 }

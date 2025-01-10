@@ -3,7 +3,6 @@
 
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Utils;
-using FluentInjections.Validation;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,39 +12,35 @@ using System.Reflection;
 namespace FluentInjections;
 
 /// <summary>
-/// Represents a module that provides methods to configure services and middleware within the application using ASP.NET Core.
+/// Represents a module that provides methods to configure middleware with .Net Core. 
 /// </summary>
 internal sealed class FluentInjectionsNetCoreModule : FluentInjectionsModule
 {
     private readonly IServiceCollection _services;
-    private readonly Microsoft.AspNetCore.Builder.ApplicationBuilder _app;
 
-    public FluentInjectionsNetCoreModule(IServiceCollection services, Microsoft.AspNetCore.Builder.ApplicationBuilder app, Assembly[] assemblies) : base(assemblies)
+    public FluentInjectionsNetCoreModule(IServiceCollection services, Assembly[] assemblies) : base(assemblies)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
-        _app = app ?? throw new ArgumentNullException(nameof(app));
-        ValidateBuilder();
-    }
-
-    private void ValidateBuilder()
-    {
-        if (!typeof(IApplicationBuilder).IsAssignableFrom(typeof(ApplicationBuilder)))
-        {
-            throw new InvalidOperationException($"The builder type must implement {nameof(IApplicationBuilder)}.");
-        }
     }
 
     internal void Load()
     {
-        var serviceConfigurator = new NetCoreServiceConfigurator(_services, LoggerUtility.CreateLogger<NetCoreServiceConfigurator>());
-        var middlewareConfigurator = new NetCoreMiddlewareConfigurator(_app, LoggerUtility.CreateLogger<NetCoreMiddlewareConfigurator>());
+        var serviceConfigurator = DependencyInjection.ServiceConfigurator;
 
         foreach (var assembly in _assemblies)
         {
-            RegisterModulesFromAssembly(assembly, serviceConfigurator, middlewareConfigurator);
+            RegisterModules<IServiceConfigurator, IServiceModule>(assembly, serviceConfigurator);
         }
 
         serviceConfigurator.Register();
-        middlewareConfigurator.Register();
+
+        var middlewareConfigurator = DependencyInjection.MiddlewareConfigurator as NetCoreMiddlewareConfigurator;
+
+        foreach (var assembly in _assemblies)
+        {
+            RegisterModules<IMiddlewareConfigurator, IMiddlewareModule>(assembly, middlewareConfigurator);
+        }
+
+        // Register happens in app.UseFluentInjections
     }
 }

@@ -16,6 +16,14 @@ internal abstract class Configurator<TBinding, TDescriptor> : IConfigurator<TBin
     protected internal IReadOnlyList<TDescriptor> Descriptors => _descriptors.AsReadOnly();
     protected internal ILogger Logger => _logger;
 
+    protected Configurator(ILogger logger)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    /// <summary>
+    /// Gets or sets the conflict resolution mode for the configurator.
+    /// </summary>
     public ConflictResolutionMode ConflictResolution
     {
         get => _conflictResolution;
@@ -30,11 +38,6 @@ internal abstract class Configurator<TBinding, TDescriptor> : IConfigurator<TBin
         }
     }
     private ConflictResolutionMode _conflictResolution = ConflictResolutionMode.WarnAndReplace;
-
-    protected Configurator(ILogger logger)
-    {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
 
     /// <inheritdoc/>
     public void Register()

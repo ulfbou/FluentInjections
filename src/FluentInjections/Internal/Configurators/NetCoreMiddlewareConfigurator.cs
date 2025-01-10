@@ -17,9 +17,18 @@ internal class NetCoreMiddlewareConfigurator
     : MiddlewareConfigurator<IApplicationBuilder, IMiddlewareBinding>,
     IMiddlewareConfigurator<IApplicationBuilder, IMiddlewareBinding>, IMiddlewareConfigurator, IConfigurator<IMiddlewareBinding>
 {
-    internal NetCoreMiddlewareConfigurator(IApplicationBuilder builder, ILogger<NetCoreMiddlewareConfigurator> logger)
-        : base(builder, logger)
-    { }
+    internal NetCoreMiddlewareConfigurator(IApplicationBuilder builder, IServiceProvider provider, ILogger<NetCoreMiddlewareConfigurator> logger, NetCoreMiddlewareConfigurator? configurator = null)
+        : base(builder, provider, logger)
+    {
+        if (configurator is not null)
+        {
+            _registeredMiddlewareTypes.AddRange(configurator._registeredMiddlewareTypes);
+            _bindings.AddRange(configurator._bindings);
+            _conflictResolution = configurator._conflictResolution;
+            _middleware = configurator._middleware;
+            _middlewareType = configurator._middlewareType;
+        }
+    }
 
     protected override void Register(MiddlewareBindingDescriptor descriptor)
     {

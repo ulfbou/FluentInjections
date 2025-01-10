@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Http;
 
 namespace FluentInjections;
 
+// TODO: Refactor IMiddlewareBinding{T1} to IMiddlewareBindingBuilder{TMiddleware}
+
 /// <summary>
 /// Represents a middleware binding that provides methods to bind and configure middleware components within the application.
 /// </summary>
@@ -58,9 +60,25 @@ public interface IMiddlewareBinding<TMiddleware> : IMiddlewareBinding
     /// Sets the execution policy for the middleware.
     /// </summary>
     /// <typeparam name="TPolicy">The type of the policy.</typeparam>
-    /// <param name="value">The action to configure the policy.</param>
+    /// <param name="configure">The action to configure the policy.</param>
     /// <returns>The middleware binding instance.</returns>
-    IMiddlewareBinding<TMiddleware> WithExecutionPolicy<TPolicy>(Action<TPolicy> value) where TPolicy : class;
+    IMiddlewareBinding<TMiddleware> WithExecutionPolicy<TPolicy>(Action<TPolicy> configure) where TPolicy : class;
+
+    /// <summary>
+    /// Sets the execution policy factory for the middleware.
+    /// </summary>
+    /// <typeparam name="TPolicy">The type of the policy.</typeparam>
+    /// <param name="factory">The execution policy factory.</param>
+    /// <returns>The middleware binding instance.</returns>
+    IMiddlewareBinding<TMiddleware> WithExecutionPolicy<TPolicy>(Func<IServiceProvider, TPolicy> factory) where TPolicy : class;
+
+    /// <summary>
+    /// Sets the execution policy for the middleware to invoke an instance of the policy.
+    /// </summary>
+    /// <typeparam name="TPolicy">The type of the policy.</typeparam>
+    /// <param name="policy">The policy instance.</param>
+    /// <returns>The middleware binding instance.</returns>
+    IMiddlewareBinding<TMiddleware> WithExecutionPolicy<TPolicy>(TPolicy policy) where TPolicy : class;
 
     /// <summary>
     /// Attaches metadata to the middleware.

@@ -27,6 +27,11 @@ public interface IMiddlewareConfigurator : IConfigurator<IMiddlewareBinding>
     Type MiddlewareType { get; }
 
     /// <summary>
+    /// Gets the application builder instance.
+    /// </summary>
+    IApplicationBuilder Application { get; }
+
+    /// <summary>
     /// Registers a middleware of the specified type.
     /// </summary>
     /// <typeparam name="TMiddleware">The type of the middleware to register.</typeparam>

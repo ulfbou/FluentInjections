@@ -18,7 +18,8 @@ internal class NetCoreServiceConfigurator : ServiceConfigurator, IServiceConfigu
 {
     protected readonly IDictionary<string, ServiceDescriptor> _keyedServiceDescriptors = new Dictionary<string, ServiceDescriptor>();
     protected readonly IServiceCollection _services;
-    internal IServiceCollection DependencyBuilder => _services;
+
+    public override IServiceCollection Services => _services;
 
     public NetCoreServiceConfigurator(IServiceCollection services, ILogger<NetCoreServiceConfigurator> logger) : base(logger)
     {
@@ -30,10 +31,10 @@ internal class NetCoreServiceConfigurator : ServiceConfigurator, IServiceConfigu
         _services.Register(bindingDescriptor);
     }
 
-    internal virtual NetCoreServiceProvider BuildServiceProvider()
+    internal virtual NetCoreServiceProvider BuildServiceProvider(IServiceCollection services)
     {
-        var serviceProvider = _services.BuildServiceProvider();
-        return new NetCoreServiceProvider(serviceProvider, NetCoreNamedServiceExtensions.NamedServices);
+        var innerProvider = services.BuildServiceProvider();
+        return new NetCoreServiceProvider(innerProvider, NetCoreNamedServiceExtensions.NamedServices);
     }
 
     internal IDictionary<string, ServiceDescriptor> GetKeyedServiceDescriptors() => _keyedServiceDescriptors;

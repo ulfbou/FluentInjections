@@ -7,9 +7,6 @@ namespace FluentInjections;
 /// Represents a module that can be registered with a configurator.
 /// </summary>
 /// <typeparam name="TConfigurator">The type of configurator used to configure the module.</typeparam>
-/// <remarks>
-/// This interface should be implemented by classes that define registrations and configurations.
-/// </remarks>
 public interface IConfigurableModule<TConfigurator> : IModule<TConfigurator>
     where TConfigurator : IConfigurator
 {

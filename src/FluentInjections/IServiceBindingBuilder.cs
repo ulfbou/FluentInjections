@@ -1,8 +1,6 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using Autofac.Core;
-
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentInjections;
@@ -41,6 +39,13 @@ public interface IServiceBindingBuilder
     IServiceBindingBuilder AsTransient();
 
     /// <summary>
+    /// Sets a custom lifetime for the service.
+    /// </summary>
+    /// <param name="lifetime">The service lifetime.</param>
+    /// <returns>The service binding instance.</returns>
+    IServiceBindingBuilder WithLifetime(ServiceLifetime lifetime);
+
+    /// <summary>
     /// Uses a factory method to create the service instance.
     /// </summary>
     /// <param name="factory">The factory method.</param>
@@ -53,13 +58,6 @@ public interface IServiceBindingBuilder
     /// <param name="name">The name of the binding.</param>
     /// <returns>The service binding instance.</returns>
     IServiceBindingBuilder WithName(string name);
-
-    /// <summary>
-    /// Sets a custom lifetime for the service.
-    /// </summary>
-    /// <param name="lifetime">The service lifetime.</param>
-    /// <returns>The service binding instance.</returns>
-    IServiceBindingBuilder WithLifetime(ServiceLifetime lifetime);
 
     /// <summary>
     /// Specifies parameters for the service using a dictionary.

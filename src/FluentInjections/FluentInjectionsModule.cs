@@ -22,22 +22,27 @@ internal abstract class FluentInjectionsModule
         _assemblies = assemblies ?? throw new ArgumentNullException(nameof(assemblies));
     }
 
-    protected void RegisterModulesFromAssembly(Assembly assembly, IServiceConfigurator serviceConfigurator, IMiddlewareConfigurator middlewareConfigurator)
+    protected void RegisterModules<TConfigurator, TModule>(Assembly assembly, TConfigurator configurator)
+        where TConfigurator : IConfigurator
+        where TModule : IConfigurableModule<TConfigurator>
     {
-        var moduleTypes = assembly.GetTypes()
-            .Where(t => !t.IsAbstract && !t.IsInterface && t.IsPublic)
-            .SelectMany(t => t.GetInterfaces()
-                .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IConfigurableModule<>))
-                .Select(i => new { ModuleType = t, Interface = i }))
-            .ToList();
+        var types = assembly.GetTypes()
+                            .Where(t => !t.IsAbstract && !t.IsInterface && t.IsPublic);
+        var modules = types
+            .Where(t => t.GetInterfaces().Any(i =>
+                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IConfigurableModule<>) &&
+                i.GetGenericArguments()[0] == typeof(TConfigurator)))
+            .Select(t => new ModuleType(t, t.GetInterfaces().First(i =>
+                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IConfigurableModule<>) &&
+                i.GetGenericArguments()[0] == typeof(TConfigurator))));
 
-        foreach (var moduleType in moduleTypes)
+        foreach (var moduleType in modules)
         {
-            RegisterModule(moduleType.ModuleType, moduleType.Interface, serviceConfigurator, middlewareConfigurator);
+            RegisterModule(moduleType.Module, moduleType.Interface, configurator);
         }
     }
 
-    protected void RegisterModule(Type moduleType, Type interfaceType, IServiceConfigurator serviceConfigurator, IMiddlewareConfigurator middlewareConfigurator)
+    protected void RegisterModule<TConfigurator>(Type moduleType, Type interfaceType, TConfigurator configurator) where TConfigurator : IConfigurator
     {
         var configuratorType = interfaceType.GetGenericArguments().First();
         var instance = Activator.CreateInstance(moduleType);
@@ -48,13 +53,9 @@ internal abstract class FluentInjectionsModule
             throw new InvalidOperationException($"No suitable Configure method found for module type {moduleType.Name}");
         }
 
-        if (configuratorType == typeof(IServiceConfigurator))
+        if (configuratorType == typeof(TConfigurator))
         {
-            configureMethod.Invoke(instance, new object[] { serviceConfigurator });
-        }
-        else if (configuratorType == typeof(IMiddlewareConfigurator))
-        {
-            configureMethod.Invoke(instance, new object[] { middlewareConfigurator });
+            configureMethod.Invoke(instance, new object[] { configurator });
         }
         else if (!configuratorType.IsAbstract)
         {

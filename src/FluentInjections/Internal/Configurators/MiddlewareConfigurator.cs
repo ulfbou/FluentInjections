@@ -15,24 +15,29 @@ using System.Reflection;
 using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using FluentInjections.Policy;
 
 namespace FluentInjections.Internal.Configurators;
 
 internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
     : Configurator<TBinding, MiddlewareBindingDescriptor>, IMiddlewareConfigurator, IConfigurator
-    where TDependencyBuilder : class
+    where TDependencyBuilder : class, IApplicationBuilder
     where TBinding : IBinding
 {
     protected ConflictResolutionMode _conflictResolution = ConflictResolutionMode.WarnAndReplace;
     protected object _middleware = default!;
     protected Type _middlewareType = default!;
-    protected readonly TDependencyBuilder _dependencyBuilder;
+    protected TDependencyBuilder _dependencyBuilder;
     protected readonly List<MiddlewareBinding> _bindings = new();
     protected readonly List<Type> _registeredMiddlewareTypes = new();
 
-    protected MiddlewareConfigurator(TDependencyBuilder builder, ILogger logger) : base(logger)
+    protected IServiceProvider Provider { get; set; }
+    public IApplicationBuilder Application => _dependencyBuilder;
+
+    protected MiddlewareConfigurator(TDependencyBuilder builder, IServiceProvider provider, ILogger logger) : base(logger)
     {
         _dependencyBuilder = builder ?? throw new ArgumentNullException(nameof(builder));
+        Provider = provider ?? throw new ArgumentNullException(nameof(provider));
     }
 
     protected internal void ValidateBindingsInternal() => ValidateBindings();
@@ -206,9 +211,9 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             existingDescriptor.RequiredEnvironment = newDescriptor.RequiredEnvironment;
         }
 
-        if (newDescriptor.ExecutionPolicy is not null)
+        if (newDescriptor.ExecutionPolicyFactory is not null)
         {
-            existingDescriptor.ExecutionPolicy = newDescriptor.ExecutionPolicy;
+            existingDescriptor.ExecutionPolicyFactory = newDescriptor.ExecutionPolicyFactory;
         }
 
         if (newDescriptor.Fallback is not null)
@@ -476,37 +481,42 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
 
             Debug.WriteLine($"Registered middleware: {descriptor.MiddlewareType.FullName}, Priority: {descriptor.Priority}");
         }
+        else
+        {
+            Debug.WriteLine($"Skipped middleware: {descriptor.MiddlewareType.FullName}, Priority: {descriptor.Priority}");
+        }
     }
 
     private async Task InvokeMiddlewareWithFallbackAndPolicy(MiddlewareBindingDescriptor descriptor, HttpContext context, Func<Task> next)
     {
         try
         {
-            // Apply custom execution policy if specified
-            if (descriptor.ExecutionPolicy is IExecutionPolicy policy)
+            if (descriptor.ExecutionPolicyFactory is null)
             {
+                await InvokeMiddleware(descriptor, context, next);
+            }
+            else
+            {
+                var policy = descriptor.ExecutionPolicyFactory(Provider) as IExecutionPolicy
+                    ?? throw new InvalidOperationException("Execution policy factory returned null.");
+
+                descriptor.ExecutionPolicyConfiguration?.Invoke(policy);
+
                 await policy.ExecuteAsync(async () =>
                 {
                     await InvokeMiddleware(descriptor, context, next);
                 });
             }
-            else
-            {
-                await InvokeMiddleware(descriptor, context, next);
-            }
         }
         catch (Exception ex)
         {
-            if (descriptor.ErrorHandler is not null)
-            {
-                await descriptor.ErrorHandler.Invoke(ex);
-            }
-            else
+            if (descriptor.ErrorHandler is null)
             {
                 throw;
             }
 
-            // Execute fallback if specified
+            await descriptor.ErrorHandler.Invoke(ex);
+
             if (descriptor.Fallback is not null)
             {
                 await descriptor.Fallback.Invoke(context);
@@ -522,12 +532,13 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
 
         try
         {
+            var services = context.RequestServices;
+            Debug.WriteLine($"Request Services type: {services.GetType().FullName}");
             middlewareInstance = context.RequestServices.GetRequiredService(descriptor.MiddlewareType);
             (method, args) = await GetInvokeMethod(middlewareInstance, context, next);
         }
         catch
         {
-            // Execute fallback if specified
             if (descriptor.Fallback is not null)
             {
                 await descriptor.Fallback.Invoke(context);
@@ -586,7 +597,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             Instance = instance!;
         }
 
-        // WithName
+        /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> WithName(string name)
         {
             Guard.NotNullOrWhiteSpace(name, nameof(name));
@@ -595,6 +606,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             return this;
         }
 
+        /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> DependsOn<TOtherMiddleware>()
         {
             Descriptor.Dependencies.Add(typeof(TOtherMiddleware));
@@ -602,6 +614,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             return this;
         }
 
+        /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> Follows<TFollowingMiddleware>()
         {
             Descriptor.FollowingMiddleware.Add(typeof(TFollowingMiddleware));
@@ -609,6 +622,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             return this;
         }
 
+        /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> InGroup(string group)
         {
             Guard.NotNullOrWhiteSpace(group, nameof(group));
@@ -617,6 +631,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             return this;
         }
 
+        /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> OnError(Func<Exception, Task> errorHandler)
         {
             Guard.NotNull(errorHandler, nameof(errorHandler));
@@ -625,6 +640,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             return this;
         }
 
+        /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> Precedes<TPrecedingMiddleware>()
         {
             Descriptor.PrecedingMiddleware.Add(typeof(TPrecedingMiddleware));
@@ -632,6 +648,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             return this;
         }
 
+        /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> When(Func<bool> func)
         {
             Guard.NotNull(func, nameof(func));
@@ -640,6 +657,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             return this;
         }
 
+        /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> When<TContext>(Func<TContext, bool> func)
         {
             Guard.NotNull(func, nameof(func));
@@ -648,14 +666,33 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             return this;
         }
 
-        public IMiddlewareBinding<TMiddleware> WithExecutionPolicy<TPolicy>(Action<TPolicy> value) where TPolicy : class
+        /// <inheritdoc/>
+        public IMiddlewareBinding<TMiddleware> WithExecutionPolicy<TPolicy>(Action<TPolicy> configure) where TPolicy : class
         {
-            Guard.NotNull(value, nameof(value));
-            Descriptor.ExecutionPolicy = value;
-            Debug.WriteLine($"Set the execution policy for the middleware component to {typeof(TPolicy).Name}.");
+            Guard.NotNull(configure, nameof(configure));
+            Descriptor.ExecutionPolicyConfiguration = policy => configure((TPolicy)policy);
+            Debug.WriteLine("Set the execution policy for the middleware component.");
             return this;
         }
 
+        /// <inheritdoc/>
+        public IMiddlewareBinding<TMiddleware> WithExecutionPolicy<TPolicy>(Func<IServiceProvider, TPolicy> factory) where TPolicy : class
+        {
+            Guard.NotNull(factory, nameof(factory));
+            Descriptor.ExecutionPolicyFactory = provider => factory(provider);
+            Debug.WriteLine("Set the execution policy factory for the middleware component.");
+            return this;
+        }
+
+        /// <inheritdoc/>
+        public IMiddlewareBinding<TMiddleware> WithExecutionPolicy<TPolicy>(TPolicy policy) where TPolicy : class
+        {
+            Descriptor.ExecutionPolicyFactory = provider => policy;
+            Debug.WriteLine("Set the execution policy for the middleware component.");
+            return this;
+        }
+
+        /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> WithFallback(Func<object, Task> fallback)
         {
             Guard.NotNull(fallback, nameof(fallback));
@@ -664,31 +701,35 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             return this;
         }
 
+        /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> WithInstance(object instance)
         {
             var middleware = instance as TMiddleware;
-            if (middleware == null)
-            {
-                throw new ArgumentException($"The instance must be of type {typeof(TMiddleware).Name}.", nameof(instance));
-            }
+
+            Guard.NotNull(middleware, nameof(instance));
+
             Instance = middleware;
             Debug.WriteLine($"Set the instance of the middleware component to {middleware.GetType().Name}.");
             return this;
         }
 
+        /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> WithMetadata(string name, object value)
         {
             Guard.NotNullOrEmpty(name, nameof(name));
             Guard.NotNull(value, nameof(value));
+
             if (Descriptor.Metadata.ContainsKey(name))
             {
                 throw new InvalidOperationException($"Metadata with name {name} already exists.");
             }
+
             Descriptor.Metadata.Add(name, value);
             Debug.WriteLine($"Added metadata with name {name} to the middleware component.");
             return this;
         }
 
+        /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> WithOptions<TOptions>(TOptions options) where TOptions : class
         {
             Guard.NotNull(options, nameof(options));
@@ -698,6 +739,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             return this;
         }
 
+        /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> WithPriority(int priority)
         {
             Descriptor.Priority = priority;
@@ -705,6 +747,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             return this;
         }
 
+        /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> WithPriority(Func<int> priority)
         {
             Guard.NotNull(priority, nameof(priority));
@@ -713,6 +756,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             return this;
         }
 
+        /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> WithPriority<TContext>(Func<TContext, int> priority)
         {
             Guard.NotNull(priority, nameof(priority));
@@ -722,6 +766,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             return this;
         }
 
+        /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> WithTag(string tag)
         {
             Guard.NotNullOrWhiteSpace(tag, nameof(tag));
@@ -730,6 +775,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             return this;
         }
 
+        /// <inheritdoc/>
         public IMiddlewareBinding<TMiddleware> WithTimeout(TimeSpan timeout)
         {
             Descriptor.Timeout = timeout;

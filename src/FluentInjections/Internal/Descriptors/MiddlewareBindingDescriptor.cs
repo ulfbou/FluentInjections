@@ -30,7 +30,9 @@ public class MiddlewareBindingDescriptor
     public int Priority { get; set; } = DefaultValues.Priority;
     public string Group { get; set; } = DefaultValues.Group;
     public string? RequiredEnvironment { get; set; }
-    public object? ExecutionPolicy { get; set; }
+    public Func<IServiceProvider, object>? ExecutionPolicyFactory { get; set; }
+    public Action<object>? ExecutionPolicyConfiguration { get; set; }
+
     public Func<HttpContext, Task>? Fallback { get; set; }
     public object? Options { get; set; }
     public Type? OptionsType { get; set; }

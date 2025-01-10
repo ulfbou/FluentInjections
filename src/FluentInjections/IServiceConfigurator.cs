@@ -13,6 +13,8 @@ namespace FluentInjections;
 /// </remarks>
 public interface IServiceConfigurator : IConfigurator<IServiceBinding>
 {
+    IServiceCollection Services { get; }
+
     /// <summary>
     /// Binds a service to the service collection.
     /// </summary>
