@@ -4,6 +4,8 @@
 
 using FluentInjections.Context;
 
+using System.ComponentModel.DataAnnotations;
+
 namespace FluentInjections.Policy;
 
 /// <summary>
@@ -11,5 +13,5 @@ namespace FluentInjections.Policy;
 /// </summary>
 public interface IExecutionPolicy<TContext> : IExecutionPolicy where TContext : IExecutionContext
 {
-    Task ExecuteAsync(Func<TContext, Task> value);
+    Task ExecuteAsync(Func<TContext, Task> action);
 }

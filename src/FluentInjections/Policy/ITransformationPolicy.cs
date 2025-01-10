@@ -3,7 +3,4 @@
 
 namespace FluentInjections.Policy;
 
-/// <summary>
-/// Represents a policy for executing a function.
-/// </summary>
-public interface IExecutionPolicy : IPolicy<IExecutionBinding> { }
+public interface ITransformationPolicy : IPolicy<ITransformationBinding> { }

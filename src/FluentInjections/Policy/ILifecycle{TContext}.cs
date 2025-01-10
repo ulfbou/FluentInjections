@@ -5,7 +5,7 @@ using FluentInjections.Context;
 
 namespace FluentInjections.Policy;
 
-public interface ILifecycle<TContext> where TContext : class, IContext
+public interface ILifecycle<TContext> where TContext : class
 {
     Task OnStartAsync(TContext context, CancellationToken? cancellationToken = default);
     Task OnEndAsync(TContext context, CancellationToken? cancellationToken = default);

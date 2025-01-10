@@ -7,8 +7,4 @@ using System.Threading;
 
 namespace FluentInjections.Policy;
 
-public interface IPolicy<TBinding> : IPolicy where TBinding : IBinding
-{
-    Task ExecuteAsync<TContext>(TContext context, CancellationToken? cancellationToken = default)
-        where TContext : IExecutionContext;
-}
+public interface IPolicy<TBinding> : IPolicy where TBinding : IBinding { }
