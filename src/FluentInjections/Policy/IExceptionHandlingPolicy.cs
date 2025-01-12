@@ -6,6 +6,6 @@ using FluentInjections.Bindings;
 namespace FluentInjections.Policies;
 
 /// <summary>
-/// Represents a policy that transforms the execution of an operation.
+/// Represents a policy for handling exceptions that occur during the execution of a operation.
 /// </summary>
-public interface ITransformationPolicy : IPolicy<ITransformationBinding> { }
+public interface IExceptionHandlingPolicy : IPolicy<IExceptionHandlingBinding> { }

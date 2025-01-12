@@ -226,8 +226,6 @@ The provided code showcases two separate modules responsible for registering a c
 **Purpose:** Binds `MyMiddleware` to the `IHttpContextAccessor` service within the dependency injection container.
 
 **Explanation:**
-- `using FluentInjections;` imports the FluentInjections library.
-- `using Microsoft.AspNetCore.Http;` provides access to the `IHttpContextAccessor` service.
 - `public class MyServiceModule : Module<IServiceConfigurator>` inherits from the `Module<IServiceConfigurator>` class, defining a configuration module for services.
 - `public override void Configure(IServiceConfigurator serviceConfigurator)` overrides the main configuration method.
 - `serviceConfigurator.Bind<MyMiddleware>()` binds `MyMiddleware` to the `IHttpContextAccessor` service.

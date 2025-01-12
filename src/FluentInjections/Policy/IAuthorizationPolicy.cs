@@ -2,8 +2,11 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 
-namespace FluentInjections.Policy;
+using FluentInjections.Bindings;
 
-public interface IAuthorizationPolicy : IPolicy<IAuthorizationBinding>
-{
-}
+namespace FluentInjections.Policies;
+
+/// <summary>
+/// Represents a policy for authorizing a function.
+/// </summary>
+public interface IAuthorizationPolicy : IPolicy<IAuthorizationBinding> { }

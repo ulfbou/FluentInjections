@@ -1,9 +1,14 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace FluentInjections.Policy;
+using FluentInjections.Bindings;
+
+namespace FluentInjections.Policies;
 
 /// <summary>
-/// Represents a policy for executing a function.
+/// Represents a policy that can be executed with a type safe context. 
 /// </summary>
-public interface IExecutionPolicy : IPolicy<IExecutionBinding> { }
+public interface IExecutionPolicy : IPolicy<IExecutionBinding>
+{
+    Task ExecuteAsync(Func<Task> action);
+}

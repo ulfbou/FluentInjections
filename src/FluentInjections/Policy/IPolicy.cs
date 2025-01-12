@@ -1,9 +1,11 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace FluentInjections.Policy;
+using FluentInjections.Context;
 
-public interface IPolicy
-{
-    Task ExecuteAsync(Func<Task> action, CancellationToken? cancellationToken = default);
-}
+namespace FluentInjections.Policies;
+
+/// <summary>
+/// Represents a policy.
+/// </summary>
+public interface IPolicy { }

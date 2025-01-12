@@ -16,7 +16,7 @@
 		</Description>
 		<PackageTags>dependency injection; AutoFac; .NET; lifetime management; Fluent API; DI; modularity</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<PackageReadmeFile>Readme.md</PackageReadmeFile>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageProjectUrl>https://github.com/ulfbou/FluentInjections/wiki</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/ulfbou/FluentInjections</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
@@ -27,6 +27,7 @@
 		<None Update="**/*.link">
 			<Visible>false</Visible>
 		</None>
+		<None Include="README.md" Pack="true" PackagePath="" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -6,11 +6,12 @@ using FluentInjections.Context;
 
 using System.ComponentModel.DataAnnotations;
 
-namespace FluentInjections.Policy;
+namespace FluentInjections.Policies;
 
 /// <summary>
 /// Represents a policy that can be executed with a type safe context. 
 /// </summary>
+/// <typeparam name="TContext">The type of the context that is used to execute the policy.</typeparam>
 public interface IExecutionPolicy<TContext> : IExecutionPolicy where TContext : IExecutionContext
 {
     Task ExecuteAsync(Func<TContext, Task> action);

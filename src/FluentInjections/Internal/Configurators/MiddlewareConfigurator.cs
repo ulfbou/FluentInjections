@@ -15,7 +15,7 @@ using System.Reflection;
 using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using FluentInjections.Policy;
+using FluentInjections.Policies;
 
 namespace FluentInjections.Internal.Configurators;
 
@@ -492,15 +492,12 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
     {
         try
         {
-            if (descriptor.ExecutionPolicyFactory is null)
+            if (descriptor.ExecutionPolicyFactory?.Invoke(Provider) is not IExecutionPolicy policy)
             {
                 await InvokeMiddleware(descriptor, context, next);
             }
             else
             {
-                var policy = descriptor.ExecutionPolicyFactory(Provider) as IExecutionPolicy
-                    ?? throw new InvalidOperationException("Execution policy factory returned null.");
-
                 descriptor.ExecutionPolicyConfiguration?.Invoke(policy);
 
                 await policy.ExecuteAsync(async () =>

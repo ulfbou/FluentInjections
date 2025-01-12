@@ -6,5 +6,5 @@ namespace FluentInjections;
 /// <summary>
 /// A marker interface that represents a configurator that provides methods to configure components within the application.
 /// </summary>
-/// <remarks>
+/// <typeparam name="TBinding">The type of binding that the configurator is associated with.</typeparam>
 public interface IConfigurator<out TBinding> : IConfigurator where TBinding : IBinding { }
