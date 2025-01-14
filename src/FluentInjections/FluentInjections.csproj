@@ -7,7 +7,7 @@
 		<PackageId>FluentInjections</PackageId>
 		<AssemblyTitle>FluentInjections</AssemblyTitle>
 		<AssemblyProduct>FluentInjections</AssemblyProduct>
-		<Version>0.0.1-beta</Version>
+		<Version>0.0.2-beta</Version>
 		<Authors>Ulf Bourelius</Authors>
 		<Description>
 			FluentInjections is a streamlined dependency injection library for .NET that simplifies and enhances the
@@ -42,8 +42,17 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Extensions\FluentInjections.Extensions.csproj" />
-		<ProjectReference Include="..\Validation\FluentInjections.Validation.csproj" />
+		<Reference Include="..\Extensions\bin\Release\net9.0\FluentInjections.Extensions.dll">
+			<HintPath>..\Extensions\bin\Release\net9.0\FluentInjections.Extensions.dll</HintPath>
+		</Reference>
+		<Reference Include="..\Validation\bin\Release\net9.0\FluentInjections.Validation.dll">
+			<HintPath>..\Validation\bin\Release\net9.0\FluentInjections.Validation.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="..\Extensions\bin\Release\net9.0\FluentInjections.Extensions.dll" Pack="true" PackagePath="lib\net9.0\" />
+		<Content Include="..\Validation\bin\Release\net9.0\FluentInjections.Validation.dll" Pack="true" PackagePath="lib\net9.0\" />
 	</ItemGroup>
 
 </Project>
