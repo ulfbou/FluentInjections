@@ -13,8 +13,6 @@ namespace FluentInjections;
 public interface IModule<out TConfigurator> : IModule
     where TConfigurator : IConfigurator
 {
-    Type ConfiguratorType { get; set; }
-
     /// <summary>
     /// Determines whether the module can handle the specified configurator type.
     /// </summary>

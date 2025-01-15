@@ -50,9 +50,4 @@
 		</Reference>
 	</ItemGroup>
 
-	<ItemGroup>
-		<Content Include="..\Extensions\bin\Release\net9.0\FluentInjections.Extensions.dll" Pack="true" PackagePath="lib\net9.0\" />
-		<Content Include="..\Validation\bin\Release\net9.0\FluentInjections.Validation.dll" Pack="true" PackagePath="lib\net9.0\" />
-	</ItemGroup>
-
 </Project>

@@ -3,8 +3,6 @@
 
 using FluentInjections.Internal.Constants;
 
-namespace FluentInjections.Internal.Descriptors;
-
 using FluentInjections.Validation;
 
 using Microsoft.AspNetCore.Http;
@@ -13,6 +11,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
+namespace FluentInjections.Internal.Descriptors;
 
 /// <summary>
 /// Represents a middleware binding descriptor that provides methods to configure middleware within the application.

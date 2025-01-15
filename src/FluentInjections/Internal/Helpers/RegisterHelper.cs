@@ -3,7 +3,7 @@
 
 using System.Diagnostics;
 
-namespace FluentInjections;
+namespace FluentInjections.Internal.Helpers;
 
 internal static class RegisterHelper
 {

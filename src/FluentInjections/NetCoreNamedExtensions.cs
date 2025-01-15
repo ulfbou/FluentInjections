@@ -5,6 +5,7 @@ using FluentInjections;
 using FluentInjections.Extensions;
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Descriptors;
+using FluentInjections.Internal.Helpers;
 using FluentInjections.Internal.ServiceProvider;
 using FluentInjections.Internal.Utils;
 using FluentInjections.Validation;
@@ -41,7 +42,7 @@ public static class NetCoreNamedExtensions
     /// <param name="assemblies">Assemblies to scan for FluentInjections.</param>
     /// <returns>The service collection.</returns>
     /// <exception cref="InvalidOperationException">Thrown if FluentInjections has already been initialized.</exception>
-    public static IServiceCollection AddFluentInjections(this IServiceCollection services, params Assembly[]? assemblies)
+    public static IServiceCollection AddFluentInjections(this IServiceCollection services, IServiceConfigurator? configurator = null, params Assembly[]? assemblies)
     {
         lock (LockObject)
         {
