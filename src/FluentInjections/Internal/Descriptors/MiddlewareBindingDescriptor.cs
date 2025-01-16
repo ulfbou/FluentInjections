@@ -41,7 +41,7 @@ public class MiddlewareBindingDescriptor
     public List<Type> PrecedingMiddleware { get; set; } = new();
     public List<Type> FollowingMiddleware { get; set; } = new();
     public TimeSpan? Timeout { get; set; }
-    public Func<Exception, Task>? ErrorHandler { get; set; }
+    public Func<HttpContext, Exception, Task>? ErrorHandler { get; set; }
     public string? Tag { get; set; }
     public Func<bool>? Condition { get; set; }
     public bool IsEnabled => Condition?.Invoke() ?? true;

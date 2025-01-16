@@ -165,5 +165,5 @@ public interface IMiddlewareBinding<TMiddleware> : IMiddlewareBinding
     /// </summary>
     /// <param name="errorHandler">The function to handle errors.</param>
     /// <returns>The middleware binding instance.</returns>
-    IMiddlewareBinding<TMiddleware> OnError(Func<Exception, Task> errorHandler);
+    IMiddlewareBinding<TMiddleware> OnError(Func<HttpContext, Exception, Task> errorHandler);
 }

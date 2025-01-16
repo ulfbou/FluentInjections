@@ -7,7 +7,17 @@ namespace FluentInjections.Internal.Helpers;
 
 internal static class RegisterHelper
 {
-    public static void RegisterModule<TConfigurator>(Type moduleType, Type interfaceType, TConfigurator configurator) where TConfigurator : IConfigurator
+    public static void RegisterModules<TConfigurator>(IEnumerable<Type> modules, TConfigurator configurator)
+        where TConfigurator : IConfigurator
+    {
+        foreach (var module in modules)
+        {
+            RegisterModule(module, typeof(TConfigurator), configurator);
+        }
+    }
+
+    public static void RegisterModule<TConfigurator>(Type moduleType, Type configuratorType, TConfigurator configurator)
+        where TConfigurator : IConfigurator
     {
         Debug.WriteLine($"Registering module {moduleType.Name} with configurator {typeof(TConfigurator).Name}");
 

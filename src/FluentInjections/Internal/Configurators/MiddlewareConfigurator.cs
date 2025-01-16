@@ -471,7 +471,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
                 {
                     if (descriptor.ErrorHandler != null)
                     {
-                        await descriptor.ErrorHandler.Invoke(ex);
+                        await descriptor.ErrorHandler.Invoke(context, ex);
                     }
                     else
                     {
@@ -513,7 +513,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
                 throw;
             }
 
-            await descriptor.ErrorHandler.Invoke(ex);
+            await descriptor.ErrorHandler.Invoke(context, ex);
 
             if (descriptor.Fallback is not null)
             {
@@ -628,7 +628,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
         }
 
         /// <inheritdoc/>
-        public IMiddlewareBinding<TMiddleware> OnError(Func<Exception, Task> errorHandler)
+        public IMiddlewareBinding<TMiddleware> OnError(Func<HttpContext, Exception, Task> errorHandler)
         {
             Guard.NotNull(errorHandler, nameof(errorHandler));
             Descriptor.ErrorHandler = errorHandler;

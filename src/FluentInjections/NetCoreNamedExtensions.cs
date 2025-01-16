@@ -100,7 +100,7 @@ public static class NetCoreNamedExtensions
     {
         lock (LockObject)
         {
-            if (ServiceConfigurator is null)
+            if (ServiceConfigurator is not null)
             {
                 throw new InvalidOperationException("FluentInjections has not been configured. Ensure that AddFluentInjections has been called before calling UseFluentInjections.");
             }
