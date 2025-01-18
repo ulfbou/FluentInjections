@@ -6,7 +6,9 @@ using FluentInjections.Internal.Descriptors;
 using FluentInjections.Internal.Utils;
 using FluentInjections.Validation;
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.Metrics;
 using Microsoft.Extensions.Logging;
 
 using System.Diagnostics;
@@ -17,6 +19,11 @@ namespace FluentInjections.Internal.Configurators;
 internal abstract class ServiceConfigurator : Configurator<IServiceBinding, ServiceBindingDescriptor>, IServiceConfigurator
 {
     public virtual IServiceCollection Services { get; }
+    public abstract IConfigurationManager Configuration { get; }
+    public abstract ILoggingBuilder Logging { get; }
+    public abstract IMetricsBuilder Metrics { get; }
+    public abstract IServiceProvider Provider { get; set; }
+
     internal ServiceConfigurator(ILogger logger) : base(logger)
     {
         Services = new ServiceCollection();

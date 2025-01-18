@@ -1,7 +1,10 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.Metrics;
+using Microsoft.Extensions.Logging;
 
 namespace FluentInjections;
 
@@ -14,6 +17,10 @@ namespace FluentInjections;
 public interface IServiceConfigurator : IConfigurator<IServiceBinding>
 {
     IServiceCollection Services { get; }
+    IConfigurationManager Configuration { get; }
+    ILoggingBuilder Logging { get; }
+    IServiceProvider Provider { get; set; }
+    IMetricsBuilder Metrics { get; }
 
     /// <summary>
     /// Binds a service to the service collection.
