@@ -7,5 +7,9 @@ namespace FluentInjections;
 
 public interface IEndpointConfigurator : IConfigurator<IEndpointBinding>
 {
-    IEndpointsBuilder Map<TService>(string pattern, EndpointMethod method) where TService : class;
+    IEndpointsBuilder<TRequest> Map<TService, TRequest>(
+        string pattern,
+        EndpointMethod method,
+        Func<TService, TRequest, HttpContext, Task<IResult>> handler)
+        where TService : class;
 }

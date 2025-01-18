@@ -5,18 +5,25 @@ using FluentInjections.Internal.Descriptors;
 
 namespace FluentInjections;
 
-public interface IEndpointsBuilder
+public interface IEndpointsBuilder<TRequest>
 {
-    IEndpointsBuilder RequireAuthorization();
-    IEndpointsBuilder UseValidation<TValidationFilter>(Action<TValidationFilter>? configure = null)
+    IEndpointsBuilder<TRequest> RequireAuthorization();
+    IEndpointsBuilder<TRequest> ConfigureValidation<TValidationFilter>(Action<TValidationFilter>? configure = null)
         where TValidationFilter : class;
-    IEndpointsBuilder WithName(string endpointName);
-    IEndpointsBuilder InGroup(string groupName);
-    IEndpointsBuilder OnError(Func<Exception, Task> errorHandler);
-    IEndpointsBuilder WithPriority(int priority);
-    IEndpointsBuilder WithTag(string tag);
-    IEndpointsBuilder WithTimeout(TimeSpan timeout);
+    IEndpointsBuilder<TRequest> WithName(string endpointName);
+    IEndpointsBuilder<TRequest> WithGroup(string groupName);
+    IEndpointsBuilder<TRequest> WithErrorHandler(Func<Exception, Task> errorHandler);
+    IEndpointsBuilder<TRequest> WithPriority(int priority);
+    IEndpointsBuilder<TRequest> WithTag(string tag);
+    IEndpointsBuilder<TRequest> WithTimeout(TimeSpan timeout);
 
+    /// <summary>
+    /// Applies a policy to all endpoints in the specified group.
+    /// </summary>
     void ApplyGroupPolicy(string groupName, Action<IEndpointDescriptor> configure);
+
+    /// <summary>
+    /// Configures all endpoints with the specified action.
+    /// </summary>
     void ConfigureAll(Action<IEndpointDescriptor> configure);
 }

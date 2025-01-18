@@ -3,13 +3,7 @@
 
 namespace FluentInjections;
 
-public enum EndpointMethod
+public interface IExceptionHandler
 {
-    GET,
-    POST,
-    PUT,
-    DELETE,
-    PATCH,
-    OPTIONS,
-    HEAD
+    Task HandleExceptionAsync(Exception exception);
 }
