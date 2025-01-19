@@ -8,4 +8,5 @@ namespace FluentInjections.Tests.Internal.Configurators;
 /// <summary>
 /// A marker interface that represents a test service configurator that provides methods to configure components within the application.
 /// </summary>
-public interface ITestServiceConfigurator : IServiceConfigurator, ITestConfigurator<ServiceBindingDescriptor, IServiceBinding> { }
+public interface ITestServiceConfigurator : IServiceConfigurator, ITestConfigurator<ServiceDescriptor, IServiceBinding> { }
+public interface ITestEndpointConfigurator : IEndpointConfigurator, ITestConfigurator<EndpointDescriptor, IEndpointBinding> { }

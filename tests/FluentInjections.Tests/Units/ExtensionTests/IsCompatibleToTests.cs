@@ -9,6 +9,8 @@ using FluentInjections.Internal.ServiceProvider;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
+using ServiceDescriptor = FluentInjections.Internal.Descriptors.ServiceDescriptor;
+
 namespace FluentInjections.Tests.Units.ExtensionTests;
 
 public class IsCompatibleToTests
@@ -33,8 +35,8 @@ public class IsCompatibleToTests
     [InlineData(typeof(IMiddlewareBinding<>), typeof(IMiddlewareBinding<>), true)]
     [InlineData(typeof(IServiceBindingBuilder<>), typeof(IBinding), true)]
     [InlineData(typeof(IMiddlewareBinding<>), typeof(IBinding), true)]
-    [InlineData(typeof(Configurator<IServiceBinding, ServiceBindingDescriptor>), typeof(ServiceConfigurator), true)]
-    [InlineData(typeof(Configurator<IServiceBinding, ServiceBindingDescriptor>), typeof(NetCoreServiceConfigurator), true)]
+    [InlineData(typeof(Configurator<IServiceBinding, ServiceDescriptor>), typeof(ServiceConfigurator), true)]
+    [InlineData(typeof(Configurator<IServiceBinding, ServiceDescriptor>), typeof(NetCoreServiceConfigurator), true)]
     [InlineData(typeof(IConfigurator<IServiceBinding>), typeof(ServiceConfigurator), true)]
     [InlineData(typeof(IServiceProvider), typeof(NetCoreServiceProvider), true)]
     [InlineData(typeof(IKeyedServiceProvider), typeof(NetCoreServiceProvider), true)]
@@ -60,7 +62,7 @@ public class IsCompatibleToTests
     [InlineData(typeof(IServiceBinding), typeof(IServiceBindingBuilder<>), false)]
     [InlineData(typeof(IMiddlewareBinding), typeof(IMiddlewareBinding<>), false)]
     [InlineData(typeof(IConfigurableModule<>), typeof(IModule<>), false)]
-    [InlineData(typeof(ServiceConfigurator), typeof(Configurator<IServiceBinding, ServiceBindingDescriptor>), false)]
+    [InlineData(typeof(ServiceConfigurator), typeof(Configurator<IServiceBinding, ServiceDescriptor>), false)]
     [InlineData(typeof(NetCoreServiceConfigurator), typeof(MiddlewareConfigurator<IApplicationBuilder, IMiddlewareBinding>), false)]
     public void IsCompatibleWith_Should_Fail(Type sourceType, Type targetType, bool expectedResult)
     {

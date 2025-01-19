@@ -7,6 +7,8 @@ using FluentInjections.Internal.Descriptors;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using ServiceDescriptor = FluentInjections.Internal.Descriptors.ServiceDescriptor;
+
 namespace FluentInjections.Tests.Internal.Configurators;
 
 /// <summary>
@@ -19,5 +21,5 @@ internal sealed class TestNetCoreServiceConfigurator : NetCoreServiceConfigurato
     { }
 
     /// <inheritdoc />
-    public IEnumerable<ServiceBindingDescriptor> GetDescriptors() => Descriptors;
+    public IReadOnlyList<ServiceDescriptor> GetDescriptors() => Descriptors;
 }

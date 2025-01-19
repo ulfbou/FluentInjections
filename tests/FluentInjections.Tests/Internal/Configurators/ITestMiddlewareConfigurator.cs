@@ -10,7 +10,7 @@ namespace FluentInjections.Tests.Internal.Configurators;
 /// <summary>
 /// A marker interface that represents a test middleware configurator that provides methods to configure middleware within the application.
 /// </summary>
-public interface ITestMiddlewareConfigurator : IMiddlewareConfigurator, ITestConfigurator<MiddlewareBindingDescriptor, IMiddlewareBinding>
+public interface ITestMiddlewareConfigurator : IMiddlewareConfigurator, ITestConfigurator<MiddlewareDescriptor, IMiddlewareBinding>
 {
     /// <summary>
     /// Registers a middleware binding with the application builder.
@@ -19,5 +19,5 @@ public interface ITestMiddlewareConfigurator : IMiddlewareConfigurator, ITestCon
     /// <remarks>
     /// This method is used to register a middleware binding with the application builder.
     /// </remarks>
-    void RegisterWithAction(Action<MiddlewareBindingDescriptor, HttpContext> registerAction);
+    void RegisterWithAction(Action<MiddlewareDescriptor, HttpContext> registerAction);
 }

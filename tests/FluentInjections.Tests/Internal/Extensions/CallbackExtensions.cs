@@ -18,7 +18,7 @@ public static class CallbackExtensions
     /// <param name="callback">The callback action.</param>
     /// <returns>The middleware binding instance.</returns>
     /// <exception cref="InvalidOperationException">Thrown if the binding type is invalid.</exception>
-    internal static IMiddlewareBinding Callback(this IMiddlewareBinding binding, Action<MiddlewareBindingDescriptor> callback)
+    internal static IMiddlewareBinding Callback(this IMiddlewareBinding binding, Action<MiddlewareDescriptor> callback)
     {
         Guard.NotNull(binding, nameof(binding));
         Guard.NotNull(callback, nameof(callback));

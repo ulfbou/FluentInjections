@@ -20,3 +20,8 @@ internal interface IMiddlewareConfiguratorFixture : IConfiguratorFixture<TestNet
     Mock<ILoggerFactory> LoggerFactoryMock { get; }
     ApplicationBuilder AppBuilder { get; set; }
 }
+public interface IEndpointConfiguratorFixture<TConfigurator, TServices, TProvider> : IConfiguratorFixture<TConfigurator, TServices, TProvider>
+    where TConfigurator : class, IEndpointConfigurator
+    where TServices : class, IServiceCollection, new()
+    where TProvider : class, IServiceProvider
+{ }

@@ -1,6 +1,8 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using FluentInjections.Internal.Descriptors;
+
 namespace FluentInjections.Tests.Internal.Configurators;
 
 /// <summary>
@@ -16,5 +18,5 @@ public interface ITestConfigurator<TDescriptor, TBinding> : IConfigurator<TBindi
     /// Gets the descriptors.
     /// </summary>
     /// <returns>The descriptors.</returns>
-    IEnumerable<TDescriptor> GetDescriptors();
+    IReadOnlyList<TDescriptor> GetDescriptors();
 }

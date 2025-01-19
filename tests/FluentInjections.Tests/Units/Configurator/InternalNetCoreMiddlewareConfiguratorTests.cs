@@ -43,9 +43,9 @@ internal sealed class InternalNetCoreMiddlewareConfiguratorTests
     public async Task Register_ShouldInvokeRegisterMethodForEachDescriptorAsync()
     {
         // Arrange
-        var descriptorA = new MiddlewareBindingDescriptor(typeof(MiddlewareA), Configurator);
-        var descriptorB = new MiddlewareBindingDescriptor(typeof(MiddlewareB), Configurator);
-        var mockRegisterAction = new Mock<Action<MiddlewareBindingDescriptor, HttpContext>>();
+        var descriptorA = new MiddlewareDescriptor(typeof(MiddlewareA), Configurator);
+        var descriptorB = new MiddlewareDescriptor(typeof(MiddlewareB), Configurator);
+        var mockRegisterAction = new Mock<Action<MiddlewareDescriptor, HttpContext>>();
         Configurator = new TestNetCoreMiddlewareConfigurator(Fixture.AppBuilder, Fixture.LoggerMock.Object, new[] { descriptorA, descriptorB });
 
         // Act
@@ -57,7 +57,7 @@ internal sealed class InternalNetCoreMiddlewareConfiguratorTests
         // Assert
         mockRegisterAction.Verify(action => action(descriptorA, It.IsAny<HttpContext>()), Times.Once);
         mockRegisterAction.Verify(action => action(descriptorB, It.IsAny<HttpContext>()), Times.Once);
-        mockRegisterAction.Verify(action => action(It.IsAny<MiddlewareBindingDescriptor>(), It.IsAny<HttpContext>()), Times.Exactly(2));
+        mockRegisterAction.Verify(action => action(It.IsAny<MiddlewareDescriptor>(), It.IsAny<HttpContext>()), Times.Exactly(2));
     }
 
     ///<inheritdoc />
