@@ -13,5 +13,5 @@ namespace FluentInjections;
 /// </remarks>
 public interface IServiceBinding : IBinding
 {
-    ServiceBindingDescriptor Descriptor { get; }
+    ServiceDescriptor Descriptor { get; }
 }

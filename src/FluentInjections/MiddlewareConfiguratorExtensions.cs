@@ -13,14 +13,14 @@ public static class MiddlewareConfiguratorExtensions
         Guard.NotNull(configurator, nameof(configurator));
         Guard.NotNull(middlewareType, nameof(middlewareType));
 
-        return new NetCoreMiddlewareConfigurator.MiddlewareBinding(new MiddlewareBindingDescriptor(middlewareType, configurator));
+        return new NetCoreMiddlewareConfigurator.MiddlewareBinding(new MiddlewareDescriptor(middlewareType, configurator));
     }
 
     public static IMiddlewareBinding UseMiddleware(this IMiddlewareConfigurator configurator, Func<RequestDelegate, RequestDelegate> middleware)
     {
         //Guard.NotNull(configurator, nameof(configurator));
         //Guard.NotNull(middleware, nameof(middleware));
-        //return new NetCoreMiddlewareConfigurator.MiddlewareBinding(new MiddlewareBindingDescriptor(middleware.GetType(), configurator));
+        //return new NetCoreMiddlewareConfigurator.MiddlewareBinding(new MiddlewareDescriptor(middleware.GetType(), configurator));
         throw new NotImplementedException();
     }
 }

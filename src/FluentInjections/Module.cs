@@ -13,4 +13,5 @@ public abstract partial class Module :
 
     public virtual void Configure(IServiceConfigurator configurator) { }
     public virtual void Configure(IMiddlewareConfigurator configurator) { }
+    public virtual void Configure(IEndpointConfigurator configurator) { }
 }

@@ -5,17 +5,18 @@ using FluentInjections.Internal.Descriptors;
 
 namespace FluentInjections;
 
-public interface IEndpointsBuilder<TRequest>
+public interface IEndpointsBuilder<TService, TRequest>
 {
-    IEndpointsBuilder<TRequest> RequireAuthorization();
-    IEndpointsBuilder<TRequest> ConfigureValidation<TValidationFilter>(Action<TValidationFilter>? configure = null)
+    IEndpointsBuilder<TService, TRequest> RequireAuthorization();
+    IEndpointsBuilder<TService, TRequest> ConfigureValidation<TValidationFilter>(Action<TValidationFilter>? configure = null)
         where TValidationFilter : class;
-    IEndpointsBuilder<TRequest> WithName(string endpointName);
-    IEndpointsBuilder<TRequest> WithGroup(string groupName);
-    IEndpointsBuilder<TRequest> WithErrorHandler(Func<Exception, Task> errorHandler);
-    IEndpointsBuilder<TRequest> WithPriority(int priority);
-    IEndpointsBuilder<TRequest> WithTag(string tag);
-    IEndpointsBuilder<TRequest> WithTimeout(TimeSpan timeout);
+    IEndpointsBuilder<TService, TRequest> WithName(string endpointName);
+    IEndpointsBuilder<TService, TRequest> WithGroupName(string groupName);
+    IEndpointsBuilder<TService, TRequest> WithErrorHandler(Func<Exception, Task> errorHandler);
+    IEndpointsBuilder<TService, TRequest> WithPriority(int priority);
+    IEndpointsBuilder<TService, TRequest> WithTag(string tag);
+    IEndpointsBuilder<TService, TRequest> WithTimeout(TimeSpan timeout);
+    IEndpointsBuilder<TService, TRequest> WithMetadata(string key, object value);
 
     /// <summary>
     /// Applies a policy to all endpoints in the specified group.

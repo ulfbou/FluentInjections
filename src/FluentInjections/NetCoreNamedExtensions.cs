@@ -18,13 +18,16 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Reflection;
 
+using ServiceDescriptor = FluentInjections.Internal.Descriptors.ServiceDescriptor;
+using DotNetServiceDescriptor = Microsoft.Extensions.DependencyInjection.ServiceDescriptor;
+
 namespace FluentInjections;
 
 public static class NetCoreNamedExtensions
 {
     internal static object LockObject = new();
-    internal static readonly Dictionary<string, Dictionary<Type, ServiceBindingDescriptor>> NamedServices = new();
-    internal static readonly Dictionary<Type, ServiceBindingDescriptor> UnnamedServices = new();
+    internal static readonly Dictionary<string, Dictionary<Type, ServiceDescriptor>> NamedServices = new();
+    internal static readonly Dictionary<Type, ServiceDescriptor> UnnamedServices = new();
 
     internal static IServiceCollection? Services { get; set; }
     internal static Assembly[]? TargetAssemblies { get; set; }
@@ -191,8 +194,8 @@ public static class NetCoreNamedExtensions
     #endregion
 
     #region Register
-    // Register service binding descriptor
-    internal static void Register(this IServiceCollection services, ServiceBindingDescriptor descriptor)
+    // Register service descriptor
+    internal static void Register(this IServiceCollection services, ServiceDescriptor descriptor)
     {
         Guard.NotNull(services, nameof(services));
         Guard.NotNull(descriptor, nameof(descriptor));
@@ -207,7 +210,7 @@ public static class NetCoreNamedExtensions
             {
                 if (!NamedServices.ContainsKey(descriptor.Name))
                 {
-                    NamedServices[descriptor.Name] = new Dictionary<Type, ServiceBindingDescriptor>();
+                    NamedServices[descriptor.Name] = new Dictionary<Type, ServiceDescriptor>();
                 }
 
                 NamedServices[descriptor.Name][descriptor.BindingType] = descriptor;
@@ -217,11 +220,11 @@ public static class NetCoreNamedExtensions
         AddServiceDescriptor(services, descriptor);
     }
 
-    private static void AddServiceDescriptor(IServiceCollection services, ServiceBindingDescriptor descriptor)
+    private static void AddServiceDescriptor(IServiceCollection services, ServiceDescriptor descriptor)
     {
         if (descriptor.Instance is not null)
         {
-            services.Add(new ServiceDescriptor(descriptor.BindingType, provider =>
+            services.Add(new DotNetServiceDescriptor(descriptor.BindingType, provider =>
             {
                 descriptor.Configure?.Invoke(descriptor.Instance);
                 return descriptor.Instance;
@@ -229,7 +232,7 @@ public static class NetCoreNamedExtensions
         }
         else if (descriptor.Factory is not null)
         {
-            services.Add(new ServiceDescriptor(descriptor.BindingType, provider =>
+            services.Add(new DotNetServiceDescriptor(descriptor.BindingType, provider =>
             {
                 var service = descriptor.Factory(provider);
                 descriptor.Configure?.Invoke(service);
@@ -238,20 +241,20 @@ public static class NetCoreNamedExtensions
         }
         else if (descriptor.ImplementationType is null)
         {
-            throw new InvalidOperationException("ServiceBindingDescriptor must have an Instance, Factory, or ImplementationType defined.");
+            throw new InvalidOperationException("ServiceDescriptor must have an Instance, Factory, or ImplementationType defined.");
         }
         else if (descriptor.Parameters is null || descriptor.Parameters.Count == 0)
         {
             if (descriptor.BindingType != descriptor.ImplementationType && !services.Any(sd => sd.ServiceType == descriptor.BindingType))
             {
-                services.Add(new ServiceDescriptor(descriptor.BindingType, descriptor.ImplementationType!, descriptor.Lifetime));
+                services.Add(new DotNetServiceDescriptor(descriptor.BindingType, descriptor.ImplementationType!, descriptor.Lifetime));
             }
 
-            services.Add(new ServiceDescriptor(descriptor.ImplementationType, descriptor.ImplementationType, descriptor.Lifetime));
+            services.Add(new DotNetServiceDescriptor(descriptor.ImplementationType, descriptor.ImplementationType, descriptor.Lifetime));
         }
         else
         {
-            services.Add(new ServiceDescriptor(descriptor.BindingType, provider =>
+            services.Add(new DotNetServiceDescriptor(descriptor.BindingType, provider =>
             {
                 var service = ActivatorUtilities.CreateInstance(provider, descriptor.ImplementationType, descriptor.Parameters.Values.ToArray().Where(p => p is not null));
                 descriptor.Configure?.Invoke(service);

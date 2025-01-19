@@ -14,9 +14,11 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Text;
 
+using ServiceDescriptor = FluentInjections.Internal.Descriptors.ServiceDescriptor;
+
 namespace FluentInjections.Internal.Configurators;
 
-internal abstract class ServiceConfigurator : Configurator<IServiceBinding, ServiceBindingDescriptor>, IServiceConfigurator
+internal abstract class ServiceConfigurator : Configurator<IServiceBinding, ServiceDescriptor>, IServiceConfigurator
 {
     public virtual IServiceCollection Services { get; }
     public abstract IConfigurationManager Configuration { get; }
@@ -38,7 +40,7 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
     /// <inheritdoc />
     public IServiceBindingBuilder<TService> Bind<TService>() where TService : notnull
     {
-        var descriptor = new ServiceBindingDescriptor(typeof(TService), this);
+        var descriptor = new ServiceDescriptor(typeof(TService), this);
         var existingDescriptor = _descriptors.FirstOrDefault(binding => binding.BindingType == descriptor.BindingType && binding.Name == descriptor.Name);
 
         _descriptors.Add(descriptor);
@@ -55,7 +57,7 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
             throw new InvalidOperationException("Cannot bind abstract types to themselves.");
         }
 
-        var descriptor = new ServiceBindingDescriptor(serviceType, this);
+        var descriptor = new ServiceDescriptor(serviceType, this);
         var existingDescriptor = _descriptors.FirstOrDefault(binding => binding.BindingType == descriptor.BindingType && binding.Name == descriptor.Name);
         _descriptors.Add(descriptor);
         return new ServiceBindingBuilder(this, descriptor);
@@ -113,7 +115,7 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
         }
     }
 
-    private void ReplaceBindings(IGrouping<object, ServiceBindingDescriptor> group)
+    private void ReplaceBindings(IGrouping<object, ServiceDescriptor> group)
     {
         Guard.NotNull(group, nameof(group));
 
@@ -124,7 +126,7 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
         _descriptors.RemoveAll(binding => binding.BindingType == lastBinding.BindingType && binding.Name == lastBinding.Name && binding != lastBinding);
     }
 
-    private void MergeBindings(IGrouping<object, ServiceBindingDescriptor> group)
+    private void MergeBindings(IGrouping<object, ServiceDescriptor> group)
     {
         Guard.NotNull(group, nameof(group));
 
@@ -138,7 +140,7 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
         }
     }
 
-    private void MergeDescriptors(ServiceBindingDescriptor existingDescriptor, ServiceBindingDescriptor newDescriptor)
+    private void MergeDescriptors(ServiceDescriptor existingDescriptor, ServiceDescriptor newDescriptor)
     {
         Guard.NotNull(existingDescriptor, nameof(existingDescriptor));
         Guard.NotNull(newDescriptor, nameof(newDescriptor));
@@ -195,7 +197,7 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
     #endregion
 
     // TryGetDescriptor
-    internal ServiceBindingDescriptor? TryGetDescriptor<TService>(string? name = null)
+    internal ServiceDescriptor? TryGetDescriptor<TService>(string? name = null)
     {
         var descriptor = _descriptors.FirstOrDefault(binding => binding.BindingType == typeof(TService) && (name is null || binding.Name == name));
         return descriptor;
@@ -205,12 +207,12 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
     internal class ServiceBindingBuilder : IServiceBindingBuilder
     {
         private readonly ServiceConfigurator _configurator;
-        private readonly ServiceBindingDescriptor _descriptor;
+        private readonly ServiceDescriptor _descriptor;
 
-        public ServiceBindingDescriptor Descriptor => _descriptor;
+        public ServiceDescriptor Descriptor => _descriptor;
         internal ServiceConfigurator Configurator => _configurator;
 
-        public ServiceBindingBuilder(ServiceConfigurator configurator, ServiceBindingDescriptor descriptor)
+        public ServiceBindingBuilder(ServiceConfigurator configurator, ServiceDescriptor descriptor)
         {
             _configurator = configurator ?? throw new ArgumentNullException(nameof(configurator));
             _descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
@@ -456,13 +458,13 @@ internal abstract class ServiceConfigurator : Configurator<IServiceBinding, Serv
             return this;
         }
 
-        internal ServiceBindingDescriptor GetDescriptor() => (_descriptor as ServiceBindingDescriptor)!;
+        internal ServiceDescriptor GetDescriptor() => (_descriptor as ServiceDescriptor)!;
         public IServiceBindingBuilder Configure<TService>(Action<TService> configure) => throw new NotImplementedException();
     }
 
     internal class ServiceBindingBuilder<TService> : ServiceBindingBuilder, IServiceBindingBuilder<TService> where TService : notnull
     {
-        public ServiceBindingBuilder(ServiceConfigurator configurator, ServiceBindingDescriptor descriptor) : base(configurator, descriptor) { }
+        public ServiceBindingBuilder(ServiceConfigurator configurator, ServiceDescriptor descriptor) : base(configurator, descriptor) { }
 
         /// <inheritdoc/>
         public IServiceBindingBuilder<TService> To<TImplementation>() where TImplementation : class, TService

@@ -15,5 +15,5 @@ namespace FluentInjections;
 /// </remarks>
 public interface IMiddlewareBinding : IBinding
 {
-    MiddlewareBindingDescriptor Descriptor { get; }
+    MiddlewareDescriptor Descriptor { get; }
 }

@@ -7,6 +7,9 @@ using FluentInjections.Validation;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using ServiceDescriptor = FluentInjections.Internal.Descriptors.ServiceDescriptor;
+using DotNetServiceDescriptor = Microsoft.Extensions.DependencyInjection.ServiceDescriptor;
+
 namespace FluentInjections.Internal.ServiceProvider;
 
 public sealed class NetCoreServiceProvider :
@@ -20,16 +23,16 @@ public sealed class NetCoreServiceProvider :
 {
     private readonly IServiceProvider _provider;
     private readonly IDictionary<string, ServiceDescriptor> _keyedServiceDescriptors;
-    private readonly IDictionary<string, Dictionary<Type, ServiceBindingDescriptor>> _namedServices;
+    private readonly IDictionary<string, Dictionary<Type, ServiceDescriptor>> _namedServices;
 
     public NetCoreServiceProvider(IServiceProvider serviceProvider, IDictionary<string, ServiceDescriptor> keyedServiceDescriptors)
     {
         _provider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _keyedServiceDescriptors = keyedServiceDescriptors ?? throw new ArgumentNullException(nameof(keyedServiceDescriptors));
-        _namedServices = new Dictionary<string, Dictionary<Type, ServiceBindingDescriptor>>();
+        _namedServices = new Dictionary<string, Dictionary<Type, ServiceDescriptor>>();
     }
 
-    public NetCoreServiceProvider(IServiceProvider serviceProvider, Dictionary<string, Dictionary<Type, ServiceBindingDescriptor>> namedServices)
+    public NetCoreServiceProvider(IServiceProvider serviceProvider, Dictionary<string, Dictionary<Type, ServiceDescriptor>> namedServices)
     {
         _provider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _keyedServiceDescriptors = new Dictionary<string, ServiceDescriptor>();
@@ -85,7 +88,7 @@ public sealed class NetCoreServiceProvider :
             var genericTypeDefinition = serviceType.GetGenericTypeDefinition();
             var genericArguments = serviceType.GetGenericArguments();
 
-            foreach (var descriptor in _provider.GetServices<ServiceDescriptor>())
+            foreach (var descriptor in _provider.GetServices<DotNetServiceDescriptor>())
             {
                 if (descriptor.ImplementationType is null) continue;
                 if (descriptor.ServiceType.IsGenericTypeDefinition && descriptor.ServiceType == genericTypeDefinition)
@@ -101,7 +104,7 @@ public sealed class NetCoreServiceProvider :
         return null;
     }
 
-    private object? GetServiceFromDescriptor(ServiceBindingDescriptor descriptor)
+    private object? GetServiceFromDescriptor(ServiceDescriptor descriptor)
     {
         if (descriptor.Instance is not null)
         {

@@ -20,7 +20,7 @@ namespace FluentInjections.Internal.Descriptors;
 /// <remarks>
 /// This class is used to specify middleware binding configurations.
 /// </remarks>
-public class MiddlewareBindingDescriptor
+public class MiddlewareDescriptor
 {
     private readonly object _lock = new();
 
@@ -48,7 +48,7 @@ public class MiddlewareBindingDescriptor
 
     public IMiddlewareConfigurator MiddlewareConfigurator { get; }
 
-    internal MiddlewareBindingDescriptor(Type middlewareType, IMiddlewareConfigurator middlewareConfigurator)
+    internal MiddlewareDescriptor(Type middlewareType, IMiddlewareConfigurator middlewareConfigurator)
     {
         MiddlewareType = middlewareType ?? throw new ArgumentNullException(nameof(middlewareType));
         MiddlewareConfigurator = middlewareConfigurator ?? throw new ArgumentNullException(nameof(middlewareConfigurator));
@@ -58,7 +58,7 @@ public class MiddlewareBindingDescriptor
     /// Adds a dependency to the middleware binding descriptor.
     /// </summary>
     /// <param name="dependency">The dependency type to add.</param>
-    public MiddlewareBindingDescriptor AddDependency(Type dependency)
+    public MiddlewareDescriptor AddDependency(Type dependency)
     {
         Guard.NotNull(dependency, nameof(dependency));
 
@@ -74,7 +74,7 @@ public class MiddlewareBindingDescriptor
     /// </summary>
     /// <param name="precedingMiddleware">The preceding middleware type to add.</param>
     /// <returns>A reference to this instance after the operation has completed.</returns>
-    public MiddlewareBindingDescriptor AddMetadata(string key, object value)
+    public MiddlewareDescriptor AddMetadata(string key, object value)
     {
         Guard.NotNull(key, nameof(key));
         Guard.NotNull(value, nameof(value));
@@ -92,7 +92,7 @@ public class MiddlewareBindingDescriptor
     /// </summary>
     /// <param name="succedingMiddleware">The succeding middleware type to add.</param>
     /// <returns>A reference to this instance after the operation has completed.</returns>
-    public MiddlewareBindingDescriptor AddPrecedingMiddleware(Type succedingMiddleware)
+    public MiddlewareDescriptor AddPrecedingMiddleware(Type succedingMiddleware)
     {
         Guard.NotNull(succedingMiddleware, nameof(succedingMiddleware));
 
@@ -122,7 +122,7 @@ public class MiddlewareBindingDescriptor
     {
         Guard.NotNull(obj, nameof(obj));
 
-        return obj is MiddlewareBindingDescriptor other &&
+        return obj is MiddlewareDescriptor other &&
             MiddlewareType == other.MiddlewareType &&
             Priority == other.Priority &&
             Group == other.Group;

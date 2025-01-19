@@ -16,6 +16,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+using ServiceDescriptor = FluentInjections.Internal.Descriptors.ServiceDescriptor;
+
 namespace FluentInjections.Internal.Configurators;
 
 internal class NetCoreServiceConfigurator : ServiceConfigurator, IServiceConfigurator
@@ -50,7 +52,7 @@ internal class NetCoreServiceConfigurator : ServiceConfigurator, IServiceConfigu
         _metrics = builder.Metrics;
     }
 
-    protected override void Register(ServiceBindingDescriptor bindingDescriptor)
+    protected override void Register(ServiceDescriptor bindingDescriptor)
     {
         _services.Register(bindingDescriptor);
     }

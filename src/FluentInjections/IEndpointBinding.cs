@@ -3,4 +3,7 @@
 
 namespace FluentInjections;
 
+/// <summary>
+/// Represents a binding for an endpoint.
+/// </summary>
 public interface IEndpointBinding : IBinding { }

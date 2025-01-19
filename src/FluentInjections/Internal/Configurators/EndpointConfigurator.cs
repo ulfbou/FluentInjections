@@ -1,6 +1,7 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using FluentInjections.Constants;
 using FluentInjections.Internal.Descriptors;
 using FluentInjections.Internal.Extensions;
 using FluentInjections.Validation;
@@ -11,20 +12,22 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using System.Diagnostics;
+
 namespace FluentInjections.Internal.Configurators;
 
 internal class EndpointConfigurator : Configurator<IEndpointBinding, EndpointDescriptor>, IEndpointConfigurator
 {
+    protected readonly Dictionary<string, RouteGroupBuilder> _routeGroupBuilders = new();
     public WebApplication App { get; }
-    public IRouteBuilder Builder { get; }
 
     public EndpointConfigurator(WebApplication application, ILogger logger) : base(logger)
     {
         App = application ?? throw new ArgumentNullException(nameof(application));
-        Builder = new RouteBuilder(App);
+        _routeGroupBuilders.Add(Endpoints.Routes.DefaultGroup, App.MapGroup(Endpoints.Routes.DefaultGroup));
     }
 
-    public IEndpointsBuilder<TRequest> Map<TService, TRequest>(
+    public IEndpointsBuilder<TService, TRequest> Map<TService, TRequest>(
         string pattern,
         EndpointMethod method,
         Func<TService, TRequest, HttpContext, Task<IResult>> handler)
@@ -38,59 +41,51 @@ internal class EndpointConfigurator : Configurator<IEndpointBinding, EndpointDes
         _descriptors.Add(binding);
     }
 
-    public IReadOnlyList<IEndpointDescriptor> GetBindings() => _descriptors.AsReadOnly();
-
     // Register the endpoint with the application
     protected override void Register(EndpointDescriptor descriptor)
     {
         var service = App.Services.GetRequiredService(descriptor.ServiceType);
+        var group = GetOrCreateGroup(descriptor.Group);
 
-        var config = Builder.MapVerb(descriptor.Pattern, descriptor.Method.ToString(), async (HttpContext context) =>
+        if (descriptor.Priority > 0)
         {
-            object? requestBody = null;
-            try
+            descriptor.TryAddMetadata(Endpoints.Descriptor.PriorityKey, descriptor.Priority);
+        }
+
+
+        if (descriptor.Timeout.HasValue)
+        {
+            descriptor.TryAddMetadata(Endpoints.Descriptor.TimeoutKey, descriptor.Timeout.Value);
+        }
+
+        var config = group.MapVerb(descriptor.Pattern, descriptor.Method.ToString(), builder =>
+        {
+            if (descriptor.Metadata.Count > 0)
             {
-                requestBody = await context.Request.ReadFromJsonAsync(descriptor.Handler!.Method.GetParameters()[1].ParameterType);
-            }
-            catch (Exception ex)
-            {
-                if (descriptor.ErrorHandler != null)
+                foreach (var metadata in descriptor.Metadata)
                 {
-                    await descriptor.ErrorHandler(ex);
+                    builder.WithMetadata(metadata.Value);
                 }
-                else
-                {
-                    context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                    await context.Response.WriteAsync("An error occurred while processing the request.");
-                }
-                return;
             }
 
-            if (requestBody == null)
+            if (!string.IsNullOrEmpty(descriptor.Tag))
             {
-                context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                await context.Response.WriteAsync("Invalid request body.");
-                return;
+                builder.WithTags(descriptor.Tag);
             }
 
-            try
+            if (!string.IsNullOrEmpty(descriptor.Name))
             {
-                var result = await (Task<IResult>)descriptor.Handler!.DynamicInvoke(service, requestBody, context)!;
-                await result.ExecuteAsync(context);
+                builder.WithName(descriptor.Name);
             }
-            catch (Exception ex)
+
+            if (!string.IsNullOrEmpty(descriptor.Group))
             {
-                if (descriptor.ErrorHandler != null)
-                {
-                    await descriptor.ErrorHandler(ex);
-                }
-                else
-                {
-                    context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                    await context.Response.WriteAsync("An error occurred while processing the request.");
-                }
+                builder.WithGroupName(descriptor.Group);
             }
+
         });
+
+
 
         if (descriptor.RequireAuthorization)
         {
@@ -98,6 +93,36 @@ internal class EndpointConfigurator : Configurator<IEndpointBinding, EndpointDes
         }
 
         ApplyDescriptorPolicies(descriptor);
+    }
+
+    private RouteGroupBuilder GetOrCreateGroup(string? groupName)
+    {
+        RouteGroupBuilder groupBuilder = default!;
+
+        if (string.IsNullOrEmpty(groupName))
+        {
+            if (_routeGroupBuilders.Count == 0)
+            {
+                Debug.WriteLine("No group specified and no group defined. Creating a group for ");
+                groupBuilder = App.MapGroup(Endpoints.Routes.DefaultGroup);
+                _routeGroupBuilders.Add(Endpoints.Routes.DefaultGroup, groupBuilder);
+                return groupBuilder;
+            }
+
+            Debug.WriteLine("No group specified. Using the default group.");
+            return _routeGroupBuilders.TryGetValue(Endpoints.Routes.DefaultGroup, out groupBuilder!) ? groupBuilder : default!;
+        }
+
+        var existingGroup = _routeGroupBuilders.GetValueOrDefault(groupName);
+
+        if (existingGroup is not null)
+        {
+            return groupBuilder;
+        }
+
+        groupBuilder = App.MapGroup(groupName);
+        _routeGroupBuilders.Add(groupName, groupBuilder);
+        return groupBuilder;
     }
 
     private void ApplyDescriptorPolicies(EndpointDescriptor descriptor)
@@ -117,7 +142,9 @@ internal class EndpointConfigurator : Configurator<IEndpointBinding, EndpointDes
         throw new NotImplementedException();
     }
 
-    internal class EndpointsBuilder<TService, TRequest> : IEndpointsBuilder<TRequest> where TService : class
+    public override bool Equals(object? obj) => obj is EndpointConfigurator configurator && ReferenceEquals(this, configurator);
+
+    internal class EndpointsBuilder<TService, TRequest> : IEndpointsBuilder<TService, TRequest> where TService : class
     {
         private readonly string _pattern;
         private readonly EndpointMethod _method;
@@ -145,13 +172,13 @@ internal class EndpointConfigurator : Configurator<IEndpointBinding, EndpointDes
             };
         }
 
-        public IEndpointsBuilder<TRequest> RequireAuthorization()
+        public IEndpointsBuilder<TService, TRequest> RequireAuthorization()
         {
             _descriptor.RequireAuthorization = true;
             return this;
         }
 
-        public IEndpointsBuilder<TRequest> ConfigureValidation<TValidationFilter>(Action<TValidationFilter>? configure = null)
+        public IEndpointsBuilder<TService, TRequest> ConfigureValidation<TValidationFilter>(Action<TValidationFilter>? configure = null)
             where TValidationFilter : class
         {
             _descriptor.ValidationFilterType = typeof(TValidationFilter);
@@ -160,44 +187,59 @@ internal class EndpointConfigurator : Configurator<IEndpointBinding, EndpointDes
             return this;
         }
 
-        public IEndpointsBuilder<TRequest> WithName(string endpointName)
+        public IEndpointsBuilder<TService, TRequest> WithName(string endpointName)
         {
             _descriptor.Name = endpointName;
             return this;
         }
 
-        public IEndpointsBuilder<TRequest> WithGroup(string groupName)
+        public IEndpointsBuilder<TService, TRequest> WithGroupName(string groupName)
         {
             _descriptor.Group = groupName;
             return this;
         }
 
-        public IEndpointsBuilder<TRequest> WithErrorHandler(Func<Exception, Task> errorHandler)
+        public IEndpointsBuilder<TService, TRequest> WithErrorHandler(Func<Exception, Task> errorHandler)
         {
             _descriptor.ErrorHandler = errorHandler;
             return this;
         }
 
-        public IEndpointsBuilder<TRequest> WithPriority(int priority)
+        public IEndpointsBuilder<TService, TRequest> WithPriority(int priority)
         {
             _descriptor.Priority = priority;
             return this;
         }
 
-        public IEndpointsBuilder<TRequest> WithTag(string tag)
+        public IEndpointsBuilder<TService, TRequest> WithTag(string tag)
         {
             _descriptor.Tag = tag;
             return this;
         }
 
-        public IEndpointsBuilder<TRequest> WithTimeout(TimeSpan timeout)
+        /// <inheritdoc/>
+        public IEndpointsBuilder<TService, TRequest> WithTimeout(TimeSpan timeout)
         {
             _descriptor.Timeout = timeout;
             return this;
         }
 
+        /// <inheritdoc/>
+        public IEndpointsBuilder<TService, TRequest> WithMetadata(string key, object value)
+        {
+            Guard.NotNullOrWhiteSpace(key, nameof(key));
+            Guard.NotNull(value, nameof(value));
+
+            _descriptor.TryAddMetadata(key, value);
+            return this;
+        }
+
+        /// <inheritdoc/>
         public void ApplyGroupPolicy(string groupName, Action<IEndpointDescriptor> configure)
         {
+            Guard.NotNullOrWhiteSpace(groupName, nameof(groupName));
+            Guard.NotNull(configure, nameof(configure));
+
             if (_descriptor.Group == groupName)
             {
                 configure(_descriptor);
@@ -209,10 +251,8 @@ internal class EndpointConfigurator : Configurator<IEndpointBinding, EndpointDes
             Guard.NotNull(configure, nameof(configure));
             configure(_descriptor);
         }
-
-        public void Build()
-        {
-            _addBinding(_descriptor);
-        }
     }
+
+    /// <inheritdoc/>
+    public override int GetHashCode() => HashCode.Combine(_routeGroupBuilders, base.GetHashCode());
 }
