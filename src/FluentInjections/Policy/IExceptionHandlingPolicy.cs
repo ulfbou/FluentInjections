@@ -3,7 +3,7 @@
 
 using FluentInjections.Bindings;
 
-namespace FluentInjections.Policies;
+namespace FluentInjections.Policy;
 
 /// <summary>
 /// Represents a policy for handling exceptions that occur during the execution of a operation.

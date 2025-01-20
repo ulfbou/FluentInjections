@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FluentInjections.Policies;
+namespace FluentInjections.Policy;
 
 /// <summary>
 /// Represents a caching policy that can be executed with a type safe context.

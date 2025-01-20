@@ -8,6 +8,8 @@ public abstract partial class Module :
     IConfigurableModule<IServiceConfigurator>,
     IConfigurableModule<IMiddlewareConfigurator>
 {
+    public abstract int Priority { get; }
+
     public bool CanHandle<T>() where T : IConfigurator => throw new NotImplementedException();
     public bool CanHandle(Type configuratorType) => throw new NotImplementedException();
 

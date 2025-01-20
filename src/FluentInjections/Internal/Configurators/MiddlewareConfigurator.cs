@@ -15,12 +15,12 @@ using System.Reflection;
 using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using FluentInjections.Policies;
+using FluentInjections.Policy;
 
 namespace FluentInjections.Internal.Configurators;
 
 internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
-    : Configurator<TBinding, MiddlewareBindingDescriptor>, IMiddlewareConfigurator, IConfigurator
+    : Configurator<TBinding, MiddlewareDescriptor>, IMiddlewareConfigurator, IConfigurator
     where TDependencyBuilder : class
     where TBinding : IBinding
 {
@@ -43,21 +43,21 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
 
     protected internal void ValidateBindingsInternal() => ValidateBindings();
 
-    internal IReadOnlyList<MiddlewareBindingDescriptor> MiddlewareDescriptors => _descriptors.AsReadOnly();
+    internal IReadOnlyList<MiddlewareDescriptor> MiddlewareDescriptors => _descriptors.AsReadOnly();
     internal IReadOnlyList<MiddlewareBinding> Bindings => _bindings;
 
     public object Middleware => _middleware!;
     public Type MiddlewareType => _middlewareType;
 
-    public MiddlewareBindingDescriptor? GetDescriptor<TMiddleware>(MiddlewareBindingDescriptor? descriptor = null) where TMiddleware : class
+    public MiddlewareDescriptor? GetDescriptor<TMiddleware>(MiddlewareDescriptor? descriptor = null) where TMiddleware : class
     {
         var middleware = typeof(TMiddleware);
-        var predicate = descriptor is null ? (Func<MiddlewareBindingDescriptor, bool>)(d => d.MiddlewareType == middleware) :
+        var predicate = descriptor is null ? (Func<MiddlewareDescriptor, bool>)(d => d.MiddlewareType == middleware) :
             (d => d.MiddlewareType == middleware && d.Name == descriptor.Name);
         return _descriptors.FirstOrDefault(predicate);
     }
 
-    public bool RemoveMiddleware<TMiddleware>(MiddlewareBindingDescriptor? descriptor = null) where TMiddleware : class
+    public bool RemoveMiddleware<TMiddleware>(MiddlewareDescriptor? descriptor = null) where TMiddleware : class
     {
         var middleware = typeof(TMiddleware);
         var binding = GetDescriptor<TMiddleware>(descriptor) as MiddlewareBinding;
@@ -77,7 +77,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
 
     public IMiddlewareBinding<TMiddleware> UseMiddleware<TMiddleware>() where TMiddleware : class
     {
-        var descriptor = new MiddlewareBindingDescriptor(typeof(TMiddleware), this);
+        var descriptor = new MiddlewareDescriptor(typeof(TMiddleware), this);
         var binding = new MiddlewareBinding<TMiddleware>(descriptor);
 
         _descriptors.Add(descriptor);
@@ -98,7 +98,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
         }
     }
 
-    public void ConfigureAll(Action<MiddlewareBindingDescriptor> configure)
+    public void ConfigureAll(Action<MiddlewareDescriptor> configure)
     {
         Guard.NotNull(configure, nameof(configure));
 
@@ -106,6 +106,12 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
         {
             configure(binding);
         }
+    }
+
+    internal void AddDescriptor(MiddlewareDescriptor descriptor)
+    {
+        Guard.NotNull(descriptor, nameof(descriptor));
+        _descriptors.Add(descriptor);
     }
 
     #region Validation
@@ -190,7 +196,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
         }
     }
 
-    private void MergeDescriptors(MiddlewareBindingDescriptor existingDescriptor, MiddlewareBindingDescriptor newDescriptor)
+    private void MergeDescriptors(MiddlewareDescriptor existingDescriptor, MiddlewareDescriptor newDescriptor)
     {
         if (newDescriptor.Instance is not null)
         {
@@ -300,23 +306,23 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
     /// <remarks>
     /// This method is used internally to register bindings that require additional configuration.
     /// </remarks>
-    internal void Register(Action<MiddlewareBindingDescriptor, HttpContext> register)
+    internal void Register(Action<MiddlewareDescriptor, HttpContext> register)
     {
         ValidateBindings();
-        List<MiddlewareBindingDescriptor> orderedDescriptors = OrderBindingDescriptors();
+        List<MiddlewareDescriptor> orderedDescriptors = OrderBindingDescriptors();
 
         orderedDescriptors.ForEach(d => Register(d, register));
     }
 
     #region Ordering Middleware Descriptors
-    protected override List<MiddlewareBindingDescriptor> OrderBindingDescriptors()
+    protected override List<MiddlewareDescriptor> OrderBindingDescriptors()
     {
-        var graph = new Dictionary<MiddlewareBindingDescriptor, List<MiddlewareBindingDescriptor>>();
+        var graph = new Dictionary<MiddlewareDescriptor, List<MiddlewareDescriptor>>();
 
         // Initialize graph with all descriptors
         foreach (var descriptor in _descriptors)
         {
-            graph[descriptor] = new List<MiddlewareBindingDescriptor>();
+            graph[descriptor] = new List<MiddlewareDescriptor>();
         }
 
         // Build the graph based on dependencies, preceding, and following relationships
@@ -326,7 +332,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             {
                 foreach (var dependencyType in descriptor.Dependencies)
                 {
-                    var dependency = FindMiddlewareBindingDescriptor(dependencyType);
+                    var dependency = FindMiddlewareDescriptor(dependencyType);
                     if (dependency != null)
                     {
                         graph[dependency].Add(descriptor); // Dependency must run before this middleware
@@ -338,7 +344,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             {
                 foreach (var precedingType in descriptor.PrecedingMiddleware)
                 {
-                    var precedingMiddleware = FindMiddlewareBindingDescriptor(precedingType);
+                    var precedingMiddleware = FindMiddlewareDescriptor(precedingType);
                     if (precedingMiddleware != null)
                     {
                         graph[precedingMiddleware].Add(descriptor); // Preceding middleware must run before this middleware
@@ -350,7 +356,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             {
                 foreach (var followingType in descriptor.FollowingMiddleware)
                 {
-                    var followingMiddleware = FindMiddlewareBindingDescriptor(followingType);
+                    var followingMiddleware = FindMiddlewareDescriptor(followingType);
                     if (followingMiddleware != null)
                     {
                         graph[descriptor].Add(followingMiddleware); // This middleware must run before following middleware
@@ -368,16 +374,16 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             .ToList();
     }
 
-    private MiddlewareBindingDescriptor? FindMiddlewareBindingDescriptor(Type middlewareType)
+    private MiddlewareDescriptor? FindMiddlewareDescriptor(Type middlewareType)
     {
         return _descriptors.FirstOrDefault(d => d.MiddlewareType == middlewareType);
     }
 
-    private List<MiddlewareBindingDescriptor> TopologicalSort(Dictionary<MiddlewareBindingDescriptor, List<MiddlewareBindingDescriptor>> graph)
+    private List<MiddlewareDescriptor> TopologicalSort(Dictionary<MiddlewareDescriptor, List<MiddlewareDescriptor>> graph)
     {
-        var sorted = new List<MiddlewareBindingDescriptor>();
-        var visited = new HashSet<MiddlewareBindingDescriptor>();
-        var visiting = new HashSet<MiddlewareBindingDescriptor>();
+        var sorted = new List<MiddlewareDescriptor>();
+        var visited = new HashSet<MiddlewareDescriptor>();
+        var visiting = new HashSet<MiddlewareDescriptor>();
 
         foreach (var node in graph.Keys)
         {
@@ -388,11 +394,11 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
     }
 
     private void Visit(
-        MiddlewareBindingDescriptor node,
-        Dictionary<MiddlewareBindingDescriptor, List<MiddlewareBindingDescriptor>> graph,
-        List<MiddlewareBindingDescriptor> sorted,
-        HashSet<MiddlewareBindingDescriptor> visited,
-        HashSet<MiddlewareBindingDescriptor> visiting)
+        MiddlewareDescriptor node,
+        Dictionary<MiddlewareDescriptor, List<MiddlewareDescriptor>> graph,
+        List<MiddlewareDescriptor> sorted,
+        HashSet<MiddlewareDescriptor> visited,
+        HashSet<MiddlewareDescriptor> visiting)
     {
         if (visited.Contains(node))
             return;
@@ -424,7 +430,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
     /// <remarks>
     /// This method is used internally to register bindings that require additional configuration.
     /// </remarks>
-    internal void Register(MiddlewareBindingDescriptor descriptor, Action<MiddlewareBindingDescriptor, HttpContext>? register)
+    internal void Register(MiddlewareDescriptor descriptor, Action<MiddlewareDescriptor, HttpContext>? register)
     {
         Guard.NotNull(descriptor, nameof(descriptor));
 
@@ -488,7 +494,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
         }
     }
 
-    private async Task InvokeMiddlewareWithFallbackAndPolicy(MiddlewareBindingDescriptor descriptor, HttpContext context, RequestDelegate next)
+    private async Task InvokeMiddlewareWithFallbackAndPolicy(MiddlewareDescriptor descriptor, HttpContext context, RequestDelegate next)
     {
         try
         {
@@ -522,7 +528,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
         }
     }
 
-    protected async Task InvokeMiddleware(MiddlewareBindingDescriptor descriptor, HttpContext context, RequestDelegate next)
+    protected async Task InvokeMiddleware(MiddlewareDescriptor descriptor, HttpContext context, RequestDelegate next)
     {
         object? middlewareInstance = null;
         MethodInfo? method = null;
@@ -575,9 +581,9 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
     #region Middleware Binding
     internal class MiddlewareBinding : IMiddlewareBinding
     {
-        public MiddlewareBindingDescriptor Descriptor { get; }
+        public MiddlewareDescriptor Descriptor { get; }
 
-        public MiddlewareBinding(MiddlewareBindingDescriptor descriptor)
+        public MiddlewareBinding(MiddlewareDescriptor descriptor)
         {
             Descriptor = descriptor;
         }
@@ -587,7 +593,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
     {
         public TMiddleware Instance { get; private set; }
 
-        public MiddlewareBinding(MiddlewareBindingDescriptor descriptor, TMiddleware? instance = default)
+        public MiddlewareBinding(MiddlewareDescriptor descriptor, TMiddleware? instance = default)
             : base(descriptor)
         {
             Instance = instance!;

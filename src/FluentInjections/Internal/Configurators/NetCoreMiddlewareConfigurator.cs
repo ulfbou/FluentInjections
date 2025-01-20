@@ -30,7 +30,7 @@ internal class NetCoreMiddlewareConfigurator
         }
     }
 
-    protected override void Register(MiddlewareBindingDescriptor descriptor)
+    protected override void Register(MiddlewareDescriptor descriptor)
     {
         Register(descriptor, null);
     }

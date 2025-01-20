@@ -44,7 +44,7 @@ public interface IMiddlewareConfigurator : IConfigurator<IMiddlewareBinding>
     /// <typeparam name="TMiddleware">The type of the middleware to remove.</typeparam>
     /// <param name="descriptor">Optional. The descriptor of the middleware to remove.</param>
     /// <returns><see langword="true" />if the middleware was removed; otherwise, <see langword="false" />.</returns>
-    bool RemoveMiddleware<TMiddleware>(MiddlewareBindingDescriptor? descriptor = null) where TMiddleware : class;
+    bool RemoveMiddleware<TMiddleware>(MiddlewareDescriptor? descriptor = null) where TMiddleware : class;
 
     /// <summary>
     /// Gets the configuration binding for a middleware of the specified type.
@@ -52,7 +52,7 @@ public interface IMiddlewareConfigurator : IConfigurator<IMiddlewareBinding>
     /// <typeparam name="TMiddleware">The type of the middleware to get.</typeparam>
     /// <param name="descriptor">Optional. The descriptor of the middleware to get.</param>
     /// <returns>A binding interface to configure the middleware.</returns>
-    MiddlewareBindingDescriptor? GetDescriptor<TMiddleware>(MiddlewareBindingDescriptor? descriptor = null) where TMiddleware : class;
+    MiddlewareDescriptor? GetDescriptor<TMiddleware>(MiddlewareDescriptor? descriptor = null) where TMiddleware : class;
 
     /// <summary>
     /// Applies a configuration action to all middleware in the specified group.
@@ -65,7 +65,7 @@ public interface IMiddlewareConfigurator : IConfigurator<IMiddlewareBinding>
     /// Applies a configuration action to all middleware.
     /// </summary>
     /// <param name="configure">The action to configure the middleware.</param>
-    void ConfigureAll(Action<MiddlewareBindingDescriptor> configure);
+    void ConfigureAll(Action<MiddlewareDescriptor> configure);
 }
 
 public interface IMiddlewareConfigurator<TDependencyBuilder, TBinding> : IMiddlewareConfigurator, IConfigurator<IMiddlewareBinding>

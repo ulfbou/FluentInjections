@@ -4,7 +4,7 @@
 
 using FluentInjections.Context;
 
-namespace FluentInjections.Policies;
+namespace FluentInjections.Policy;
 
 /// <summary>
 /// Represents a policy that ensures the caller has the necessary permissions to execute an operation. This is crucial for security and access control.

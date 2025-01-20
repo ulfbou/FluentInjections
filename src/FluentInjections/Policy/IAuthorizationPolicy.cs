@@ -4,7 +4,7 @@
 
 using FluentInjections.Bindings;
 
-namespace FluentInjections.Policies;
+namespace FluentInjections.Policy;
 
 /// <summary>
 /// Represents a policy for authorizing a function.

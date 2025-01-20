@@ -5,6 +5,7 @@ namespace FluentInjections;
 
 public interface IConfigurableModule : IModule
 {
+    int Priority { get; }
     void Configure(IServiceConfigurator configurator);
     void Configure(IMiddlewareConfigurator configurator);
 }

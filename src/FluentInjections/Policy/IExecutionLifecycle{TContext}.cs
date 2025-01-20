@@ -3,7 +3,7 @@
 
 using FluentInjections.Context;
 
-namespace FluentInjections.Policies;
+namespace FluentInjections.Policy;
 
 /// <summary>
 /// Represents a lifecycle that is executed before and after an operation, as well as on success and failure. 

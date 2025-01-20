@@ -3,7 +3,7 @@
 
 using FluentInjections.Bindings;
 
-namespace FluentInjections.Policies;
+namespace FluentInjections.Policy;
 
 /// <summary>
 /// Represents a policy that transforms the execution of an operation.

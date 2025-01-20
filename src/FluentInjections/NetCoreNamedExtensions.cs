@@ -6,7 +6,7 @@ using FluentInjections.Extensions;
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Descriptors;
 using FluentInjections.Internal.Helpers;
-using FluentInjections.Internal.ServiceProvider;
+using FluentInjections.Internal.Wrappers;
 using FluentInjections.Internal.Utils;
 using FluentInjections.Validation;
 
@@ -339,6 +339,18 @@ public static class NetCoreNamedExtensions
         }
 
         throw new InvalidOperationException($"No named service of type {typeof(TService).FullName} with name '{name}' was registered.");
+    }
+
+    public static object GetNamedRequiredService(this IServiceProvider provider, Type serviceType, string name)
+    {
+        var service = GetNamedService(provider, serviceType, name);
+
+        if (service is not null)
+        {
+            return service;
+        }
+
+        throw new InvalidOperationException($"No named service of type {serviceType.FullName} with name '{name}' was registered.");
     }
 
     public static IReadOnlyDictionary<string, object?> GetMetadata<TService>(this IServiceProvider provider, string name)

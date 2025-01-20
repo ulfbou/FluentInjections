@@ -1,7 +1,10 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using FluentInjections.Internal.Wrappers;
 using FluentInjections.Validation;
+
+using Microsoft.AspNetCore.Builder;
 
 namespace FluentInjections;
 
@@ -12,10 +15,13 @@ namespace FluentInjections;
 public abstract class Module<TConfigurator> : IConfigurableModule<TConfigurator> where TConfigurator : IConfigurator
 {
     public Type ConfiguratorType { get; set; }
+    public ApplicationBuilderWrapper Application { get; private set; }
+    public int Priority { get; set; }
 
-    public Module()
+    public Module(IApplicationBuilder application)
     {
         ConfiguratorType = typeof(TConfigurator);
+        Application = application as ApplicationBuilderWrapper ?? throw new ArgumentNullException(nameof(application));
     }
 
     /// <inheritdoc />

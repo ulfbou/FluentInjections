@@ -6,7 +6,7 @@ using FluentInjections.Context;
 
 using System.ComponentModel.DataAnnotations;
 
-namespace FluentInjections.Policies;
+namespace FluentInjections.Policy;
 
 /// <summary>
 /// Represents a policy that can be executed with a type safe context. 

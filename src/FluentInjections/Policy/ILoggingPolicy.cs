@@ -4,7 +4,7 @@
 
 using FluentInjections.Bindings;
 
-namespace FluentInjections.Policies;
+namespace FluentInjections.Policy;
 
 /// <summary>
 /// Represents a policy that logs the execution of operations for monitoring, debugging, or auditing purposes. 

@@ -5,7 +5,7 @@ using FluentInjections.Context;
 
 using System.Threading;
 
-namespace FluentInjections.Policies;
+namespace FluentInjections.Policy;
 
 /// <summary>
 /// Represents a binding that provides methods to apply to contexts. 
