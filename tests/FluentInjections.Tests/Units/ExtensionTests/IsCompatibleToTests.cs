@@ -4,7 +4,7 @@
 using FluentInjections.Extensions;
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Descriptors;
-using FluentInjections.Internal.ServiceProvider;
+using FluentInjections.Internal.Wrappers;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;

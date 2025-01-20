@@ -19,17 +19,17 @@ internal sealed class TestNetCoreMiddlewareConfigurator : NetCoreMiddlewareConfi
     public TestNetCoreMiddlewareConfigurator(
         ApplicationBuilder appBuilder,
         ILogger<TestNetCoreMiddlewareConfigurator> logger,
-        MiddlewareBindingDescriptor[]? descriptors = null)
+        MiddlewareDescriptor[]? descriptors = null)
         : base(appBuilder, appBuilder.ApplicationServices, logger)
     {
-        _descriptors.AddRange(descriptors ?? Array.Empty<MiddlewareBindingDescriptor>());
+        _descriptors.AddRange(descriptors ?? Array.Empty<MiddlewareDescriptor>());
     }
 
     /// <inheritdoc />
-    public IEnumerable<MiddlewareBindingDescriptor> GetDescriptors() => OrderBindingDescriptors();
+    public IEnumerable<MiddlewareDescriptor> GetDescriptors() => OrderBindingDescriptors();
 
     /// <inheritdoc />
-    public void RegisterWithAction(Action<MiddlewareBindingDescriptor, HttpContext> registerAction)
+    public void RegisterWithAction(Action<MiddlewareDescriptor, HttpContext> registerAction)
     {
         Register(registerAction);
     }

@@ -3,7 +3,7 @@
 
 using Microsoft.AspNetCore.Http;
 
-namespace FluentInjections.Tests.Utilities;
+namespace FluentInjections.Tests.Utilities.Middleware;
 
 public static class MiddlewarePipelineHelper
 {

@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 using System.Reflection;
 
-namespace FluentInjections.Tests.Utilities;
+namespace FluentInjections.Tests.Utilities.Middleware;
 
 /// <inheritdoc />
 public class MiddlewarePipelineBuilder : IMiddlewarePipelineBuilder

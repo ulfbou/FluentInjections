@@ -4,6 +4,7 @@
 using FluentAssertions;
 
 using FluentInjections.Internal.Registries;
+using FluentInjections.Internal.Wrappers;
 using FluentInjections.Tests.Internal.Middlewares;
 using FluentInjections.Tests.Internal.Services;
 
@@ -161,7 +162,8 @@ public class ModuleRegistryTests
     public void RegisterModule_WithServiceModule_AddsModule()
     {
         // Arrange
-        var module = new TestServiceModule();
+        var app = Mock.Of<ApplicationBuilderWrapper>();
+        var module = new TestServiceModule(app);
 
         // Act
         _registry.Register<IServiceModule, IServiceConfigurator>(module);
@@ -176,7 +178,8 @@ public class ModuleRegistryTests
     public void RegisterModule_WithMiddlewareModule_AddsModule()
     {
         // Arrange
-        var module = new TestMiddlewareModule();
+        var app = Mock.Of<ApplicationBuilderWrapper>();
+        var module = new TestMiddlewareModule(app);
 
         // Act
         _registry.Register<IMiddlewareModule, IMiddlewareConfigurator>(module);
@@ -191,7 +194,8 @@ public class ModuleRegistryTests
     public void RegisterModule_WithFactory_AddsModule()
     {
         // Arrange so that we can test that the factory produces the correct module
-        var module = new TestModule();
+        var app = Mock.Of<ApplicationBuilderWrapper>();
+        var module = new TestModule(app);
 
         // Act
         _registry.Register<IServiceModule, IServiceConfigurator>(() => module);
@@ -271,7 +275,8 @@ public class ModuleRegistryTests
     public void UnregisterModule_WithRegisteredModule_RemovesModule()
     {
         // Arrange
-        var module = new TestModule();
+        var app = Mock.Of<ApplicationBuilderWrapper>();
+        var module = new TestModule(app);
 
         // Act
         _registry.Register<IServiceConfigurator>(typeof(TestModule), module);
@@ -316,7 +321,8 @@ public class ModuleRegistryTests
     [Fact]
     public void UnregisterModule_WithUnregisteredModule_ThrowsException()
     {
-        var module = new TestModule();
+        var app = Mock.Of<ApplicationBuilderWrapper>();
+        var module = new TestModule(app);
         Assert.Throws<InvalidOperationException>(() => _registry.Unregister<IModule<IConfigurator>, IConfigurator>(module));
     }
 
@@ -324,7 +330,8 @@ public class ModuleRegistryTests
     public void InitializeModules_HandlesInitializationExceptions()
     {
         // Arrange
-        var faultyModule = new FaultyModule();
+        var app = Mock.Of<ApplicationBuilderWrapper>();
+        var faultyModule = new FaultyModule(app);
 
         // Act
         _registry.Register<IServiceConfigurator>(typeof(FaultyModule), faultyModule);
@@ -338,7 +345,8 @@ public class ModuleRegistryTests
     [Fact]
     public void RegisterModule_DuplicateModule_ThrowsInvalidOperationException()
     {
-        var module = new TestModule();
+        var app = Mock.Of<ApplicationBuilderWrapper>();
+        var module = new TestModule(app);
 
         _registry.Register<IServiceConfigurator>(typeof(TestModule), module);
 
@@ -347,20 +355,25 @@ public class ModuleRegistryTests
 
     internal sealed class TestModule : Module<IServiceConfigurator>, IServiceModule
     {
+        public TestModule(ApplicationBuilderWrapper application) : base(application) { }
+
         public override void Configure(IServiceConfigurator configurator) => configurator.Bind<ITestService>().To<TestService>();
     }
     internal sealed class TestServiceModule : Module<IServiceConfigurator>, IServiceModule
     {
+        public TestServiceModule(ApplicationBuilderWrapper application) : base(application) { }
         public override void Configure(IServiceConfigurator configurator) => configurator.Bind<ITestService>().To<TestService>();
     }
 
     internal sealed class TestMiddlewareModule : Module<IMiddlewareConfigurator>, IMiddlewareModule
     {
+        public TestMiddlewareModule(ApplicationBuilderWrapper application) : base(application) { }
         public override void Configure(IMiddlewareConfigurator configurator) => configurator.UseMiddleware<TestMiddleware>();
     }
 
     internal sealed class FaultyModule : Module<IServiceConfigurator>, IInitializable, IServiceModule
     {
+        public FaultyModule(ApplicationBuilderWrapper application) : base(application) { }
         public void Initialize() => throw new InvalidOperationException();
         public override void Configure(IServiceConfigurator configurator) => configurator.Bind<ITestService>().To<TestService>();
     }

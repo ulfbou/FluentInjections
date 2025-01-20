@@ -3,7 +3,7 @@
 
 using Microsoft.EntityFrameworkCore;
 
-namespace FluentInjections.Tests.Utilities;
+namespace FluentInjections.Tests.Utilities.Database;
 
 public static class DbContextFactory
 {

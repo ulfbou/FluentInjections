@@ -1,7 +1,7 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using FluentInjections.Internal.ServiceProvider;
+using FluentInjections.Internal.Wrappers;
 using FluentInjections.Tests.Internal.Configurators;
 using FluentInjections.Tests.Internal.Utility.Fixtures;
 using FluentInjections.Validation;

@@ -4,7 +4,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace FluentInjections.Tests.Utilities;
+namespace FluentInjections.Tests.Utilities.Middleware;
 
 public static class MiddlewareTestHelpers
 {
