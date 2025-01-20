@@ -5,6 +5,7 @@ using FluentInjections.Internal.ServiceProvider;
 using FluentInjections.Tests.Internal.Configurators;
 using FluentInjections.Tests.Utility.Fixtures;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentInjections.Tests.Internal.Utility.Fixtures;
@@ -13,5 +14,12 @@ internal class EndpointConfiguratorFixture
     : ConfiguratorFixture<TestNetCoreEndpointConfigurator, ServiceCollection, NetCoreServiceProvider>
     , IEndpointConfiguratorFixture<TestNetCoreEndpointConfigurator, ServiceCollection, NetCoreServiceProvider>
 {
-    public EndpointConfiguratorFixture() : base() { }
+    public EndpointConfiguratorFixture() : base()
+    {
+        Builder = WebApplication.CreateBuilder();
+        App = Builder.Build();
+    }
+
+    public WebApplicationBuilder Builder { get; }
+    public WebApplication App { get; }
 }

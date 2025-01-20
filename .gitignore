@@ -400,3 +400,4 @@ FodyWeavers.xsd
 *.link
 *.md
 *.env
+/DefaultProjects.Microservice

@@ -201,9 +201,10 @@ internal abstract partial class EndpointConfiguratorTests<TConfigurator, TServic
 
     public Mock<IOptions<JsonSerializerOptions>> JsonSerializerOptionsMock => _jsonSerializerOptionsMock;
     protected readonly Mock<IOptions<JsonSerializerOptions>> _jsonSerializerOptionsMock;
+    private readonly WebApplicationBuilder _builder;
 
-    public Mock<WebApplication> ApplicationMock => _applicationMock;
-    protected readonly Mock<WebApplication> _applicationMock;
+    public WebApplication Application => _application;
+    protected readonly WebApplication _application;
 
     public EndpointConfigurator EndpointConfigurator => _endpointConfigurator;
     protected readonly EndpointConfigurator _endpointConfigurator;
@@ -216,9 +217,10 @@ internal abstract partial class EndpointConfiguratorTests<TConfigurator, TServic
         _endpointRouteBuilderMock = new Mock<IEndpointRouteBuilder>();
         _loggerMock = new Mock<ILogger<EndpointConfigurator>>();
         _jsonSerializerOptionsMock = new Mock<IOptions<JsonSerializerOptions>>();
-        _applicationMock = new Mock<WebApplication>();
+        _builder = WebApplication.CreateBuilder();
+        _application = _builder.Build();
         _endpointConfigurator = new EndpointConfigurator(
-            _applicationMock.Object,
+            _application,
             _loggerMock.Object);
     }
 
