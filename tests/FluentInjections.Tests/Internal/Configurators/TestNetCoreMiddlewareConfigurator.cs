@@ -14,10 +14,10 @@ namespace FluentInjections.Tests.Internal.Configurators;
 /// <summary>
 /// Represents a test middleware configurator that provides methods to configure middleware within the application.
 /// </summary>
-internal sealed class TestNetCoreMiddlewareConfigurator : NetCoreMiddlewareConfigurator, IMiddlewareConfigurator, ITestMiddlewareConfigurator
+internal sealed class TestNetCoreMiddlewareConfigurator : NetCoreMiddlewareConfigurator, IMiddlewareConfigurator
 {
     public TestNetCoreMiddlewareConfigurator(
-        ApplicationBuilder appBuilder,
+        IApplicationBuilder appBuilder,
         ILogger<TestNetCoreMiddlewareConfigurator> logger,
         MiddlewareDescriptor[]? descriptors = null)
         : base(appBuilder, appBuilder.ApplicationServices, logger)

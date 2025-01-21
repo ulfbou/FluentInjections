@@ -3,6 +3,7 @@
 
 using FluentAssertions;
 
+using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Registries;
 using FluentInjections.Internal.Wrappers;
 using FluentInjections.Tests.Internal.Middlewares;
@@ -10,6 +11,7 @@ using FluentInjections.Tests.Internal.Services;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using Moq;
 
@@ -20,12 +22,20 @@ namespace FluentInjections.Tests.Units.Registry;
 public class ModuleRegistryTests
 {
     private readonly IServiceCollection _services;
+    private readonly ServiceProvider _provider;
+    private readonly IApplicationBuilder _innerApp;
     private readonly ModuleRegistry _registry;
+    private readonly IMiddlewareConfigurator _configurator;
+    private readonly ApplicationBuilderWrapper _app;
 
     public ModuleRegistryTests()
     {
         _services = new ServiceCollection();
+        _provider = _services.BuildServiceProvider();
+        _innerApp = new ApplicationBuilder(_provider);
         _registry = new ModuleRegistry(_services);
+        _configurator = new NetCoreMiddlewareConfigurator(_innerApp, _provider, Mock.Of<ILogger<NetCoreMiddlewareConfigurator>>());
+        _app = new ApplicationBuilderWrapper(_innerApp, _configurator, Mock.Of<ILogger<ApplicationBuilderWrapper>>());
     }
 
     [Fact]
@@ -162,8 +172,7 @@ public class ModuleRegistryTests
     public void RegisterModule_WithServiceModule_AddsModule()
     {
         // Arrange
-        var app = Mock.Of<ApplicationBuilderWrapper>();
-        var module = new TestServiceModule(app);
+        var module = new TestServiceModule(_app);
 
         // Act
         _registry.Register<IServiceModule, IServiceConfigurator>(module);
@@ -178,8 +187,7 @@ public class ModuleRegistryTests
     public void RegisterModule_WithMiddlewareModule_AddsModule()
     {
         // Arrange
-        var app = Mock.Of<ApplicationBuilderWrapper>();
-        var module = new TestMiddlewareModule(app);
+        var module = new TestMiddlewareModule(_app);
 
         // Act
         _registry.Register<IMiddlewareModule, IMiddlewareConfigurator>(module);
@@ -193,9 +201,8 @@ public class ModuleRegistryTests
     [Fact]
     public void RegisterModule_WithFactory_AddsModule()
     {
-        // Arrange so that we can test that the factory produces the correct module
-        var app = Mock.Of<ApplicationBuilderWrapper>();
-        var module = new TestModule(app);
+        // Arrange
+        var module = new TestModule(_app);
 
         // Act
         _registry.Register<IServiceModule, IServiceConfigurator>(() => module);
@@ -275,8 +282,7 @@ public class ModuleRegistryTests
     public void UnregisterModule_WithRegisteredModule_RemovesModule()
     {
         // Arrange
-        var app = Mock.Of<ApplicationBuilderWrapper>();
-        var module = new TestModule(app);
+        var module = new TestModule(_app);
 
         // Act
         _registry.Register<IServiceConfigurator>(typeof(TestModule), module);
@@ -321,8 +327,7 @@ public class ModuleRegistryTests
     [Fact]
     public void UnregisterModule_WithUnregisteredModule_ThrowsException()
     {
-        var app = Mock.Of<ApplicationBuilderWrapper>();
-        var module = new TestModule(app);
+        var module = new TestModule(_app);
         Assert.Throws<InvalidOperationException>(() => _registry.Unregister<IModule<IConfigurator>, IConfigurator>(module));
     }
 
@@ -330,8 +335,7 @@ public class ModuleRegistryTests
     public void InitializeModules_HandlesInitializationExceptions()
     {
         // Arrange
-        var app = Mock.Of<ApplicationBuilderWrapper>();
-        var faultyModule = new FaultyModule(app);
+        var faultyModule = new FaultyModule(_app);
 
         // Act
         _registry.Register<IServiceConfigurator>(typeof(FaultyModule), faultyModule);
@@ -345,8 +349,7 @@ public class ModuleRegistryTests
     [Fact]
     public void RegisterModule_DuplicateModule_ThrowsInvalidOperationException()
     {
-        var app = Mock.Of<ApplicationBuilderWrapper>();
-        var module = new TestModule(app);
+        var module = new TestModule(_app);
 
         _registry.Register<IServiceConfigurator>(typeof(TestModule), module);
 
