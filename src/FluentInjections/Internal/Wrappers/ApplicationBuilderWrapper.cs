@@ -1,43 +1,29 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using FluentInjections;
-
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 
-namespace FluentInjections.Internal.Wrappers;
-
 using FluentInjections.Internal.Configurators;
 using FluentInjections.Internal.Descriptors;
-using FluentInjections.Internal.Extensions;
-
-using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
-using static FluentInjections.Internal.Wrappers.ApplicationBuilderWrapper;
+namespace FluentInjections.Internal.Wrappers;
 
 public class ApplicationBuilderWrapper : IApplicationBuilder
 {
-    private readonly IApplicationBuilder _innerBuilder;
+    protected readonly IApplicationBuilder _innerBuilder;
     private readonly NetCoreMiddlewareConfigurator _configurator;
-    private readonly ILogger<ApplicationBuilderWrapper> _logger;
-    private readonly ConcurrentBag<MiddlewareDescriptor> _middlewareDescriptors = new();
-    private readonly SemaphoreSlim _moduleRegistrationLock = new(1);
-    private readonly List<ModuleDescriptor> _registeredModules = new();
-    private readonly ConcurrentDictionary<Type, Type> _moduleRegistrations = new();
-    private readonly List<ModuleDescriptor> _sortedModules = new();
-    private int _currentModulePriority;
+    protected readonly ILogger<ApplicationBuilderWrapper> _logger;
+    protected readonly ConcurrentBag<MiddlewareDescriptor> _middlewareDescriptors = new();
+    protected readonly Lock _moduleRegistrationLock = new();
+    protected readonly List<ModuleDescriptor> _registeredModules = new();
+    protected readonly ConcurrentDictionary<Type, Type> _moduleRegistrations = new();
+    protected readonly List<ModuleDescriptor> _sortedModules = new();
+    protected int _currentModulePriority;
 
     /// <inheritdoc/>
     public IServiceProvider ApplicationServices { get => _innerBuilder.ApplicationServices; set => _innerBuilder.ApplicationServices = value; }
@@ -55,46 +41,54 @@ public class ApplicationBuilderWrapper : IApplicationBuilder
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    public IApplicationBuilder Use(Type middlewareType)
+    {
+        using (_moduleRegistrationLock.EnterScope())
+        {
+            _middlewareDescriptors.Add(new MiddlewareDescriptor(middlewareType, _configurator)
+            {
+                Priority = _currentModulePriority,
+            });
+            return this;
+        }
+    }
+
     public IApplicationBuilder Use(Func<RequestDelegate, RequestDelegate> middleware)
     {
-        try
+        using (_moduleRegistrationLock.EnterScope())
         {
-            using (var semaphore = _moduleRegistrationLock.DisposableWait())
+            _middlewareDescriptors.Add(new MiddlewareDescriptor(middleware.GetType(), _configurator)
             {
-                _middlewareDescriptors.Add(new MiddlewareDescriptor(middleware.GetType(), _configurator)
-                {
-                    Instance = middleware,
-                    Priority = _currentModulePriority,
-                });
+                Instance = middleware,
+                Priority = _currentModulePriority,
+            });
 
-                return this;
-            }
-        }
-        finally
-        {
-            _moduleRegistrationLock.Release();
+            return this;
         }
     }
 
     public IApplicationBuilder UseMiddleware<TMiddleware>() where TMiddleware : IMiddleware
     {
-        _moduleRegistrationLock.DisposableWait();
-
-        var modulePriority = _currentModulePriority;
-        _middlewareDescriptors.Add(new MiddlewareDescriptor(typeof(TMiddleware), _configurator)
+        using (_moduleRegistrationLock.EnterScope())
         {
-            Priority = modulePriority,
-        });
+            var modulePriority = _currentModulePriority;
+            _middlewareDescriptors.Add(new MiddlewareDescriptor(typeof(TMiddleware), _configurator)
+            {
+                Priority = modulePriority,
+            });
 
-        return this;
+            return this;
+        }
     }
 
     public IApplicationBuilder Use(Action<IApplicationBuilder> configure)
     {
         try
         {
-            _moduleRegistrationLock.DisposableWait();
-            configure(this);
+            using (_moduleRegistrationLock.EnterScope())
+            {
+                configure(this);
+            }
         }
         catch (Exception ex)
         {
@@ -105,20 +99,22 @@ public class ApplicationBuilderWrapper : IApplicationBuilder
         return this;
     }
 
-    public void RegisterModule<TModule>(TModule module) where TModule : Module<IMiddlewareConfigurator>
+    public void RegisterModule<TModule>(TModule module) where TModule : IModule<IMiddlewareConfigurator>
     {
-        _moduleRegistrationLock.DisposableWait();
-        _registeredModules.Add(new ModuleDescriptor
+        using (_moduleRegistrationLock.EnterScope())
         {
-            ModuleType = typeof(TModule),
-            Instance = module
-        });
+            _registeredModules.Add(new ModuleDescriptor
+            {
+                ModuleType = typeof(TModule),
+                Instance = module
+            });
+        }
     }
 
     public async Task<RequestDelegate> BuildAsync()
     {
         // 1. Sort Modules
-        using (var semaphore = _moduleRegistrationLock.DisposableWait())
+        using (_moduleRegistrationLock.EnterScope())
         {
             _sortedModules.AddRange(_registeredModules.OrderBy(m => m.Priority)
                                                       .ThenBy(m => _registeredModules.IndexOf(m)));
@@ -131,32 +127,38 @@ public class ApplicationBuilderWrapper : IApplicationBuilder
 
             try
             {
-                _moduleRegistrationLock.DisposableWait();
-                _currentModulePriority = moduleDescriptor.Priority;
-                var module = moduleDescriptor.Instance as Module<IMiddlewareConfigurator>;
-                module?.Configure(_configurator);
+                using (_moduleRegistrationLock.EnterScope())
+                {
+                    _currentModulePriority = moduleDescriptor.Priority;
+
+                    if (moduleDescriptor.Instance is IConfigurableModule<IMiddlewareConfigurator> configurableModule)
+                    {
+                        configurableModule.Configure(_configurator);
+                    }
+                    else if (moduleDescriptor.Instance is IMiddlewareModule module)
+                    {
+                        module.Configure(_configurator);
+                    }
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error executing module {moduleDescriptor.GetType().Name}");
                 // TODO: Handle module execution errors (e.g., log, fallback)
             }
-            finally
-            {
-                _moduleRegistrationLock.Release();
-            }
         }));
 
-        _moduleRegistrationLock.DisposableWait();
-
-        // 3. Sort MiddlewareDescriptors
-        var sortedDescriptors = _middlewareDescriptors.OrderBy(d => d.Priority);
-        var configurator = _innerBuilder.ApplicationServices.GetRequiredService<IMiddlewareConfigurator>();
-
-        // 4. Build the Pipeline
-        foreach (var descriptor in sortedDescriptors)
+        using (_moduleRegistrationLock.EnterScope())
         {
-            _configurator.Register(descriptor, default);
+            // 3. Sort MiddlewareDescriptors
+            var sortedDescriptors = _middlewareDescriptors.OrderBy(d => d.Priority);
+            var configurator = _innerBuilder.ApplicationServices.GetRequiredService<IMiddlewareConfigurator>();
+
+            // 4. Build the Pipeline
+            foreach (var descriptor in sortedDescriptors)
+            {
+                _configurator.Register(descriptor, default);
+            }
         }
 
         // 5. Build the Application
