@@ -1,74 +1,86 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using FluentInjections.Internal.Managers;
+using FluentInjections.Internal.Utils;
+using FluentInjections.Internal.Wrappers;
+using FluentInjections.Validation;
+
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace FluentInjections.Internal.Configurators;
 
 /// <summary>
-/// Represents a configurator that provides methods to bind and configure services within the application.
-/// </summary>
-internal abstract class Configurator<TBinding, TDescriptor> : IConfigurator<TBinding> where TBinding : IBinding
+/// Represents a class that creates and manages the host builder,  and service manager.
+public sealed class Configurator
 {
-    protected readonly List<TDescriptor> _descriptors = new();
-    protected readonly ILogger _logger;
+    private static IHostApplicationBuilder? _hostBuilder;
+    private static ServiceManager? _serviceManager;
+    private static WebApplicationBuilder? _innerHostBuilder;
 
-    protected internal IReadOnlyList<TDescriptor> Descriptors => _descriptors.AsReadOnly();
-    protected internal ILogger Logger => _logger;
+    public static WebApplication InnerApp { get; private set; }
+    public static ApplicationBuilderWrapper App { get; private set; }
 
-    protected Configurator(ILogger logger)
+    internal static ServiceManager ServiceManager
     {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
-
-    /// <summary>
-    /// Gets or sets the conflict resolution mode for the configurator.
-    /// </summary>
-    public ConflictResolutionMode ConflictResolution
-    {
-        get => _conflictResolution;
-        set
+        get
         {
-            if (!Enum.IsDefined(typeof(ConflictResolutionMode), value))
+            if (_serviceManager is null)
             {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The value must be a valid ConflictResolutionMode.");
+                var hostBuilder = HostBuilder;
+                _serviceManager = new ServiceManager(hostBuilder.Services);
             }
 
-            _conflictResolution = value;
+            return _serviceManager;
         }
     }
-    private ConflictResolutionMode _conflictResolution = ConflictResolutionMode.WarnAndReplace;
 
-    /// <inheritdoc/>
-    public void Register()
+    internal static IHostApplicationBuilder HostBuilder
     {
-        ValidateBindings();
+        get
+        {
+            if (_hostBuilder is null)
+            {
+                _hostBuilder = CreateWebApplicationBuilder();
+            }
 
-        List<TDescriptor> orderedDescriptors = OrderBindingDescriptors();
-
-        orderedDescriptors.ForEach(d => Register(d));
+            return _hostBuilder;
+        }
     }
 
-    /// <summary>
-    /// Registers a binding with the service collection.
-    /// </summary>
-    /// <param name="descriptor">The binding descriptor to register.</param>
-    protected abstract void Register(TDescriptor descriptor);
-
-    /// <summary>
-    /// Validates the bindings to ensure they are configured correctly.
-    /// </summary>
-    protected internal abstract void ValidateBindings();
-
-    /// <summary>
-    /// Orders the binding descriptors.
-    /// </summary>
-    /// <returns>The ordered list of binding descriptors.</returns>
-    protected virtual List<TDescriptor> OrderBindingDescriptors() => _descriptors;
-
-    /// <inheritdoc/>
-    public void Dispose()
+    internal static WebApplicationBuilder InnerHostBuilder
     {
-        _descriptors.Clear();
+        get
+        {
+            if (_innerHostBuilder is null)
+            {
+                _innerHostBuilder = WebApplication.CreateBuilder();
+            }
+
+            return _innerHostBuilder;
+        }
+    }
+
+    public static IHostApplicationBuilder CreateWebApplicationBuilder()
+    {
+        if (HostBuilder is not null)
+        {
+            return HostBuilder;
+        }
+
+        return new WebApplicationBuilderWrapper(InnerHostBuilder, LoggerUtility.CreateLogger<WebApplicationBuilderWrapper>());
+    }
+
+    internal static ApplicationBuilderWrapper CreateApplicationBuilder(WebApplicationBuilderWrapper hostBuilder)
+    {
+        Guard.NotNull(hostBuilder, nameof(hostBuilder));
+
+        InnerApp = InnerHostBuilder.Build();
+        App = new ApplicationBuilderWrapper(InnerApp, LoggerUtility.CreateLogger<ApplicationBuilderWrapper>());
+
+        return App;
     }
 }

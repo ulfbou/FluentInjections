@@ -16,11 +16,12 @@ using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using FluentInjections.Policy;
+using FluentInjections.Internal.Wrappers;
 
 namespace FluentInjections.Internal.Configurators;
 
 internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
-    : Configurator<TBinding, MiddlewareDescriptor>, IMiddlewareConfigurator, IConfigurator
+    : BaseConfigurator<TBinding, MiddlewareDescriptor>, IMiddlewareConfigurator, IConfigurator
     where TDependencyBuilder : class
     where TBinding : IBinding
 {
@@ -32,7 +33,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
     protected readonly List<Type> _registeredMiddlewareTypes = new();
 
     protected IServiceProvider Provider { get; set; }
-    public IApplicationBuilder Application => _dependencyBuilder as IApplicationBuilder
+    public IApplicationBuilder Application => _dependencyBuilder as ApplicationBuilderWrapper
         ?? throw new InvalidOperationException("The dependency builder is not an application builder.");
 
     protected MiddlewareConfigurator(TDependencyBuilder builder, IServiceProvider provider, ILogger logger) : base(logger)
@@ -40,8 +41,6 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
         _dependencyBuilder = builder ?? throw new ArgumentNullException(nameof(builder));
         Provider = provider ?? throw new ArgumentNullException(nameof(provider));
     }
-
-    protected internal void ValidateBindingsInternal() => ValidateBindings();
 
     internal IReadOnlyList<MiddlewareDescriptor> MiddlewareDescriptors => _descriptors.AsReadOnly();
     internal IReadOnlyList<MiddlewareBinding> Bindings => _bindings;
@@ -77,11 +76,13 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
 
     public IMiddlewareBinding<TMiddleware> UseMiddleware<TMiddleware>() where TMiddleware : class
     {
+
         var descriptor = new MiddlewareDescriptor(typeof(TMiddleware), this);
         var binding = new MiddlewareBinding<TMiddleware>(descriptor);
 
         _descriptors.Add(descriptor);
         _bindings.Add(binding);
+        Debug.WriteLine($"Added middleware: {typeof(TMiddleware).Name}");
         return binding;
     }
 
@@ -119,7 +120,7 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
     {
         foreach (var descriptor in _descriptors)
         {
-            Debug.WriteLine($"Descriptor: {descriptor.MiddlewareType.Name}, Name: {descriptor.Name}");
+            Debug.WriteLine($"Descriptor: {descriptor.MiddlewareType.Name}, Name: {descriptor.Name ?? "NoName"}");
         }
 
         var groups = _descriptors.GroupBy(binding => new { binding.MiddlewareType, binding.Name });
@@ -228,16 +229,6 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
             existingDescriptor.Fallback = newDescriptor.Fallback;
         }
 
-        if (newDescriptor.Options is not null)
-        {
-            existingDescriptor.Options = newDescriptor.Options;
-        }
-
-        if (newDescriptor.OptionsType is not null)
-        {
-            existingDescriptor.OptionsType = newDescriptor.OptionsType;
-        }
-
         var dependencies = new HashSet<Type>(newDescriptor.Dependencies);
         foreach (var dependency in dependencies)
         {
@@ -270,16 +261,6 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
         if (newDescriptor.Condition is not null)
         {
             existingDescriptor.Condition += newDescriptor.Condition;
-        }
-
-        if (newDescriptor.Options is not null)
-        {
-            existingDescriptor.Options = newDescriptor.Options;
-        }
-
-        if (newDescriptor.OptionsType is not null)
-        {
-            existingDescriptor.OptionsType = newDescriptor.OptionsType;
         }
 
         if (newDescriptor.Metadata.Any())
@@ -430,63 +411,59 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
     /// <remarks>
     /// This method is used internally to register bindings that require additional configuration.
     /// </remarks>
-    internal void Register(MiddlewareDescriptor descriptor, Action<MiddlewareDescriptor, HttpContext>? register)
+    internal void Register(MiddlewareDescriptor descriptor, Action<MiddlewareDescriptor, HttpContext>? register, int? priority = int.MaxValue)
     {
         Guard.NotNull(descriptor, nameof(descriptor));
 
-        var application = GetApplication();
+        var application = GetApplication() as ApplicationBuilderWrapper;
+
+        if (application is null)
+        {
+            throw new InvalidOperationException("The application builder is not an application builder wrapper.");
+        }
 
         if (descriptor.IsEnabled && (descriptor.Condition is null || descriptor.Condition.Invoke()))
         {
             _registeredMiddlewareTypes.Add(descriptor.MiddlewareType);
 
-            application.Use(async (HttpContext context, RequestDelegate next) =>
+            Action<MiddlewareDescriptor, HttpContext, RequestDelegate> action;
+
+            if (register is not null)
             {
-                try
+                action = (d, c, next) => Task.Run(async () =>
                 {
-                    if (descriptor.Timeout.HasValue)
+                    register(d, c);
+                    await next(c);
+                });
+            }
+            else if (descriptor.Timeout.HasValue)
+            {
+                action = async (d, context, next) =>
+                {
+                    using (var cts = new CancellationTokenSource(descriptor.Timeout.Value))
                     {
-                        var timeoutToken = new CancellationTokenSource(descriptor.Timeout.Value).Token;
-                        await Task.Run(async () =>
+                        try
                         {
-                            if (register is not null)
-                            {
-                                register(descriptor, context);
-                                await next(context);
-                            }
-                            else
-                            {
-                                await InvokeMiddlewareWithFallbackAndPolicy(descriptor, context, next);
-                            }
-                        }, timeoutToken);
-                    }
-                    else
-                    {
-                        if (register is not null)
-                        {
-                            register(descriptor, context);
+                            await InvokeMiddlewareWithFallbackAndPolicy(d, context, next);
                             await next(context);
                         }
-                        else
+                        catch (OperationCanceledException)
                         {
-                            await InvokeMiddlewareWithFallbackAndPolicy(descriptor, context, next);
+                            throw new TimeoutException("Middleware execution timed out.");
                         }
                     }
-                }
-                catch (Exception ex)
+                };
+            }
+            else
+            {
+                action = async (d, context, next) =>
                 {
-                    if (descriptor.ErrorHandler != null)
-                    {
-                        await descriptor.ErrorHandler.Invoke(ex);
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-            });
+                    await InvokeMiddlewareWithFallbackAndPolicy(d, context, next);
+                    await next(context);
+                };
+            }
 
-            Debug.WriteLine($"Registered middleware: {descriptor.MiddlewareType.FullName}, Priority: {descriptor.Priority}");
+            application.UseDescriptor(descriptor, action, priority);
         }
         else
         {
@@ -498,7 +475,8 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
     {
         try
         {
-            if (descriptor.ExecutionPolicyFactory?.Invoke(Provider) is not IExecutionPolicy policy)
+            if (descriptor.ExecutionPolicyConfiguration is null ||
+                descriptor.ExecutionPolicyFactory?.Invoke(Provider) is not IExecutionPolicy policy)
             {
                 await InvokeMiddleware(descriptor, context, next);
             }
@@ -728,16 +706,6 @@ internal abstract class MiddlewareConfigurator<TDependencyBuilder, TBinding>
 
             Descriptor.Metadata.Add(name, value);
             Debug.WriteLine($"Added metadata with name {name} to the middleware component.");
-            return this;
-        }
-
-        /// <inheritdoc/>
-        public IMiddlewareBinding<TMiddleware> WithOptions<TOptions>(TOptions options) where TOptions : class
-        {
-            Guard.NotNull(options, nameof(options));
-            Descriptor.Options = options;
-            Descriptor.OptionsType = typeof(TOptions);
-            Debug.WriteLine($"Added options of type {typeof(TOptions).Name} to the middleware component.");
             return this;
         }
 

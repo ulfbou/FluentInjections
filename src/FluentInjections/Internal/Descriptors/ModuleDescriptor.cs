@@ -6,8 +6,8 @@ public class ModuleDescriptor
     public object? Instance { get; set; }
     public int Priority => Instance switch
     {
-        IConfigurableModule configurableModule => configurableModule.Priority,
-        _ => 0
+        IModule module => module.Priority,
+        _ => int.MaxValue
     };
 
     public TModule? TryGet<TModule>() where TModule : class

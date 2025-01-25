@@ -10,6 +10,9 @@ using Microsoft.Extensions.Logging;
 
 using System.Diagnostics;
 using FluentInjections.Validation;
+using FluentInjections.Internal.Wrappers;
+using System.Text;
+using FluentInjections.Internal.Constants;
 
 namespace FluentInjections.Internal.Configurators;
 
@@ -30,7 +33,7 @@ internal class NetCoreMiddlewareConfigurator
         }
     }
 
-    protected override void Register(MiddlewareDescriptor descriptor)
+    protected override void Register(MiddlewareDescriptor descriptor, int? priority = int.MaxValue)
     {
         Register(descriptor, null);
     }
@@ -42,6 +45,11 @@ internal class NetCoreMiddlewareConfigurator
         if (_dependencyBuilder is not IApplicationBuilder builder)
         {
             throw new InvalidOperationException("The provided builder is not supported.");
+        }
+
+        if (_dependencyBuilder is not ApplicationBuilderWrapper wrapper)
+        {
+            return builder;
         }
 
         return builder;

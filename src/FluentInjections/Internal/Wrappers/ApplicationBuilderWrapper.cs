@@ -10,13 +10,17 @@ using FluentInjections.Internal.Descriptors;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
+using FluentInjections.Internal.Utils;
+using System.Diagnostics;
+using System.Linq;
+using FluentInjections.Internal.Constants;
+using Microsoft.Win32;
 
 namespace FluentInjections.Internal.Wrappers;
 
 public class ApplicationBuilderWrapper : IApplicationBuilder
 {
     protected readonly IApplicationBuilder _innerBuilder;
-    private readonly NetCoreMiddlewareConfigurator _configurator;
     protected readonly ILogger<ApplicationBuilderWrapper> _logger;
     protected readonly ConcurrentBag<MiddlewareDescriptor> _middlewareDescriptors = new();
     protected readonly Lock _moduleRegistrationLock = new();
@@ -24,6 +28,8 @@ public class ApplicationBuilderWrapper : IApplicationBuilder
     protected readonly ConcurrentDictionary<Type, Type> _moduleRegistrations = new();
     protected readonly List<ModuleDescriptor> _sortedModules = new();
     protected int _currentModulePriority;
+
+    internal NetCoreMiddlewareConfigurator Configurator { get; }
 
     /// <inheritdoc/>
     public IServiceProvider ApplicationServices { get => _innerBuilder.ApplicationServices; set => _innerBuilder.ApplicationServices = value; }
@@ -34,47 +40,42 @@ public class ApplicationBuilderWrapper : IApplicationBuilder
     /// <inheritdoc/>
     public IDictionary<string, object?> Properties => _innerBuilder.Properties;
 
-    public ApplicationBuilderWrapper(IApplicationBuilder innerBuilder, IMiddlewareConfigurator configurator, ILogger<ApplicationBuilderWrapper> logger)
+    public ApplicationBuilderWrapper(IApplicationBuilder innerBuilder, ILogger<ApplicationBuilderWrapper> logger, IMiddlewareConfigurator? configurator = null)
     {
         _innerBuilder = innerBuilder ?? throw new ArgumentNullException(nameof(innerBuilder));
-        _configurator = configurator as NetCoreMiddlewareConfigurator ?? throw new ArgumentNullException(nameof(configurator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        Configurator = configurator as NetCoreMiddlewareConfigurator
+            ?? new NetCoreMiddlewareConfigurator(this, this.ApplicationServices, LoggerUtility.CreateLogger<NetCoreMiddlewareConfigurator>());
     }
 
-    public IApplicationBuilder Use(Type middlewareType)
+    private void Register(MiddlewareDescriptor descriptor)
     {
-        using (_moduleRegistrationLock.EnterScope())
-        {
-            _middlewareDescriptors.Add(new MiddlewareDescriptor(middlewareType, _configurator)
-            {
-                Priority = _currentModulePriority,
-            });
-            return this;
-        }
+        Debug.WriteLine($"Registering Middleware {descriptor.Id}: {descriptor.MiddlewareType.Name} Priority: {descriptor.Priority}");
+        _middlewareDescriptors.Add(descriptor);
     }
 
     public IApplicationBuilder Use(Func<RequestDelegate, RequestDelegate> middleware)
     {
         using (_moduleRegistrationLock.EnterScope())
         {
-            _middlewareDescriptors.Add(new MiddlewareDescriptor(middleware.GetType(), _configurator)
+            Register(new MiddlewareDescriptor(middleware.GetType(), Configurator)
             {
                 Instance = middleware,
-                Priority = _currentModulePriority,
+                Priority = _currentModulePriority
             });
 
             return this;
         }
     }
 
-    public IApplicationBuilder UseMiddleware<TMiddleware>() where TMiddleware : IMiddleware
+    public IApplicationBuilder UseMiddleware<TMiddleware>()
     {
         using (_moduleRegistrationLock.EnterScope())
         {
-            var modulePriority = _currentModulePriority;
-            _middlewareDescriptors.Add(new MiddlewareDescriptor(typeof(TMiddleware), _configurator)
+            Register(new MiddlewareDescriptor(typeof(TMiddleware), Configurator)
             {
-                Priority = modulePriority,
+                Priority = _currentModulePriority
             });
 
             return this;
@@ -121,24 +122,23 @@ public class ApplicationBuilderWrapper : IApplicationBuilder
         }
 
         // 2. Execute Modules Concurrently
-        await Task.WhenAll(_sortedModules.Select(async moduleDescriptor =>
+        var tasks = _sortedModules.Select(moduleDescriptor =>
         {
-            using var scope = _innerBuilder.ApplicationServices.CreateScope();
-
             try
             {
                 using (_moduleRegistrationLock.EnterScope())
                 {
                     _currentModulePriority = moduleDescriptor.Priority;
+                    var module = moduleDescriptor.TryGet<IConfigurableModule<IMiddlewareConfigurator>>()
+                        ?? moduleDescriptor.TryGet<IMiddlewareModule>();
 
-                    if (moduleDescriptor.Instance is IConfigurableModule<IMiddlewareConfigurator> configurableModule)
+                    if (module is null)
                     {
-                        configurableModule.Configure(_configurator);
+                        Debug.WriteLine($"Module {moduleDescriptor.ModuleType.Name} is not configurable and will not be executed.");
+                        return Task.CompletedTask;
                     }
-                    else if (moduleDescriptor.Instance is IMiddlewareModule module)
-                    {
-                        module.Configure(_configurator);
-                    }
+
+                    module.Configure(Configurator);
                 }
             }
             catch (Exception ex)
@@ -146,18 +146,29 @@ public class ApplicationBuilderWrapper : IApplicationBuilder
                 _logger.LogError(ex, $"Error executing module {moduleDescriptor.GetType().Name}");
                 // TODO: Handle module execution errors (e.g., log, fallback)
             }
-        }));
+
+            return Task.CompletedTask;
+        });
+        await Task.WhenAll(tasks);
 
         using (_moduleRegistrationLock.EnterScope())
         {
+            Configurator.Register();
+
             // 3. Sort MiddlewareDescriptors
+            Debug.WriteLine("MiddlewareDescriptors:");
+            foreach (var d in _middlewareDescriptors.OrderBy(d => d.Priority))
+            {
+                Debug.WriteLine($"Middleware Id: {d.Id} Index: {_middlewareDescriptors.ToList().IndexOf(d)} Priority: {d.Priority} Name: {d.MiddlewareType.Name}");
+            }
+
             var sortedDescriptors = _middlewareDescriptors.OrderBy(d => d.Priority);
             var configurator = _innerBuilder.ApplicationServices.GetRequiredService<IMiddlewareConfigurator>();
 
             // 4. Build the Pipeline
             foreach (var descriptor in sortedDescriptors)
             {
-                _configurator.Register(descriptor, default);
+                Configurator.Register(descriptor, default);
             }
         }
 
@@ -166,8 +177,75 @@ public class ApplicationBuilderWrapper : IApplicationBuilder
     }
 
     /// <inheritdoc/>
-    public RequestDelegate Build() => _innerBuilder.Build();
+    public RequestDelegate Build() => Build(null);
+
+    internal RequestDelegate Build(Action<MiddlewareDescriptor, HttpContext>? register = null, int? priority = int.MaxValue)
+    {
+        using (_moduleRegistrationLock.EnterScope())
+        {
+            _sortedModules.AddRange(_registeredModules.OrderBy(m => m.Priority)
+                                                      .ThenBy(m => _registeredModules.IndexOf(m)));
+
+            var configurator = _innerBuilder.ApplicationServices.GetRequiredService<IMiddlewareConfigurator>();
+
+            foreach (var moduleDescriptor in _sortedModules)
+            {
+                if (moduleDescriptor.Instance is IConfigurableModule<IMiddlewareConfigurator> configurableModule)
+                {
+                    configurableModule.Configure(Configurator);
+                }
+                else
+                {
+                    Debug.WriteLine($"Module {moduleDescriptor.ModuleType.Name} is not configurable and will not be executed.");
+                }
+            }
+
+            foreach (var descriptor in _middlewareDescriptors.OrderBy(d => d.Priority))
+            {
+                descriptor.Priority = Math.Min(descriptor.Priority, priority ?? int.MaxValue);
+                Configurator.Register(descriptor, register);
+            }
+
+            Debug.WriteLine("About to call _innerBuilder.Build().");
+            //Configurator.Register(register);
+
+            var result = _innerBuilder.Build();
+            Debug.WriteLine("Build method called.");
+            return result;
+        }
+    }
 
     /// <inheritdoc/>
-    public IApplicationBuilder New() => _innerBuilder.New();
+    public IApplicationBuilder New() => new ApplicationBuilderWrapper(_innerBuilder.New(), _logger, Configurator);
+
+    internal void UseDescriptor(MiddlewareDescriptor descriptor, Action<MiddlewareDescriptor, HttpContext, RequestDelegate> action, int? priority)
+    {
+        descriptor.Priority = descriptor.Priority == DefaultValues.Priority ? priority ?? DefaultValues.Priority : descriptor.Priority;
+
+        if (!_middlewareDescriptors.Contains(descriptor))
+        {
+            _middlewareDescriptors.Add(descriptor);
+        }
+
+        if (descriptor.IsEnabled)
+        {
+            var request = async (HttpContext context, RequestDelegate next) =>
+            {
+                Debug.WriteLine($"Beginning Execution of Middleware {descriptor.Id}: {descriptor.MiddlewareType.Name} Priority: {descriptor.Priority}");
+                if (descriptor.Timeout.HasValue)
+                {
+                    var timeoutToken = new CancellationTokenSource(descriptor.Timeout.Value).Token;
+                    await Task.Run(() => action(descriptor, context, next), timeoutToken);
+                }
+                else
+                {
+                    action(descriptor, context, next);
+                }
+
+                Debug.WriteLine($"Finished Executing Middleware {descriptor.Id}: {descriptor.MiddlewareType.Name} Priority: {descriptor.Priority}");
+            };
+
+            _innerBuilder.Use(request);
+        }
+    }
 }

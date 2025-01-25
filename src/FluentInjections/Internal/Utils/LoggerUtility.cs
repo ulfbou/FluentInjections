@@ -19,7 +19,10 @@ namespace FluentInjections.Internal.Utils;
 /// </remarks>
 public static class LoggerUtility
 {
-    private static ILoggerFactory _loggerFactory = new LoggerFactory();
+    private static ILoggerFactory _loggerFactory = LoggerFactory.Create(builder =>
+    {
+        builder.AddConsole();
+    });
 
     /// <summary>
     /// Create a logger.

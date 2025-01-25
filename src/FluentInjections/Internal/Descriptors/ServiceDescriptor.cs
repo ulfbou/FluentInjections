@@ -1,13 +1,11 @@
 ﻿// Copyright (c) FluentInjections Project. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using FluentInjections.Internal.Configurators;
-
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentInjections.Internal.Descriptors;
 
-public class ServiceBindingDescriptor
+public class ServiceDescriptor
 {
     public Type BindingType { get; }
     public ServiceLifetime Lifetime { get; set; }
@@ -19,9 +17,12 @@ public class ServiceBindingDescriptor
     public Dictionary<string, object?> Metadata { get; set; } = new();
     public Dictionary<string, object?> Parameters { get; set; } = new();
     public Func<bool>? Condition { get; set; }
+    public object? Options { get; set; }
+    public Type? OptionsType { get; set; }
+
     public IServiceConfigurator ServiceConfigurator { get; }
 
-    public ServiceBindingDescriptor(Type bindingType, IServiceConfigurator serviceConfigurator)
+    public ServiceDescriptor(Type bindingType, IServiceConfigurator serviceConfigurator)
     {
         BindingType = bindingType ?? throw new ArgumentNullException(nameof(bindingType));
         ServiceConfigurator = serviceConfigurator ?? throw new ArgumentNullException(nameof(serviceConfigurator));
@@ -30,20 +31,20 @@ public class ServiceBindingDescriptor
 
     public bool IsEnabled => Condition?.Invoke() ?? true;
 
-    public ServiceBindingDescriptor SetLifetime(ServiceLifetime lifetime)
+    public ServiceDescriptor SetLifetime(ServiceLifetime lifetime)
     {
         Lifetime = lifetime;
         return this;
     }
 
-    public ServiceBindingDescriptor AddMetadata(string key, object value)
+    public ServiceDescriptor AddMetadata(string key, object value)
     {
         if (string.IsNullOrWhiteSpace(key)) throw new ArgumentNullException(nameof(key));
         Metadata[key] = value ?? throw new ArgumentNullException(nameof(value));
         return this;
     }
 
-    public ServiceBindingDescriptor AddParameter(string key, object value)
+    public ServiceDescriptor AddParameter(string key, object value)
     {
         if (string.IsNullOrWhiteSpace(key)) throw new ArgumentNullException(nameof(key));
         Parameters[key] = value ?? throw new ArgumentNullException(nameof(value));
@@ -57,7 +58,3 @@ public class ServiceBindingDescriptor
             throw new InvalidOperationException("Either ImplementationType, Factory, or Instance must be set.");
     }
 }
-
-public class ServiceBindingDescriptor<TService>(IServiceConfigurator configurator)
-    : ServiceBindingDescriptor(typeof(TService), configurator) where TService : notnull
-{ }

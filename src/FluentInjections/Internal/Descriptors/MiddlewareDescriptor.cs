@@ -6,12 +6,6 @@ using FluentInjections.Internal.Constants;
 using FluentInjections.Validation;
 
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace FluentInjections.Internal.Descriptors;
 
@@ -23,9 +17,10 @@ namespace FluentInjections.Internal.Descriptors;
 /// </remarks>
 public class MiddlewareDescriptor
 {
+    private static int _currentId = 0;
     private readonly object _lock = new();
-
-    public Type MiddlewareType { get; }
+    public int Id { get; } = _currentId++;
+    virtual public Type MiddlewareType { get; set; }
     public Func<IServiceProvider, RequestDelegate>? MiddlewareFactory { get; set; }
     public object? Instance { get; set; }
     public string? Name { get; set; }
@@ -36,8 +31,6 @@ public class MiddlewareDescriptor
     public Action<object>? ExecutionPolicyConfiguration { get; set; }
 
     public Func<HttpContext, Task>? Fallback { get; set; }
-    public object? Options { get; set; }
-    public Type? OptionsType { get; set; }
     public Dictionary<string, object> Metadata { get; set; } = new();
     public List<Type> Dependencies { get; set; } = new();
     public List<Type> PrecedingMiddleware { get; set; } = new();
@@ -68,16 +61,6 @@ public class MiddlewareDescriptor
             Instance = instance;
         }
     }
-
-    public void SetOptions(object options)
-    {
-        lock (_lock)
-        {
-            Options = options;
-            OptionsType = options.GetType();
-        }
-    }
-
 
     /// <summary>
     /// Adds a dependency to the middleware binding descriptor.
@@ -141,18 +124,4 @@ public class MiddlewareDescriptor
             throw new InvalidOperationException("Dependencies contain duplicates.");
         }
     }
-
-    /// <inheritdoc/>
-    public override bool Equals(object? obj)
-    {
-        Guard.NotNull(obj, nameof(obj));
-
-        return obj is MiddlewareDescriptor other &&
-            MiddlewareType == other.MiddlewareType &&
-            Priority == other.Priority &&
-            Group == other.Group;
-    }
-
-    /// <inheritdoc/>
-    public override int GetHashCode() => HashCode.Combine(MiddlewareType, Priority, Group);
 }

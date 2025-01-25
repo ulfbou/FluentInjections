@@ -7,6 +7,9 @@ using FluentInjections.Validation;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using DotNetServiceDescriptor = Microsoft.Extensions.DependencyInjection.ServiceDescriptor;
+using ServiceDescriptor = FluentInjections.Internal.Descriptors.ServiceDescriptor;
+
 namespace FluentInjections.Internal.Wrappers;
 
 public sealed class NetCoreServiceProvider :
@@ -19,20 +22,22 @@ public sealed class NetCoreServiceProvider :
     IAsyncDisposable
 {
     private readonly IServiceProvider _provider;
-    private readonly IDictionary<string, ServiceDescriptor> _keyedServiceDescriptors;
-    private readonly IDictionary<string, Dictionary<Type, ServiceBindingDescriptor>> _namedServices;
+    private readonly IReadOnlyDictionary<string, Dictionary<Type, DotNetServiceDescriptor>> _keyedServiceDescriptors;
+    private readonly IReadOnlyDictionary<string, Dictionary<Type, ServiceDescriptor>> _namedServices;
 
-    public NetCoreServiceProvider(IServiceProvider serviceProvider, IDictionary<string, ServiceDescriptor> keyedServiceDescriptors)
+    public NetCoreServiceProvider(
+        IServiceProvider serviceProvider,
+        IReadOnlyDictionary<string, Dictionary<Type, DotNetServiceDescriptor>> keyedServiceDescriptors)
     {
         _provider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _keyedServiceDescriptors = keyedServiceDescriptors ?? throw new ArgumentNullException(nameof(keyedServiceDescriptors));
-        _namedServices = new Dictionary<string, Dictionary<Type, ServiceBindingDescriptor>>();
+        _namedServices = new Dictionary<string, Dictionary<Type, ServiceDescriptor>>();
     }
 
-    public NetCoreServiceProvider(IServiceProvider serviceProvider, Dictionary<string, Dictionary<Type, ServiceBindingDescriptor>> namedServices)
+    public NetCoreServiceProvider(IServiceProvider serviceProvider, Dictionary<string, Dictionary<Type, ServiceDescriptor>> namedServices)
     {
         _provider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _keyedServiceDescriptors = new Dictionary<string, ServiceDescriptor>();
+        _keyedServiceDescriptors = new Dictionary<string, DotNetServiceDescriptor>();
         _namedServices = namedServices ?? throw new ArgumentNullException(nameof(namedServices));
     }
 
@@ -80,12 +85,19 @@ public sealed class NetCoreServiceProvider :
 
         if (service is not null) return service;
 
+        var descriptors = GetFromNamedServices(serviceType);
+
+        if (descriptors.Any())
+        {
+            return descriptors.Select(GetServiceFromDescriptor).FirstOrDefault(s => s is not null);
+        }
+
         if (serviceType.IsGenericType && !serviceType.IsConstructedGenericType)
         {
             var genericTypeDefinition = serviceType.GetGenericTypeDefinition();
             var genericArguments = serviceType.GetGenericArguments();
 
-            foreach (var descriptor in _provider.GetServices<ServiceDescriptor>())
+            foreach (var descriptor in _provider.GetServices<DotNetServiceDescriptor>())
             {
                 if (descriptor.ImplementationType is null) continue;
                 if (descriptor.ServiceType.IsGenericTypeDefinition && descriptor.ServiceType == genericTypeDefinition)
@@ -101,7 +113,22 @@ public sealed class NetCoreServiceProvider :
         return null;
     }
 
-    private object? GetServiceFromDescriptor(ServiceBindingDescriptor descriptor)
+    private IEnumerable<ServiceDescriptor> GetFromNamedServices(Type serviceType)
+    {
+        // get all services of the specified type from _namedServices
+        lock (_namedServices)
+        {
+            foreach (var services in _namedServices.Values)
+            {
+                if (services.TryGetValue(serviceType, out var descriptor))
+                {
+                    yield return descriptor;
+                }
+            }
+        }
+    }
+
+    private object? GetServiceFromDescriptor(ServiceDescriptor descriptor)
     {
         if (descriptor.Instance is not null)
         {
